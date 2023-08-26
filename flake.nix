@@ -67,6 +67,7 @@
               toolchain
               cargo-edit
               cargo-watch
+              nixpkgs-fmt
             ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (
               (with pkgs; [ libiconv ]) ++
                 (with pkgs.darwin.apple_sdk.frameworks; [ Security ])
