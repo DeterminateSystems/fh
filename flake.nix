@@ -67,7 +67,10 @@
               toolchain
               cargo-edit
               cargo-watch
-            ];
+            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (
+              (with pkgs; [ libiconv ]) ++
+                (with pkgs.darwin.apple_sdk.frameworks; [ Security ])
+            );
           };
         });
 
