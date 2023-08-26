@@ -53,6 +53,9 @@
           fh = naerskLib.buildPackage rec {
             name = "fh-${version}";
             src = self;
+            nativeBuildInputs = final.lib.optionals final.stdenv.isLinux (with final; [
+              pkg-config
+            ]);
           };
         };
 
