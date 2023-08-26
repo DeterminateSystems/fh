@@ -1,4 +1,4 @@
-name: Nix
+name: Nix checks
 
 on:
   pull_request:
