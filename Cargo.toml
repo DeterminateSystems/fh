@@ -1,0 +1,14 @@
+[package]
+name = "fh"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.73"
+clap = { version = "4.4.0", features = ["derive"] }
+color-eyre = "0.6.2"
+nixel = "5.2.0"
+tokio = { version = "1.32.0", features = ["full"] }
+url = "2.4.0"
