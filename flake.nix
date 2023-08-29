@@ -50,24 +50,29 @@
     {
 
       packages = forAllSystems ({ system, pkgs, ... }:
-      let
+        let
           toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
           naerskLib = pkgs.callPackage inputs.naersk {
             cargo = toolchain;
             rustc = toolchain;
           };
-      in
+        in
         rec {
           default = fh;
           fh = naerskLib.buildPackage rec {
             name = "fh-${version}";
             src = self;
 
-            LIBCLANG_PATH="${pkgs.libclang.lib}/lib";
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            NIX_CFLAGS_COMPILE = "-I${pkgs.libcxx.dev}/include/c++/v1";
 
-            nativeBuildInputs = with pkgs; [ pkg-config clang ];
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              rustPlatform.bindgenHook
+            ];
+
             buildInputs = with pkgs; [
-              libllvm.dev
+              gcc.cc.lib
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               libiconv
@@ -77,15 +82,21 @@
           };
         });
 
-      devShells = forAllSystems ({ system, pkgs, ... }: {
+      devShells = forAllSystems ({ system, pkgs, ... }:
+        let
+          toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
+        in
+        {
           default = pkgs.mkShell {
             name = "dev";
 
-            LIBCLANG_PATH="${pkgs.libclang.lib}/lib";
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            NIX_CFLAGS_COMPILE = "-I${pkgs.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with pkgs; [ pkg-config clang ];
             buildInputs = with pkgs; [
-              libllvm.dev
+              toolchain
+              gcc.cc.lib
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
               libiconv
