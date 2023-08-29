@@ -41,10 +41,11 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             for Flake { org, project } in flakes {
                                 println!(
-                                    "{}{}{}\n    https://flakehub.com/flake/{}/{}",
+                                    "{}{}{}\n    {}/flake/{}/{}",
                                     style(org.clone()).cyan(),
                                     style("/").white(),
                                     style(project.clone()).red(),
+                                    host,
                                     style(org).cyan(),
                                     style(project).red(),
                                 );
@@ -66,8 +67,9 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             for org in orgs {
                                 println!(
-                                    "{}\n    https://flakehub.com/org/{}",
+                                    "{}\n    {}/org/{}",
                                     style(org.clone()).cyan(),
+                                    host,
                                     style(org).cyan(),
                                 );
                             }

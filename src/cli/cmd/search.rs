@@ -27,10 +27,11 @@ impl CommandExecute for SearchSubcommand {
                 } else {
                     for SearchResult { org, project, .. } in results {
                         println!(
-                            "{}{}{}\n    https://flakehub.com/flake/{}/{}",
+                            "{}{}{}\n    {}/flake/{}/{}",
                             style(org.clone()).cyan(),
                             style("/").white(),
                             style(project.clone()).red(),
+                            host,
                             style(org).cyan(),
                             style(project).red(),
                         );
