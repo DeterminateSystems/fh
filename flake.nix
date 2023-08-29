@@ -70,7 +70,6 @@
               toolchain
               cargo-edit
               cargo-watch
-              openssl
               nixpkgs-fmt
             ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (
               (with pkgs; [ libiconv ]) ++

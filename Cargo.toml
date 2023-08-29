@@ -5,10 +5,22 @@ authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.3.2", default-features = false, features = ["color", "derive", "env", "help", "std"] }
+clap = { version = "4.3.2", default-features = false, features = [
+  "color",
+  "derive",
+  "env",
+  "help",
+  "std",
+] }
 console = "0.15.7"
 indicatif = { version = "0.17.6", default-features = false }
-reqwest = { version = "0.11", default-features = false, features = ["json", "native-tls"] }
+reqwest = { version = "0.11", default-features = false, features = [
+  "json",
+  "rustls-tls",
+] }
 serde = { version = "1.0.183", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.44", default-features = false }
-tokio = { version = "1.30.0", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.30.0", default-features = false, features = [
+  "macros",
+  "rt-multi-thread",
+] }
