@@ -26,7 +26,7 @@
 
       forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
-        pkgs = import inputs.nixpkgs { inherit system; };
+        pkgs = import inputs.nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
       });
 
       forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
@@ -46,43 +46,40 @@
 
     in
     {
-      packages = forAllSystems ({ system, pkgs, ... }:
-        let
-          toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
-          naerskLib = pkgs.callPackage inputs.naersk {
-            cargo = toolchain;
-            rustc = toolchain;
-          };
-        in
-        rec {
-          default = fh;
-          fh = naerskLib.buildPackage rec {
-            name = "fh-${version}";
-            src = self;
+      overlays.default = final: prev: rec {
+        rustToolchain = fenixToolchain final.stdenv.hostPlatform.system;
+        naerskLib = final.callPackage inputs.naersk {
+          cargo = rustToolchain;
+          rustc = rustToolchain;
+        };
+      };
 
-            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
+      packages = forAllSystems ({ system, pkgs, ... }: rec {
+        default = fh;
+        fh = pkgs.naerskLib.buildPackage {
+          name = "fh-${version}";
+          src = self;
 
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-              rustPlatform.bindgenHook
-            ];
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
-            buildInputs = with pkgs; [
-              gcc.cc.lib
-            ]
-            ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
-              libiconv
-              Security
-              SystemConfiguration
-            ]);
-          };
-        });
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            rustPlatform.bindgenHook
+          ];
+
+          buildInputs = with pkgs; [
+            gcc.cc.lib
+          ]
+          ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
+            libiconv
+            Security
+            SystemConfiguration
+          ]);
+        };
+      });
 
       devShells = forAllSystems ({ system, pkgs, ... }:
-        let
-          toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
-        in
         {
           default = pkgs.mkShell {
             name = "dev";
@@ -92,9 +89,9 @@
 
             nativeBuildInputs = with pkgs; [ pkg-config clang ];
             buildInputs = with pkgs; [
-              toolchain
-              gcc.cc.lib
+              rustToolchain
               cargo-watch
+              gcc.cc.lib
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
               libiconv

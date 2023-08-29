@@ -8,7 +8,7 @@ use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
 
-/// Searches FlakeHub for flakes that match your query.
+/// Lists key FlakeHub resources.
 #[derive(Parser)]
 pub(crate) struct ListSubcommand {
     #[command(subcommand)]
@@ -17,7 +17,9 @@ pub(crate) struct ListSubcommand {
 
 #[derive(Subcommand)]
 enum Subcommands {
+    /// Lists all currently public flakes on FlakeHub.
     Flakes,
+    /// List all currently public organizations on FlakeHub.
     Orgs,
 }
 
