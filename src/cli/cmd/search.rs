@@ -1,7 +1,6 @@
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::Deserialize;
 use std::process::ExitCode;
 
 use super::{CommandExecute, FlakeHubClient};
@@ -13,7 +12,7 @@ pub(crate) struct SearchSubcommand {
     query: String,
 
     #[clap(from_global)]
-    host: String,
+    host: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -51,7 +50,7 @@ impl CommandExecute for SearchSubcommand {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 pub struct SearchResult {
     org: String,
     project: String,

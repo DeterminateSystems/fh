@@ -22,7 +22,7 @@ pub(crate) enum FhSubcommands {
 
 pub(super) struct FlakeHubClient {
     client: HttpClient,
-    host: String,
+    host: url::Url,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -32,10 +32,10 @@ pub(super) enum FhError {
 }
 
 impl FlakeHubClient {
-    pub(super) fn new(host: &str) -> Result<Self, FhError> {
+    pub(super) fn new(host: &url::Url) -> Result<Self, FhError> {
         let client = ClientBuilder::new().build()?;
         Ok(Self {
-            host: String::from(host),
+            host: host.clone(),
             client,
         })
     }

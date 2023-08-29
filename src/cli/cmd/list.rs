@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::Deserialize;
 use std::process::ExitCode;
 
 use crate::cli::cmd::FlakeHubClient;
@@ -15,7 +14,7 @@ pub(crate) struct ListSubcommand {
     cmd: Subcommands,
 
     #[clap(from_global)]
-    host: String,
+    host: url::Url,
 }
 
 #[derive(Subcommand)]
@@ -89,13 +88,13 @@ impl CommandExecute for ListSubcommand {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 pub(super) struct Flake {
     org: String,
     project: String,
 }
 
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 pub(super) struct Org {
     pub(super) name: String,
 }
