@@ -1,9 +1,14 @@
 pub(crate) mod cmd;
 
-/// fh: a CLI for interacting with FlakeHub, a platform for discovering and publishing Nix flakes from Determinate Systems.
+/// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
 pub(crate) struct Cli {
-    #[clap(long, default_value = "https://flakehub.com", hide = true)]
+    #[clap(
+        global = true,
+        long,
+        default_value = "https://flakehub.com",
+        hide = true
+    )]
     pub host: String,
 
     #[clap(subcommand)]

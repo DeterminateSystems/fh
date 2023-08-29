@@ -10,7 +10,7 @@ use self::{list::Flake, search::SearchResult};
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
-    async fn execute(self, host: &str) -> color_eyre::Result<std::process::ExitCode>;
+    async fn execute(self) -> color_eyre::Result<std::process::ExitCode>;
 }
 
 #[derive(clap::Subcommand)]

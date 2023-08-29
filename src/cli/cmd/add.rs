@@ -26,16 +26,19 @@ pub(crate) struct AddSubcommand {
     /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2305.*` (without a URL
     /// scheme) will be inferred as a FlakeHub input.
     pub(crate) input_ref: String,
+
+    #[clap(from_global)]
+    host: String,
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for AddSubcommand {
-    async fn execute(self, host: &str) -> color_eyre::Result<ExitCode> {
+    async fn execute(self) -> color_eyre::Result<ExitCode> {
         let input = tokio::fs::read_to_string(&self.flake_path).await?;
         let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
-            infer_flake_input_name_url(host, &self.input_ref, self.input_name)?;
+            infer_flake_input_name_url(&self.host, &self.input_ref, self.input_name)?;
         let attr_path: VecDeque<String> = [
             String::from("inputs"),
             flake_input_name.clone(),

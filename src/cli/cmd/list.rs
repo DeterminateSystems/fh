@@ -13,6 +13,9 @@ use super::CommandExecute;
 pub(crate) struct ListSubcommand {
     #[command(subcommand)]
     cmd: Subcommands,
+
+    #[clap(from_global)]
+    host: String,
 }
 
 #[derive(Subcommand)]
@@ -25,10 +28,10 @@ enum Subcommands {
 
 #[async_trait::async_trait]
 impl CommandExecute for ListSubcommand {
-    async fn execute(self, host: &str) -> color_eyre::Result<ExitCode> {
+    async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(host)?;
+        let client = FlakeHubClient::new(&self.host)?;
 
         match self.cmd {
             Flakes => {
@@ -45,7 +48,7 @@ impl CommandExecute for ListSubcommand {
                                     style(org.clone()).cyan(),
                                     style("/").white(),
                                     style(project.clone()).red(),
-                                    host,
+                                    self.host,
                                     style(org).cyan(),
                                     style(project).red(),
                                 );
@@ -69,7 +72,7 @@ impl CommandExecute for ListSubcommand {
                                 println!(
                                     "{}\n    {}/org/{}",
                                     style(org.clone()).cyan(),
-                                    host,
+                                    self.host,
                                     style(org).cyan(),
                                 );
                             }

@@ -11,14 +11,18 @@ use super::{CommandExecute, FlakeHubClient};
 pub(crate) struct SearchSubcommand {
     /// The search query.
     query: String,
+
+    #[clap(from_global)]
+    host: String,
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for SearchSubcommand {
-    async fn execute(self, host: &str) -> color_eyre::Result<ExitCode> {
+    async fn execute(self) -> color_eyre::Result<ExitCode> {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
-        let client = FlakeHubClient::new(host)?;
+
+        let client = FlakeHubClient::new(&self.host)?;
 
         match client.search(self.query).await {
             Ok(results) => {
@@ -31,7 +35,7 @@ impl CommandExecute for SearchSubcommand {
                             style(org.clone()).cyan(),
                             style("/").white(),
                             style(project.clone()).red(),
-                            host,
+                            self.host,
                             style(org).cyan(),
                             style(project).red(),
                         );
