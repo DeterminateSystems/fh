@@ -2,14 +2,20 @@ mod cli;
 
 use clap::Parser;
 
-use crate::cli::cmd::CommandExecute;
-use crate::cli::cmd::FhSubcommands;
+use crate::cli::{
+    cmd::{CommandExecute, FhSubcommands},
+    Cli,
+};
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<std::process::ExitCode> {
-    let cli = cli::Cli::parse();
+    use FhSubcommands::*;
 
-    match cli.subcommand {
-        FhSubcommands::Add(add) => add.execute().await,
+    let Cli { subcommand, .. } = Cli::parse();
+
+    match subcommand {
+        Add(add) => add.execute().await,
+        List(list) => list.execute().await,
+        Search(search) => search.execute().await,
     }
 }

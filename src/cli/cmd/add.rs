@@ -26,6 +26,9 @@ pub(crate) struct AddSubcommand {
     /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2305.*` (without a URL
     /// scheme) will be inferred as a FlakeHub input.
     pub(crate) input_ref: String,
+
+    #[clap(from_global)]
+    host: String,
 }
 
 #[async_trait::async_trait]
@@ -35,7 +38,7 @@ impl CommandExecute for AddSubcommand {
         let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
-            infer_flake_input_name_url(&self.input_ref, self.input_name)?;
+            infer_flake_input_name_url(&self.host, &self.input_ref, self.input_name)?;
         let attr_path: VecDeque<String> = [
             String::from("inputs"),
             flake_input_name.clone(),
@@ -89,6 +92,7 @@ fn upsert_flake_input(
 }
 
 fn infer_flake_input_name_url(
+    host: &str,
     url: &str,
     input_name: Option<String>,
 ) -> color_eyre::Result<(String, url::Url)> {
@@ -136,7 +140,7 @@ fn infer_flake_input_name_url(
                 ))?,
             };
 
-            let mut flakehub_url = url::Url::parse("https://flakehub.com/")
+            let mut flakehub_url = url::Url::parse(host)
                 .expect("flakehub url didn't parse (this should never happen)");
             flakehub_url
                 .path_segments_mut()

@@ -1,2 +1,5 @@
-/target
+# Nix artifacts
 result*
+
+# Rust artifacts
+/target

@@ -1,14 +1,31 @@
 [package]
 name = "fh"
 version = "0.1.0"
+authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 async-trait = "0.1.73"
-clap = { version = "4.4.0", features = ["derive"] }
+clap = { version = "4.3.2", default-features = false, features = [
+  "color",
+  "derive",
+  "env",
+  "help",
+  "std",
+] }
 color-eyre = "0.6.2"
+console = "0.15.7"
+indicatif = { version = "0.17.6", default-features = false }
 nixel = "5.2.0"
-tokio = { version = "1.32.0", features = ["full"] }
+reqwest = { version = "0.11", default-features = false, features = [
+  "json",
+  "rustls-tls",
+] }
+serde = { version = "1.0.183", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.44", default-features = false }
+tokio = { version = "1.30.0", default-features = false, features = [
+  "fs",
+  "macros",
+  "rt-multi-thread",
+] }
 url = "2.4.0"
