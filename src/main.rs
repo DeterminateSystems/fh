@@ -14,9 +14,16 @@ struct Search {
 enum Subcommand {
     /// Search FlakeHub for flakes that match your query
     Search(Search),
+    /// List FlakeHub resources.
+    #[clap(subcommand)]
+    List(List),
+}
+
+#[derive(Parser)]
+enum List {
     /// List all public flakes available on FlakeHub
     Flakes,
-    /// List all public orgs available on FlakeHub
+    /// List all public organizations available on FlakeHub
     Orgs,
 }
 
@@ -156,53 +163,56 @@ async fn main() -> Result<(), FhError> {
                 }
             }
         }
-        Subcommand::Flakes => {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(ProgressStyle::default_spinner());
-            match client.flakes().await {
-                Ok(flakes) => {
-                    if flakes.is_empty() {
-                        println!("No results");
-                    } else {
-                        for Flake { org, project } in flakes {
-                            println!(
-                                "{}{}{}\n    https://flakehub.com/flake/{}/{}",
-                                style(org.clone()).cyan(),
-                                style("/").white(),
-                                style(project.clone()).red(),
-                                style(org).cyan(),
-                                style(project).red(),
-                            );
+
+        Subcommand::List(list) => match list {
+            List::Flakes => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+                match client.flakes().await {
+                    Ok(flakes) => {
+                        if flakes.is_empty() {
+                            println!("No results");
+                        } else {
+                            for Flake { org, project } in flakes {
+                                println!(
+                                    "{}{}{}\n    https://flakehub.com/flake/{}/{}",
+                                    style(org.clone()).cyan(),
+                                    style("/").white(),
+                                    style(project.clone()).red(),
+                                    style(org).cyan(),
+                                    style(project).red(),
+                                );
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    println!("Error: {e}");
-                }
-            }
-        }
-        Subcommand::Orgs => {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(ProgressStyle::default_spinner());
-            match client.orgs().await {
-                Ok(orgs) => {
-                    if orgs.is_empty() {
-                        println!("No results");
-                    } else {
-                        for org in orgs {
-                            println!(
-                                "{}\n    https://flakehub.com/org/{}",
-                                style(org.clone()).cyan(),
-                                style(org).cyan(),
-                            );
-                        }
+                    Err(e) => {
+                        println!("Error: {e}");
                     }
                 }
-                Err(e) => {
-                    println!("Error: {e}");
+            }
+            List::Orgs => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+                match client.orgs().await {
+                    Ok(orgs) => {
+                        if orgs.is_empty() {
+                            println!("No results");
+                        } else {
+                            for org in orgs {
+                                println!(
+                                    "{}\n    https://flakehub.com/org/{}",
+                                    style(org.clone()).cyan(),
+                                    style(org).cyan(),
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error: {e}");
+                    }
                 }
             }
-        }
+        },
     }
 
     Ok(())
