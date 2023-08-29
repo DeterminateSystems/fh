@@ -91,6 +91,7 @@
             buildInputs = with pkgs; [
               rustToolchain
               cargo-watch
+              nixpkgs-fmt
               gcc.cc.lib
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
