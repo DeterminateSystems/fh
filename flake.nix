@@ -19,16 +19,14 @@
   };
 
   outputs = { self, ... }@inputs:
-
     let
-
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
 
       version = "${builtins.substring 0 8 lastModifiedDate}-${self.shortRev or "dirty"}";
 
       forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
-        pkgs = import inputs.nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
+        pkgs = import inputs.nixpkgs { inherit system; };
       });
 
       forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
@@ -48,15 +46,12 @@
 
     in
     {
-      overlays.default = final: prev: {
-        toolchain = fenixToolchain final.stdenv.hostPlatform.system;
-      };
-
       packages = forAllSystems ({ system, pkgs, ... }:
         let
+          toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
           naerskLib = pkgs.callPackage inputs.naersk {
-            cargo = pkgs.toolchain;
-            rustc = pkgs.toolchain;
+            cargo = toolchain;
+            rustc = toolchain;
           };
         in
         rec {
@@ -66,10 +61,15 @@
             src = self;
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
-            nativeBuildInputs = with pkgs; [ pkg-config clang ];
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              rustPlatform.bindgenHook
+            ];
+
             buildInputs = with pkgs; [
-              libllvm.dev
+              gcc.cc.lib
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               libiconv
@@ -79,25 +79,29 @@
           };
         });
 
-      devShells = forAllSystems ({ system, pkgs, ... }: {
-        default = pkgs.mkShell {
-          name = "dev";
+      devShells = forAllSystems ({ system, pkgs, ... }:
+        let
+          toolchain = fenixToolchain pkgs.stdenv.hostPlatform.system;
+        in
+        {
+          default = pkgs.mkShell {
+            name = "dev";
 
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
-          nativeBuildInputs = with pkgs; [ pkg-config clang ];
-          buildInputs = with pkgs; [
-            toolchain
-            cargo-watch
-            libllvm.dev
-          ]
-          ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
-            libiconv
-            Security
-            SystemConfiguration
-          ]);
-        };
-      });
-
+            nativeBuildInputs = with pkgs; [ pkg-config clang ];
+            buildInputs = with pkgs; [
+              toolchain
+              gcc.cc.lib
+              cargo-watch
+            ]
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
+              libiconv
+              Security
+              SystemConfiguration
+            ]);
+          };
+        });
     };
 }

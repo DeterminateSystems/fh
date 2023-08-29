@@ -2,4 +2,4 @@
 result*
 
 # Rust artifacts
-target/
+/target
