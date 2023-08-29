@@ -8,15 +8,31 @@
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
-        "narHash": "sha256-o+eX70uYVU9/Jr79CWDrbmRiClKKNuD395/iBZdzcNM=",
-        "rev": "e66fa0e97106af71be1b26917fba281a27a653a3",
-        "revCount": 1578,
+        "narHash": "sha256-qrgyFtRaduofcJF1T7TscNWM4HTx4qtFzpilD0K8M0o=",
+        "rev": "8eb35c8c402edda73a7dde82e48bf279542640c7",
+        "revCount": 1580,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.1578%2Brev-e66fa0e97106af71be1b26917fba281a27a653a3/018a32e8-2c57-7565-a631-a114e068da86/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.1580%2Brev-8eb35c8c402edda73a7dde82e48bf279542640c7/018a3d34-f052-7478-aace-24cbb6a4cd76/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/nix-community/fenix/0.1.%2A.tar.gz"
+        "url": "https://api.flakehub.com/f/nix-community/fenix/0.1.1565.tar.gz"
+      }
+    },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1673956053,
+        "narHash": "sha256-4gtG9iQuiKITOjNQQeQIpoIB6b16fm+504Ch3sNKLd8=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "35bb57c0c8d8b62bbfd284272c928ceb64ddbde9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
       }
     },
     "naersk": {
@@ -41,20 +57,21 @@
     },
     "nixpkgs": {
       "locked": {
-        "narHash": "sha256-M4VFpy7Av9j+33HF5nIGm0k2+DXXW4qSSKdidIKg5jY=",
-        "rev": "74e5bdc5478ebbe7ba5849f0d765f92757bb9dbf",
-        "revCount": 490387,
+        "narHash": "sha256-aRTTXkYvhXosGx535iAFUaoFboUrZSYb1Ooih/auGp0=",
+        "rev": "a999c1cc0c9eb2095729d5aa03e0d8f7ed256780",
+        "revCount": 519597,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2305.490387%2Brev-74e5bdc5478ebbe7ba5849f0d765f92757bb9dbf/018a32e8-728e-79be-b750-1e9bf72e5a50/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.519597%2Brev-a999c1cc0c9eb2095729d5aa03e0d8f7ed256780/018a3d35-4db5-76c3-aca2-de1920cf506f/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.2305.%2A.tar.gz"
+        "url": "https://api.flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz"
       }
     },
     "root": {
       "inputs": {
         "fenix": "fenix",
+        "flake-compat": "flake-compat",
         "naersk": "naersk",
         "nixpkgs": "nixpkgs"
       }

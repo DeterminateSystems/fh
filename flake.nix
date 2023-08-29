@@ -1,11 +1,14 @@
 {
-  description = "fh: the FlakeHub CLI";
-
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz";
+    nixpkgs.url = "https://api.flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz";
+
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
 
     fenix = {
-      url = "https://api.flakehub.com/f/nix-community/fenix/0.1.*.tar.gz";
+      url = "https://api.flakehub.com/f/nix-community/fenix/0.1.1565.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -15,71 +18,86 @@
     };
   };
 
-  outputs = { self, nixpkgs, fenix, naersk }:
+  outputs = { self, ... }@inputs:
+
     let
+
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
+
       version = "${builtins.substring 0 8 lastModifiedDate}-${self.shortRev or "dirty"}";
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
+
+      forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ self.overlays.default ];
-        };
+        pkgs = import inputs.nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
       });
-      fenixToolchain = system: with fenix.packages.${system};
+
+      forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+
+      fenixToolchain = system: with inputs.fenix.packages.${system};
         combine ([
           stable.clippy
           stable.rustc
           stable.cargo
           stable.rustfmt
           stable.rust-src
-        ] ++ nixpkgs.lib.optionals (system == "x86_64-linux") [
+        ] ++ inputs.nixpkgs.lib.optionals (system == "x86_64-linux") [
           targets.x86_64-unknown-linux-musl.stable.rust-std
-        ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
+        ] ++ inputs.nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
+
     in
     {
-      overlays.default = final: prev:
+      overlays.default = final: prev: {
+        toolchain = fenixToolchain final.stdenv.hostPlatform.system;
+      };
+
+      packages = forAllSystems ({ system, pkgs, ... }:
         let
-          toolchain = fenixToolchain final.hostPlatform.system;
-          naerskLib = final.callPackage naersk {
-            cargo = toolchain;
-            rustc = toolchain;
+          naerskLib = pkgs.callPackage inputs.naersk {
+            cargo = pkgs.toolchain;
+            rustc = pkgs.toolchain;
           };
         in
-        {
+        rec {
+          default = fh;
           fh = naerskLib.buildPackage rec {
             name = "fh-${version}";
             src = self;
-            nativeBuildInputs = final.lib.optionals final.stdenv.isLinux (with final; [
-              pkg-config
-            ]);
-          };
-        };
 
-      devShells = forEachSupportedSystem ({ pkgs, system }:
-        let
-          toolchain = fenixToolchain system;
-        in
-        {
-          default = pkgs.mkShell {
-            name = "fh-dev";
-            packages = with pkgs; [
-              toolchain
-              cargo-edit
-              cargo-watch
-              nixpkgs-fmt
-            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (
-              (with pkgs; [ libiconv ]) ++
-                (with pkgs.darwin.apple_sdk.frameworks; [ Security ])
-            );
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+
+            nativeBuildInputs = with pkgs; [ pkg-config clang ];
+            buildInputs = with pkgs; [
+              libllvm.dev
+            ]
+            ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
+              libiconv
+              Security
+              SystemConfiguration
+            ]);
           };
         });
 
-      packages = forEachSupportedSystem ({ pkgs, ... }: {
-        default = pkgs.fh;
+      devShells = forAllSystems ({ system, pkgs, ... }: {
+        default = pkgs.mkShell {
+          name = "dev";
+
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+
+          nativeBuildInputs = with pkgs; [ pkg-config clang ];
+          buildInputs = with pkgs; [
+            toolchain
+            cargo-watch
+            libllvm.dev
+          ]
+          ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
+            libiconv
+            Security
+            SystemConfiguration
+          ]);
+        };
       });
+
     };
 }
