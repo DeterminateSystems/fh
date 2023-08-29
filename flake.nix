@@ -64,7 +64,7 @@
             src = self;
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = "-I${pkgs.libcxx.dev}/include/c++/v1";
+            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with pkgs; [
               pkg-config
@@ -91,7 +91,7 @@
             name = "dev";
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = "-I${pkgs.libcxx.dev}/include/c++/v1";
+            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with pkgs; [ pkg-config clang ];
             buildInputs = with pkgs; [
