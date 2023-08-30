@@ -1,13 +1,10 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
-use lazy_static::lazy_static;
-use prettytable::{
-    format::{FormatBuilder, LinePosition, LineSeparator, TableFormat},
-    row, Attr, Cell, Row, Table,
-};
+use prettytable::{row, Attr, Cell, Row, Table};
 use serde::Deserialize;
 use std::process::ExitCode;
 
+use super::TABLE_FORMAT;
 use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
@@ -25,23 +22,33 @@ pub(crate) struct ListSubcommand {
     backend_host: String,
 }
 
+#[derive(Deserialize)]
+pub(super) struct Flake {
+    org: String,
+    project: String,
+}
+
+impl Flake {
+    fn name(&self) -> String {
+        format!("{}/{}", self.org, self.project)
+    }
+
+    fn url(&self, host: &str) -> String {
+        format!("{}/flake/{}/{}", host, self.org, self.project)
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct Org {
+    pub(super) name: String,
+}
+
 #[derive(Subcommand)]
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
     /// List all currently public organizations on FlakeHub.
     Orgs,
-}
-
-lazy_static! {
-    static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
-        .borders('|')
-        .padding(1, 1)
-        .separators(
-            &[LinePosition::Top, LinePosition::Title, LinePosition::Bottom],
-            LineSeparator::new('-', '+', '+', '+'),
-        )
-        .build();
 }
 
 #[async_trait::async_trait]
@@ -111,25 +118,4 @@ impl CommandExecute for ListSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-#[derive(Deserialize)]
-pub(super) struct Flake {
-    org: String,
-    project: String,
-}
-
-impl Flake {
-    fn name(&self) -> String {
-        format!("{}/{}", self.org, self.project)
-    }
-
-    fn url(&self, host: &str) -> String {
-        format!("{}/flake/{}/{}", host, self.org, self.project)
-    }
-}
-
-#[derive(Deserialize)]
-pub(super) struct Org {
-    pub(super) name: String,
 }

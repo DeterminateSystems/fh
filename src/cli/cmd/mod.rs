@@ -2,11 +2,24 @@ mod add;
 mod list;
 mod search;
 
+use lazy_static::lazy_static;
+use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::{Client as HttpClient, ClientBuilder};
 
 use crate::cli::cmd::list::Org;
 
 use self::{list::Flake, search::SearchResult};
+
+lazy_static! {
+    pub(super) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
+        .borders('|')
+        .padding(1, 1)
+        .separators(
+            &[LinePosition::Top, LinePosition::Title, LinePosition::Bottom],
+            LineSeparator::new('-', '+', '+', '+'),
+        )
+        .build();
+}
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
