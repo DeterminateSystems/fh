@@ -186,7 +186,10 @@ fn upsert_flake_input(
     attr_path: VecDeque<String>,
 ) -> color_eyre::Result<()> {
     match find_existing_flake_input(&expr, &attr_path)? {
-        (Some(existing_input_value), _) => {
+        A {
+            existing_input_value: Some(existing_input_value),
+            ..
+        } => {
             replace_input_value(
                 &existing_input_value.parts,
                 &flake_input_value,
@@ -194,8 +197,13 @@ fn upsert_flake_input(
                 output,
             )?;
         }
-        (None, Some(first_attr_raw)) => {
+        A {
+            existing_input_value: None,
+            first_attr_raw: Some(first_attr_raw),
+            outputs_attr,
+        } => {
             // TODO: DON'T MAKE THE CHANGES YET, JUST RECORD WHERE THEY SHOULD BE MADE.
+            // TODO: FIND OUTPUTS
             // We don't do anything fancy like trying to match the existing format of e.g.
             // `inputs = { <input_name>.url = "<input_value>"; };`
             let flake_input =
@@ -212,10 +220,16 @@ fn upsert_flake_input(
     Ok(())
 }
 
+struct A {
+    existing_input_value: Option<nixel::String_>,
+    first_attr_raw: Option<nixel::PartRaw>,
+    outputs_attr: Option<nixel::PartRaw>,
+}
+
 fn find_existing_flake_input<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
-) -> color_eyre::Result<(Option<nixel::String_>, Option<&'a nixel::PartRaw>)> {
+) -> color_eyre::Result<A> {
     let mut first_raw = None;
 
     find_existing_flake_input_impl(expr, attr_path, &mut first_raw)
@@ -225,14 +239,13 @@ fn find_existing_flake_input_impl<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
     first_raw: &mut Option<&'a nixel::PartRaw>,
-) -> color_eyre::Result<(Option<nixel::String_>, Option<&'a nixel::PartRaw>)> {
+) -> color_eyre::Result<A> {
     match expr {
         nixel::Expression::Map(map) => {
             for binding in map.bindings.iter() {
                 match binding {
                     nixel::Binding::KeyValue(kv) => {
                         // Transform `inputs.nixpkgs.url` into `["inputs", "nixpkgs", "url"]`
-                        // inputs = { nixpkgs = { url = ""; }; };
                         let (mut this_string_attr_path, mut this_raw_attr_path): (
                             VecDeque<String>,
                             VecDeque<&nixel::PartRaw>,
@@ -304,7 +317,11 @@ fn find_existing_flake_input_impl<'a>(
         }
         nixel::Expression::String(s) => {
             *first_raw = None;
-            return Ok((Some(s.clone()), *first_raw));
+            return Ok(A {
+                existing_input_value: Some(s.clone()),
+                first_attr_raw: first_raw.map(ToOwned::to_owned),
+                outputs_attr: todo!(),
+            });
         }
         t => {
             let start = t.start();
@@ -317,7 +334,11 @@ fn find_existing_flake_input_impl<'a>(
         }
     }
 
-    Ok((None, *first_raw))
+    Ok(A {
+        existing_input_value: None,
+        first_attr_raw: first_raw.map(ToOwned::to_owned),
+        outputs_attr: todo!(),
+    })
 }
 
 fn insert_flake_input(
