@@ -152,9 +152,9 @@ async fn get_flakehub_repo_and_url(
 
     #[derive(Debug, serde_derive::Deserialize)]
     struct ProjectCanonicalNames {
-        org: String,
         project: String,
-        simplified_version: String,
+        // FIXME: detect Nix version and strip .tar.gz if it supports it
+        pretty_download_url: url::Url,
     }
 
     let res = client
@@ -164,19 +164,7 @@ async fn get_flakehub_repo_and_url(
         .json::<ProjectCanonicalNames>()
         .await?;
 
-    // FIXME: detect Nix version and don't add .tar.gz if it supports it
-    let version = format!("{}.tar.gz", res.simplified_version);
-
-    let mut flakehub_url = api_addr.clone();
-    flakehub_url
-        .path_segments_mut()
-        .expect("flakehub url cannot be base (this should never happen)")
-        .push("f")
-        .push(&res.org)
-        .push(&res.project)
-        .push(&version);
-
-    Ok((res.project, flakehub_url))
+    Ok((res.project, res.pretty_download_url))
 }
 
 fn upsert_flake_input(
