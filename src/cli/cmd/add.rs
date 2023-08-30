@@ -192,6 +192,7 @@ fn upsert_flake_input(
     output: &mut String,
     attr_path: VecDeque<String>,
 ) -> color_eyre::Result<()> {
+    // TODO: handle empty flake.nix file
     match find_existing_flake_input(&expr, &attr_path)? {
         A {
             existing_input_value: Some(existing_input_value),
@@ -204,18 +205,29 @@ fn upsert_flake_input(
                 output,
             )?;
         }
-        A {
-            existing_input_value: None,
-            first_attr_raw: Some(first_attr_raw),
-            outputs_attr,
+        a @ A {
+            // existing_input_value: None,
+            // first_attr_raw,
+            // outputs_attr,
+            // inputs_attr,
+            ..
         } => {
+            dbg!(&a);
+            panic!();
             // TODO: DON'T MAKE THE CHANGES YET, JUST RECORD WHERE THEY SHOULD BE MADE.
             // TODO: FIND OUTPUTS
             // We don't do anything fancy like trying to match the existing format of e.g.
             // `inputs = { <input_name>.url = "<input_value>"; };`
-            let flake_input =
-                format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-            insert_flake_input(&first_attr_raw, flake_input, input, output)?;
+            // let flake_input =
+            //     format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
+            // insert_flake_input(
+            //     flake_input,
+            //     input,
+            //     output,
+            //     first_attr_raw,
+            //     outputs_attr,
+            //     inputs_attr,
+            // )?;
         }
         _ => {
             todo!();
@@ -227,9 +239,11 @@ fn upsert_flake_input(
     Ok(())
 }
 
+#[derive(Debug)]
 struct A {
     existing_input_value: Option<nixel::String_>,
     first_attr_raw: Option<nixel::PartRaw>,
+    inputs_attr: Option<nixel::PartRaw>,
     outputs_attr: Option<nixel::PartRaw>,
 }
 
@@ -237,15 +251,16 @@ fn find_existing_flake_input<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
 ) -> color_eyre::Result<A> {
-    let mut first_raw = None;
-
-    find_existing_flake_input_impl(expr, attr_path, &mut first_raw)
+    find_existing_flake_input_impl(expr, attr_path, &mut None, &mut None, &mut None, &mut None)
 }
 
 fn find_existing_flake_input_impl<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
+    existing_input_value: &mut Option<&'a nixel::String_>,
     first_raw: &mut Option<&'a nixel::PartRaw>,
+    inputs_raw: &mut Option<&'a nixel::PartRaw>,
+    outputs_raw: &mut Option<&'a nixel::PartRaw>,
 ) -> color_eyre::Result<A> {
     match expr {
         nixel::Expression::Map(map) => {
@@ -253,44 +268,56 @@ fn find_existing_flake_input_impl<'a>(
                 match binding {
                     nixel::Binding::KeyValue(kv) => {
                         // Transform `inputs.nixpkgs.url` into `["inputs", "nixpkgs", "url"]`
-                        let (mut this_string_attr_path, mut this_raw_attr_path): (
-                            VecDeque<String>,
-                            VecDeque<&nixel::PartRaw>,
-                        ) = kv
+                        let mut this_attr_path: VecDeque<(String, &nixel::PartRaw)> = kv
                             .from
                             .iter()
                             .filter_map(|attr| match attr {
                                 nixel::Part::Raw(raw) => Some((raw.content.to_string(), raw)),
                                 _ => None,
                             })
-                            .unzip();
+                            .collect();
 
                         // We record the first PartRaw we see, because if we don't find a same-named
                         // input, we'll insert the input with the specified input name right above
                         // this attr.
                         if first_raw.is_none() {
-                            if let Some(raw) = this_raw_attr_path.pop_front() {
+                            if let Some((attr, raw)) = this_attr_path.pop_front() {
                                 *first_raw = Some(raw);
+                                this_attr_path.push_front((attr, raw));
                             }
                         }
 
                         let mut search_attr_path = attr_path.clone();
 
                         // Find the correct attr path to modify
-                        // For every key in the attr path we're searching for...
                         while let Some(attr1) = search_attr_path.pop_front() {
-                            let attr2 = this_string_attr_path.pop_front();
+                            if let Some((attr2, attr2_raw)) = this_attr_path.pop_front() {
+                                // We want to record the first `inputs` attr we find so that we
+                                // can put a new input (if necessary) just above it.
+                                if attr2 == "inputs" {
+                                    if inputs_raw.is_none() {
+                                        *inputs_raw = Some(attr2_raw);
+                                    }
+                                }
 
-                            // ...we check that we have a matching attr key in the current attrset.
-                            if Some(&attr1) != attr2.as_ref() {
-                                if let Some(attr) = attr2 {
+                                // We also want to record the first `outputs` attr we find so that
+                                // we can insert the new input into the `{ ... }` (if necessary).
+                                if attr2 == "outputs" {
+                                    if outputs_raw.is_none() {
+                                        *outputs_raw = Some(attr2_raw);
+                                    }
+                                }
+
+                                // For every key in the attr path we're searching for we check that
+                                // we have a matching attr key in the current attrset.
+                                if attr1 != attr2 {
                                     // We want `this_attr_path` to contain all the attr path keys
                                     // that didn't match the attr path we're looking for, so we can
                                     // know when it matched as many of the attr paths as possible
                                     // (when `this_attr_path` is empty).
-                                    this_string_attr_path.push_front(attr);
+                                    this_attr_path.push_front((attr2, attr2_raw));
                                 }
-
+                            } else {
                                 // If it doesn't match, that means this isn't the correct attr path,
                                 // so we re-add the unmatched attr to `search_attr_path`...
                                 search_attr_path.push_front(attr1);
@@ -303,11 +330,14 @@ fn find_existing_flake_input_impl<'a>(
                         // If `this_attr_path` is empty, that means we've matched as much of the
                         // attr path as we can of this key node, and thus we need to recurse into
                         // its value node to continue checking if we want this input or not.
-                        if this_string_attr_path.is_empty() {
+                        if this_attr_path.is_empty() {
                             return find_existing_flake_input_impl(
                                 &kv.to,
                                 &search_attr_path,
+                                existing_input_value,
                                 first_raw,
+                                inputs_raw,
+                                outputs_raw,
                             );
                         }
                     }
@@ -323,12 +353,9 @@ fn find_existing_flake_input_impl<'a>(
             }
         }
         nixel::Expression::String(s) => {
-            *first_raw = None;
-            return Ok(A {
-                existing_input_value: Some(s.clone()),
-                first_attr_raw: first_raw.map(ToOwned::to_owned),
-                outputs_attr: todo!(),
-            });
+            if existing_input_value.is_none() {
+                *existing_input_value = Some(s);
+            }
         }
         t => {
             let start = t.start();
@@ -342,55 +369,60 @@ fn find_existing_flake_input_impl<'a>(
     }
 
     Ok(A {
-        existing_input_value: None,
+        existing_input_value: existing_input_value.map(ToOwned::to_owned),
         first_attr_raw: first_raw.map(ToOwned::to_owned),
-        outputs_attr: todo!(),
+        inputs_attr: inputs_raw.map(ToOwned::to_owned),
+        outputs_attr: outputs_raw.map(ToOwned::to_owned),
     })
 }
 
 fn insert_flake_input(
-    first_raw: &nixel::PartRaw,
     mut flake_input: String,
     input: String,
     output: &mut String,
+    first_raw: Option<nixel::PartRaw>,
+    inputs_attr: Option<nixel::PartRaw>,
+    outputs_attr: Option<nixel::PartRaw>,
 ) -> Result<(), color_eyre::Report> {
-    // If we're not adding our new input above an existing `inputs` construct, let's add
-    // another newline so that it looks nicer.
-    let mut added_cosmetic_newline = false;
-    if &*first_raw.content != "inputs" {
-        flake_input.push_str(NEWLINE);
-        added_cosmetic_newline = true;
+    if let Some(first_raw) = first_raw {
+        // If we're not adding our new input above an existing `inputs` construct, let's add
+        // another newline so that it looks nicer.
+        let mut added_cosmetic_newline = false;
+        if &*first_raw.content != "inputs" {
+            flake_input.push_str(NEWLINE);
+            added_cosmetic_newline = true;
+        }
+
+        let (start, _) = span_to_start_end_offsets(&input, &first_raw.span)?;
+        // Insert the new contents
+        output.insert_str(start, &flake_input);
+
+        // Preserve the exact indentation of the old contents
+        let old_content_start_of_indentation_pos = nixel::Position {
+            line: first_raw.span.start.line,
+            column: 1,
+        };
+        let old_content_end_of_indentation_pos = first_raw.span.start.clone();
+        let indentation_span = nixel::Span {
+            start: Box::new(old_content_start_of_indentation_pos),
+            end: old_content_end_of_indentation_pos,
+        };
+        let (indentation_start, indentation_end) =
+            span_to_start_end_offsets(&input, &indentation_span)?;
+        let indentation = &input[indentation_start..indentation_end];
+
+        let old_content_pos = nixel::Position {
+            // we moved the old contents to the next line...
+            line: first_raw.span.start.line + 1 + if added_cosmetic_newline { 1 } else { 0 },
+            // ...at the very beginning
+            column: 1,
+        };
+        let offset = position_to_offset(output, &old_content_pos)?;
+
+        // Re-align the indentation using the exact indentation that was
+        // used for the line we bumped out of the way.
+        output.insert_str(offset, indentation);
     }
-
-    let (start, _) = span_to_start_end_offsets(&input, &first_raw.span)?;
-    // Insert the new contents
-    output.insert_str(start, &flake_input);
-
-    // Preserve the exact indentation of the old contents
-    let old_content_start_of_indentation_pos = nixel::Position {
-        line: first_raw.span.start.line,
-        column: 1,
-    };
-    let old_content_end_of_indentation_pos = first_raw.span.start.clone();
-    let indentation_span = nixel::Span {
-        start: Box::new(old_content_start_of_indentation_pos),
-        end: old_content_end_of_indentation_pos,
-    };
-    let (indentation_start, indentation_end) =
-        span_to_start_end_offsets(&input, &indentation_span)?;
-    let indentation = &input[indentation_start..indentation_end];
-
-    let old_content_pos = nixel::Position {
-        // we moved the old contents to the next line...
-        line: first_raw.span.start.line + 1 + if added_cosmetic_newline { 1 } else { 0 },
-        // ...at the very beginning
-        column: 1,
-    };
-    let offset = position_to_offset(output, &old_content_pos)?;
-
-    // Re-align the indentation using the exact indentation that was
-    // used for the line we bumped out of the way.
-    output.insert_str(offset, indentation);
 
     Ok(())
 }
