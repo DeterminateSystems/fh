@@ -163,14 +163,15 @@ async fn get_flakehub_repo_and_url(
         pretty_download_url: url::Url,
     }
 
-    let res = client
-        .get(&flakehub_json_url.to_string())
-        .send()
-        .await?
-        .json::<ProjectCanonicalNames>()
-        .await?;
+    let res = client.get(&flakehub_json_url.to_string()).send().await?;
 
-    Ok((res.project, res.pretty_download_url))
+    if res.status().is_success() {
+        let res = res.json::<ProjectCanonicalNames>().await?;
+
+        Ok((res.project, res.pretty_download_url))
+    } else {
+        Err(color_eyre::eyre::eyre!(res.text().await?))
+    }
 }
 
 fn upsert_flake_input(
