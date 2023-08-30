@@ -39,14 +39,12 @@ impl CommandExecute for AddSubcommand {
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
             infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
-        let attr_path: VecDeque<String> = [
+        let input_url_attr_path: VecDeque<String> = [
             String::from("inputs"),
             flake_input_name.clone(),
             String::from("url"),
         ]
         .into();
-        // dbg!(parsed.expression);
-        // panic!();
 
         upsert_flake_input(
             *parsed.expression,
@@ -54,7 +52,7 @@ impl CommandExecute for AddSubcommand {
             flake_input_url,
             input,
             &mut output,
-            attr_path,
+            input_url_attr_path,
         )?;
 
         // tokio::fs::write(self.flake_path, output).await?;
@@ -190,20 +188,49 @@ fn upsert_flake_input(
     flake_input_value: url::Url,
     input: String,
     output: &mut String,
-    attr_path: VecDeque<String>,
+    input_attr_path: VecDeque<String>,
 ) -> color_eyre::Result<()> {
-    // TODO: handle empty flake.nix file
-    match find_existing_flake_input(&expr, &attr_path)? {
-        A {
-            existing_input_value: Some(existing_input_value),
-            ..
-        } => {
+    match find_attr(&expr, Some(input_attr_path))? {
+        Some(input_attr) => {
+            let existing_input_value: nixel::String_ =
+                todo!("match .to expression type to string or error");
             replace_input_value(
                 &existing_input_value.parts,
                 &flake_input_value,
                 &input,
                 output,
             )?;
+        }
+        None => {
+            let inputs_attr_path: VecDeque<String> = [String::from("inputs")].into();
+            let outputs_attr_path: VecDeque<String> = [String::from("outputs")].into();
+
+            let first_attr = find_attr(&expr, None);
+            let first_attr = todo!("make binding key value into partraw?");
+            let inputs_attr = find_attr(&expr, Some(inputs_attr_path))?;
+            let outputs_attr = find_attr(&expr, Some(outputs_attr_path))?;
+
+            // We don't do anything fancy like trying to match the existing format of e.g.
+            // `inputs = { <input_name>.url = "<input_value>"; };`
+            let flake_input =
+                format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
+            insert_flake_input(
+                flake_input,
+                input,
+                output,
+                first_attr,
+                outputs_attr,
+                inputs_attr,
+            )?;
+        }
+    }
+
+    // TODO: handle empty flake.nix file
+    match find_existing_flake_input(&expr, &input_attr_path)? {
+        A {
+            existing_input_value: Some(existing_input_value),
+            ..
+        } => {
         }
         a @ A {
             // existing_input_value: None,
@@ -216,18 +243,6 @@ fn upsert_flake_input(
             panic!();
             // TODO: DON'T MAKE THE CHANGES YET, JUST RECORD WHERE THEY SHOULD BE MADE.
             // TODO: FIND OUTPUTS
-            // We don't do anything fancy like trying to match the existing format of e.g.
-            // `inputs = { <input_name>.url = "<input_value>"; };`
-            // let flake_input =
-            //     format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-            // insert_flake_input(
-            //     flake_input,
-            //     input,
-            //     output,
-            //     first_attr_raw,
-            //     outputs_attr,
-            //     inputs_attr,
-            // )?;
         }
         _ => {
             todo!();
@@ -251,13 +266,22 @@ fn find_existing_flake_input<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
 ) -> color_eyre::Result<A> {
-    find_existing_flake_input_impl(expr, attr_path, &mut None, &mut None, &mut None, &mut None)
+    let mut first_raw = None;
+    let mut inputs_raw = None;
+    let mut outputs_raw = None;
+
+    find_existing_flake_input_impl(
+        expr,
+        attr_path,
+        &mut first_raw,
+        &mut inputs_raw,
+        &mut outputs_raw,
+    )
 }
 
 fn find_existing_flake_input_impl<'a>(
     expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
-    existing_input_value: &mut Option<&'a nixel::String_>,
     first_raw: &mut Option<&'a nixel::PartRaw>,
     inputs_raw: &mut Option<&'a nixel::PartRaw>,
     outputs_raw: &mut Option<&'a nixel::PartRaw>,
@@ -334,7 +358,6 @@ fn find_existing_flake_input_impl<'a>(
                             return find_existing_flake_input_impl(
                                 &kv.to,
                                 &search_attr_path,
-                                existing_input_value,
                                 first_raw,
                                 inputs_raw,
                                 outputs_raw,
@@ -353,9 +376,12 @@ fn find_existing_flake_input_impl<'a>(
             }
         }
         nixel::Expression::String(s) => {
-            if existing_input_value.is_none() {
-                *existing_input_value = Some(s);
-            }
+            return Ok(A {
+                existing_input_value: Some(s.clone()),
+                first_attr_raw: first_raw.map(ToOwned::to_owned),
+                inputs_attr: inputs_raw.map(ToOwned::to_owned),
+                outputs_attr: outputs_raw.map(ToOwned::to_owned),
+            });
         }
         t => {
             let start = t.start();
@@ -369,11 +395,103 @@ fn find_existing_flake_input_impl<'a>(
     }
 
     Ok(A {
-        existing_input_value: existing_input_value.map(ToOwned::to_owned),
+        existing_input_value: None,
         first_attr_raw: first_raw.map(ToOwned::to_owned),
         inputs_attr: inputs_raw.map(ToOwned::to_owned),
         outputs_attr: outputs_raw.map(ToOwned::to_owned),
     })
+}
+
+fn find_attr<'a>(
+    expr: &'a nixel::Expression,
+    attr_path: Option<VecDeque<String>>,
+) -> color_eyre::Result<Option<nixel::BindingKeyValue>> {
+    match expr {
+        nixel::Expression::Map(map) => {
+            for binding in map.bindings.iter() {
+                match binding {
+                    nixel::Binding::KeyValue(kv) => {
+                        if let Some(ref attr_path) = attr_path {
+                            // Transform `inputs.nixpkgs.url` into `["inputs", "nixpkgs", "url"]`
+                            let mut this_attr_path: VecDeque<(String, &nixel::PartRaw)> = kv
+                                .from
+                                .iter()
+                                .filter_map(|attr| match attr {
+                                    nixel::Part::Raw(raw) => Some((raw.content.to_string(), raw)),
+                                    _ => None,
+                                })
+                                .collect();
+
+                            let mut search_attr_path = attr_path.clone();
+                            let mut most_recent_attr = None;
+
+                            // Find the correct attr path to modify
+                            while let Some(attr1) = search_attr_path.pop_front() {
+                                if let Some((attr2, attr2_raw)) = this_attr_path.pop_front() {
+                                    // For every key in the attr path we're searching for we check that
+                                    // we have a matching attr key in the current attrset.
+                                    if attr1 != attr2 {
+                                        most_recent_attr = None;
+
+                                        // We want `this_attr_path` to contain all the attr path keys
+                                        // that didn't match the attr path we're looking for, so we can
+                                        // know when it matched as many of the attr paths as possible
+                                        // (when `this_attr_path` is empty).
+                                        this_attr_path.push_front((attr2, attr2_raw));
+                                    } else {
+                                        most_recent_attr = Some(attr2_raw);
+                                    }
+                                } else {
+                                    most_recent_attr = None;
+
+                                    // If it doesn't match, that means this isn't the correct attr path,
+                                    // so we re-add the unmatched attr to `search_attr_path`...
+                                    search_attr_path.push_front(attr1);
+
+                                    // ...and break out to preserve all unmatched attrs.
+                                    break;
+                                }
+                            }
+
+                            // If `search_attr_path` is empty, that means we've found the attr we want!
+                            // Probably.
+                            if most_recent_attr.is_some() {
+                                return Ok(Some(kv.clone()));
+                            }
+
+                            // If `this_attr_path` is empty, that means we've matched as much of the
+                            // attr path as we can of this key node, and thus we need to recurse into
+                            // its value node to continue checking if we want this input or not.
+                            if this_attr_path.is_empty() {
+                                return find_attr(&kv.to, Some(search_attr_path));
+                            }
+                        } else {
+                            return Ok(Some(kv.to_owned()));
+                        }
+                    }
+                    nixel::Binding::Inherit(inherit) => {
+                        let start = &inherit.span.start;
+                        return Err(color_eyre::eyre::eyre!(
+                            "`inherit` not supported (at {}:{})",
+                            start.line,
+                            start.column
+                        ));
+                    }
+                }
+            }
+        }
+        t => {
+            let start = t.start();
+            return Err(color_eyre::eyre::eyre!(
+                "unsupported expression type {} (at {}:{})",
+                t.variant_name(),
+                start.line,
+                start.column
+            ));
+        }
+    }
+
+    Ok(None)
 }
 
 fn insert_flake_input(
@@ -381,9 +499,12 @@ fn insert_flake_input(
     input: String,
     output: &mut String,
     first_raw: Option<nixel::PartRaw>,
-    inputs_attr: Option<nixel::PartRaw>,
-    outputs_attr: Option<nixel::PartRaw>,
+    inputs_attr: Option<nixel::BindingKeyValue>,
+    outputs_attr: Option<nixel::BindingKeyValue>,
 ) -> Result<(), color_eyre::Report> {
+    // TODO: use inputs pos to insert the inputs
+    // TODO: if there is no inputs, then what? insert as first in file? or maybe after the first in the file...?
+    // TODO: use outputs to insert the new input name
     if let Some(first_raw) = first_raw {
         // If we're not adding our new input above an existing `inputs` construct, let's add
         // another newline so that it looks nicer.
