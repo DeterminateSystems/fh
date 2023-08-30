@@ -9,6 +9,7 @@ use clap::Parser;
 use super::CommandExecute;
 
 const NEWLINE: &str = "\n";
+static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
 /// Adds a flake input to your flake.nix.
 #[derive(Parser)]
@@ -28,7 +29,7 @@ pub(crate) struct AddSubcommand {
     pub(crate) input_ref: String,
 
     #[clap(from_global)]
-    host: String,
+    api_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -38,7 +39,7 @@ impl CommandExecute for AddSubcommand {
         let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
-            infer_flake_input_name_url(&self.host, &self.input_ref, self.input_name)?;
+            infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
         let attr_path: VecDeque<String> = [
             String::from("inputs"),
             flake_input_name.clone(),
@@ -59,6 +60,111 @@ impl CommandExecute for AddSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+async fn infer_flake_input_name_url(
+    api_addr: url::Url,
+    flake_ref: String,
+    input_name: Option<String>,
+) -> color_eyre::Result<(String, url::Url)> {
+    let url_result = flake_ref.parse::<url::Url>();
+
+    match url_result {
+        // A URL like `github:nixos/nixpkgs`
+        Ok(parsed_url) if parsed_url.host().is_none() => {
+            // TODO: validate that the format of all Nix-supported schemes allows us to do this;
+            // else, have an allowlist of schemes
+            let mut path_parts = parsed_url.path().split('/');
+            path_parts.next(); // e.g. in `fh:` or `github:`, the org name
+
+            if let Some(input_name) = path_parts.next() {
+                Ok((input_name.to_string(), parsed_url))
+            } else {
+                Err(color_eyre::eyre::eyre!(
+                    "cannot infer an input name for {parsed_url}; please specify one with the `--input-name` flag"
+                ))
+            }
+        }
+        // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2305`
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            let (org, repo, version) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
+                // `nixos/nixpkgs/0.2305`
+                [org, repo, version] => {
+                    let version = version.strip_suffix(".tar.gz").unwrap_or(version);
+                    let version = version.strip_prefix('v').unwrap_or(version);
+
+                    (org, repo, Some(version))
+                }
+                // `nixos/nixpkgs`
+                [org, repo] => {
+                    (org, repo, None)
+                }
+                _ => Err(color_eyre::eyre::eyre!(
+                    "flakehub input did not match the expected format of `org/repo` or `org/repo/version`"
+                ))?,
+            };
+
+            get_flakehub_repo_and_url(api_addr, org, repo, version).await
+        }
+        // A URL like `https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz`
+        Ok(parsed_url) => {
+            if let Some(input_name) = input_name {
+                Ok((input_name, parsed_url))
+            } else {
+                Err(color_eyre::eyre::eyre!(
+                    "cannot infer an input name for `{flake_ref}`; please specify one with the `--input-name` flag"
+                ))?
+            }
+        }
+        Err(e) => Err(e)?,
+    }
+}
+
+async fn get_flakehub_repo_and_url(
+    api_addr: url::Url,
+    org: &str,
+    repo: &str,
+    version: Option<&str>,
+) -> color_eyre::Result<(String, url::Url)> {
+    let client = reqwest::Client::builder()
+        .user_agent(APP_USER_AGENT)
+        .build()?;
+
+    let mut flakehub_json_url = api_addr.clone();
+    {
+        let mut path_segments_mut = flakehub_json_url
+            .path_segments_mut()
+            .expect("flakehub url cannot be base (this should never happen)");
+
+        match version {
+            Some(version) => {
+                path_segments_mut
+                    .push("version")
+                    .push(org)
+                    .push(repo)
+                    .push(version);
+            }
+            None => {
+                path_segments_mut.push("f").push(org).push(repo);
+            }
+        }
+    }
+
+    #[derive(Debug, serde_derive::Deserialize)]
+    struct ProjectCanonicalNames {
+        project: String,
+        // FIXME: detect Nix version and strip .tar.gz if it supports it
+        pretty_download_url: url::Url,
+    }
+
+    let res = client
+        .get(&flakehub_json_url.to_string())
+        .send()
+        .await?
+        .json::<ProjectCanonicalNames>()
+        .await?;
+
+    Ok((res.project, res.pretty_download_url))
 }
 
 fn upsert_flake_input(
@@ -89,83 +195,6 @@ fn upsert_flake_input(
     }
 
     Ok(())
-}
-
-fn infer_flake_input_name_url(
-    host: &str,
-    url: &str,
-    input_name: Option<String>,
-) -> color_eyre::Result<(String, url::Url)> {
-    let url_result = url.parse::<url::Url>();
-
-    let (inferred_name, inferred_url) = match url_result {
-        // A URL like `github:nixos/nixpkgs`
-        Ok(parsed_url) if parsed_url.host().is_none() => {
-            // TODO: validate that the format of all Nix-supported schemes allows us to do this;
-            // else, have an allowlist of schemes
-            let mut path_parts = parsed_url.path().split('/');
-            path_parts.next(); // e.g. in `fh:` or `github:`, the org name
-
-            if let Some(input_name) = path_parts.next() {
-                (input_name.to_string(), parsed_url)
-            } else {
-                return Err(color_eyre::eyre::eyre!(
-                    "cannot infer an input name for {parsed_url}; please specify one with the `--input-name` flag"
-                ));
-            }
-        }
-        // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2305`
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            // TODO: try to parse versions as semver?
-            // TODO: check Nix version to see if omitting `.tar.gz` is safe
-            let (org, repo, version) = match url.split('/').collect::<Vec<_>>()[..] {
-                // `nixos/nixpkgs/0.2305`
-                [org, repo, version] => {
-                    let version = if version.ends_with(".tar.gz") {
-                        version.to_string()
-                    } else {
-                        format!("{version}.tar.gz")
-                    };
-
-                    (org, repo, version)
-                }
-                // `nixos/nixpkgs`
-                [org, repo] => {
-                    let version = String::from("*.tar.gz");
-
-                    (org, repo, version)
-                }
-                _ => Err(color_eyre::eyre::eyre!(
-                    "flakehub input did not match the expected format of `org/repo` or `org/repo/version`"
-                ))?,
-            };
-
-            let mut flakehub_url = url::Url::parse(host)
-                .expect("flakehub url didn't parse (this should never happen)");
-            flakehub_url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)")
-                .push("f")
-                .push(org)
-                .push(repo)
-                .push(&version);
-
-            (repo.to_string(), flakehub_url)
-        }
-        // A URL like `https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz`
-        Ok(parsed_url) => {
-            if let Some(input_name) = input_name {
-                (input_name, parsed_url)
-            } else {
-                return Err(color_eyre::eyre::eyre!(
-                    "cannot infer an input name for `{url}`; please specify one with the `--input-name` flag"
-                ))?;
-            }
-        }
-        Err(e) => Err(e)?,
-    };
-
-    Ok((inferred_name, inferred_url))
 }
 
 fn update_flake_input<'a>(

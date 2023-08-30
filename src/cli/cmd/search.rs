@@ -1,7 +1,6 @@
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::Deserialize;
 use std::process::ExitCode;
 
 use super::{CommandExecute, FlakeHubClient};
@@ -13,7 +12,7 @@ pub(crate) struct SearchSubcommand {
     query: String,
 
     #[clap(from_global)]
-    host: String,
+    api_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -22,7 +21,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        let client = FlakeHubClient::new(&self.host)?;
+        let client = FlakeHubClient::new(&self.api_addr)?;
 
         match client.search(self.query).await {
             Ok(results) => {
@@ -35,7 +34,7 @@ impl CommandExecute for SearchSubcommand {
                             style(org.clone()).cyan(),
                             style("/").white(),
                             style(project.clone()).red(),
-                            self.host,
+                            self.api_addr,
                             style(org).cyan(),
                             style(project).red(),
                         );
@@ -51,7 +50,7 @@ impl CommandExecute for SearchSubcommand {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 pub struct SearchResult {
     org: String,
     project: String,
