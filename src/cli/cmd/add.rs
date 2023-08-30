@@ -91,7 +91,7 @@ async fn infer_flake_input_name_url(
                 // `nixos/nixpkgs/0.2305`
                 [org, repo, version] => {
                     let version = version.strip_suffix(".tar.gz").unwrap_or(version);
-                    let version = version.strip_prefix("v").unwrap_or(version);
+                    let version = version.strip_prefix('v').unwrap_or(version);
 
                     (org, repo, Some(version))
                 }
