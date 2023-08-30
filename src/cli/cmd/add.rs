@@ -45,6 +45,8 @@ impl CommandExecute for AddSubcommand {
             String::from("url"),
         ]
         .into();
+        // dbg!(parsed.expression);
+        // panic!();
 
         upsert_flake_input(
             *parsed.expression,
@@ -55,7 +57,8 @@ impl CommandExecute for AddSubcommand {
             attr_path,
         )?;
 
-        tokio::fs::write(self.flake_path, output).await?;
+        // tokio::fs::write(self.flake_path, output).await?;
+        println!("{output}");
 
         Ok(ExitCode::SUCCESS)
     }
@@ -182,23 +185,26 @@ fn upsert_flake_input(
     output: &mut String,
     attr_path: VecDeque<String>,
 ) -> color_eyre::Result<()> {
-    let mut first_raw = None;
-
-    update_flake_input(
-        &expr,
-        &flake_input_value,
-        &input,
-        output,
-        &attr_path,
-        &mut first_raw,
-    )?;
-
-    if let Some(first_raw) = first_raw {
-        // We don't do anything fancy like trying to insert
-        // `inputs = { <input_name>.url = "<input_value>"; };`
-        let flake_input =
-            format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-        insert_flake_input(first_raw, flake_input, input, output)?;
+    match find_existing_flake_input(&expr, &attr_path)? {
+        (Some(existing_input_value), _) => {
+            replace_input_value(
+                &existing_input_value.parts,
+                &flake_input_value,
+                &input,
+                output,
+            )?;
+        }
+        (None, Some(first_attr_raw)) => {
+            // TODO: DON'T MAKE THE CHANGES YET, JUST RECORD WHERE THEY SHOULD BE MADE.
+            // We don't do anything fancy like trying to match the existing format of e.g.
+            // `inputs = { <input_name>.url = "<input_value>"; };`
+            let flake_input =
+                format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
+            insert_flake_input(&first_attr_raw, flake_input, input, output)?;
+        }
+        _ => {
+            todo!();
+        }
     }
 
     println!("Added: {flake_input_name} -> {flake_input_value}");
@@ -206,20 +212,27 @@ fn upsert_flake_input(
     Ok(())
 }
 
-fn update_flake_input<'a>(
+fn find_existing_flake_input<'a>(
     expr: &'a nixel::Expression,
-    flake_input_value: &url::Url,
-    input: &str,
-    output: &mut String,
+    attr_path: &VecDeque<String>,
+) -> color_eyre::Result<(Option<nixel::String_>, Option<&'a nixel::PartRaw>)> {
+    let mut first_raw = None;
+
+    find_existing_flake_input_impl(expr, attr_path, &mut first_raw)
+}
+
+fn find_existing_flake_input_impl<'a>(
+    expr: &'a nixel::Expression,
     attr_path: &VecDeque<String>,
     first_raw: &mut Option<&'a nixel::PartRaw>,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<(Option<nixel::String_>, Option<&'a nixel::PartRaw>)> {
     match expr {
         nixel::Expression::Map(map) => {
             for binding in map.bindings.iter() {
                 match binding {
                     nixel::Binding::KeyValue(kv) => {
                         // Transform `inputs.nixpkgs.url` into `["inputs", "nixpkgs", "url"]`
+                        // inputs = { nixpkgs = { url = ""; }; };
                         let (mut this_string_attr_path, mut this_raw_attr_path): (
                             VecDeque<String>,
                             VecDeque<&nixel::PartRaw>,
@@ -271,15 +284,11 @@ fn update_flake_input<'a>(
                         // attr path as we can of this key node, and thus we need to recurse into
                         // its value node to continue checking if we want this input or not.
                         if this_string_attr_path.is_empty() {
-                            update_flake_input(
+                            return find_existing_flake_input_impl(
                                 &kv.to,
-                                flake_input_value,
-                                input,
-                                output,
                                 &search_attr_path,
                                 first_raw,
-                            )?;
-                            break;
+                            );
                         }
                     }
                     nixel::Binding::Inherit(inherit) => {
@@ -294,8 +303,8 @@ fn update_flake_input<'a>(
             }
         }
         nixel::Expression::String(s) => {
-            replace_input_value(&s.parts, flake_input_value, input, output)?;
             *first_raw = None;
+            return Ok((Some(s.clone()), *first_raw));
         }
         t => {
             let start = t.start();
@@ -308,7 +317,7 @@ fn update_flake_input<'a>(
         }
     }
 
-    Ok(())
+    Ok((None, *first_raw))
 }
 
 fn insert_flake_input(
