@@ -19,7 +19,7 @@ pub(crate) struct ListSubcommand {
     host: String,
 
     #[clap(from_global)]
-    backend_host: String,
+    api_addr: url::Url,
 }
 
 #[derive(Deserialize)]
@@ -56,7 +56,7 @@ impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.backend_host)?;
+        let client = FlakeHubClient::new(&self.api_addr)?;
 
         match self.cmd {
             Flakes => {

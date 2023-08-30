@@ -35,7 +35,7 @@ pub(crate) enum FhSubcommands {
 
 pub(super) struct FlakeHubClient {
     client: HttpClient,
-    host: String,
+    api_addr: url::Url,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -45,10 +45,10 @@ pub(super) enum FhError {
 }
 
 impl FlakeHubClient {
-    pub(super) fn new(host: &str) -> Result<Self, FhError> {
+    pub(super) fn new(api_addr: &url::Url) -> Result<Self, FhError> {
         let client = ClientBuilder::new().build()?;
         Ok(Self {
-            host: String::from(host),
+            api_addr: api_addr.clone(),
             client,
         })
     }
@@ -56,7 +56,7 @@ impl FlakeHubClient {
     pub(super) async fn search(&self, query: String) -> Result<Vec<SearchResult>, FhError> {
         let params = [("q", query)];
 
-        let endpoint = format!("{}/search", self.host);
+        let endpoint = format!("{}/search", self.api_addr);
 
         let results = self
             .client
@@ -71,7 +71,7 @@ impl FlakeHubClient {
     }
 
     async fn flakes(&self) -> Result<Vec<Flake>, FhError> {
-        let endpoint = format!("{}/flakes", self.host);
+        let endpoint = format!("{}/flakes", self.api_addr);
 
         let flakes = self
             .client
@@ -85,7 +85,7 @@ impl FlakeHubClient {
     }
 
     async fn orgs(&self) -> Result<Vec<String>, FhError> {
-        let endpoint = format!("{}/orgs", self.host);
+        let endpoint = format!("{}/orgs", self.api_addr);
 
         let orgs = self
             .client

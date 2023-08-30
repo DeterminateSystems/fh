@@ -1,6 +1,7 @@
 name: Build fh artifacts
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches: [main]
@@ -17,6 +18,13 @@ jobs:
       - name: Build package
         run: |
           nix build .# -L
+          
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: fh-X64-macOS
+          path: result/bin/fh
+          retention-days: 1
 
   build-artifacts-X64-Linux:
     runs-on: ubuntu-22.04
@@ -29,3 +37,10 @@ jobs:
       - name: Build package
         run: |
           nix build .# -L
+
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: fh-X64-Linux
+          path: result/bin/fh
+          retention-days: 1
