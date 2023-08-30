@@ -1,6 +1,10 @@
 use clap::{Parser, Subcommand};
-use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
+use lazy_static::lazy_static;
+use prettytable::{
+    format::{FormatBuilder, LinePosition, LineSeparator, TableFormat},
+    row, Attr, Cell, Row, Table,
+};
 use serde::Deserialize;
 use std::process::ExitCode;
 
@@ -16,6 +20,9 @@ pub(crate) struct ListSubcommand {
 
     #[clap(from_global)]
     host: String,
+
+    #[clap(from_global)]
+    backend_host: String,
 }
 
 #[derive(Subcommand)]
@@ -26,12 +33,23 @@ enum Subcommands {
     Orgs,
 }
 
+lazy_static! {
+    static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
+        .borders('|')
+        .padding(1, 1)
+        .separators(
+            &[LinePosition::Top, LinePosition::Title, LinePosition::Bottom],
+            LineSeparator::new('-', '+', '+', '+'),
+        )
+        .build();
+}
+
 #[async_trait::async_trait]
 impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.host)?;
+        let client = FlakeHubClient::new(&self.backend_host)?;
 
         match self.cmd {
             Flakes => {
@@ -42,17 +60,18 @@ impl CommandExecute for ListSubcommand {
                         if flakes.is_empty() {
                             println!("No results");
                         } else {
-                            for Flake { org, project } in flakes {
-                                println!(
-                                    "{}{}{}\n    {}/flake/{}/{}",
-                                    style(org.clone()).cyan(),
-                                    style("/").white(),
-                                    style(project.clone()).red(),
-                                    self.host,
-                                    style(org).cyan(),
-                                    style(project).red(),
-                                );
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                            for flake in flakes {
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&flake.name()).with_style(Attr::Bold),
+                                    Cell::new(&flake.url(&self.host)).with_style(Attr::Dim),
+                                ]));
                             }
+
+                            table.printstd();
                         }
                     }
                     Err(e) => {
@@ -68,14 +87,19 @@ impl CommandExecute for ListSubcommand {
                         if orgs.is_empty() {
                             println!("No results");
                         } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Organization", "FlakeHub URL"]);
+
                             for org in orgs {
-                                println!(
-                                    "{}\n    {}/org/{}",
-                                    style(org.clone()).cyan(),
-                                    self.host,
-                                    style(org).cyan(),
-                                );
+                                let url = format!("{}/org/{}", self.host, org);
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&org).with_style(Attr::Bold),
+                                    Cell::new(&url).with_style(Attr::Dim),
+                                ]));
                             }
+
+                            table.printstd();
                         }
                     }
                     Err(e) => {
@@ -93,6 +117,16 @@ impl CommandExecute for ListSubcommand {
 pub(super) struct Flake {
     org: String,
     project: String,
+}
+
+impl Flake {
+    fn name(&self) -> String {
+        format!("{}/{}", self.org, self.project)
+    }
+
+    fn url(&self, host: &str) -> String {
+        format!("{}/flake/{}/{}", host, self.org, self.project)
+    }
 }
 
 #[derive(Deserialize)]

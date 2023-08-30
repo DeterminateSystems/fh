@@ -16,7 +16,9 @@ clap = { version = "4.3.2", default-features = false, features = [
 color-eyre = "0.6.2"
 console = "0.15.7"
 indicatif = { version = "0.17.6", default-features = false }
+lazy_static = "1.4.0"
 nixel = "5.2.0"
+prettytable-rs = "0.10.0"
 reqwest = { version = "0.11", default-features = false, features = [
   "json",
   "rustls-tls",

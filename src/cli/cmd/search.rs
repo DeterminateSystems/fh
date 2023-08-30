@@ -14,6 +14,9 @@ pub(crate) struct SearchSubcommand {
 
     #[clap(from_global)]
     host: String,
+
+    #[clap(from_global)]
+    backend_host: String,
 }
 
 #[async_trait::async_trait]
@@ -22,7 +25,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        let client = FlakeHubClient::new(&self.host)?;
+        let client = FlakeHubClient::new(&self.backend_host)?;
 
         match client.search(self.query).await {
             Ok(results) => {
