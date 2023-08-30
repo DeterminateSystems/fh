@@ -44,7 +44,7 @@ pub(super) struct Org {
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
-    /// List all currently public organizations on FlakeHub.
+    /// Lists all currently public organizations on FlakeHub.
     Orgs,
 }
 
