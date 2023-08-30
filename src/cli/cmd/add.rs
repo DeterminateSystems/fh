@@ -223,7 +223,7 @@ fn upsert_flake_input(
 enum InsertionPoint<'a> {
     None,
     AtPartRaw(&'a nixel::PartRaw),
-    InSpan(&'a Box<nixel::Span>),
+    InSpan(&'a nixel::Span),
 }
 
 impl InsertionPoint<'_> {
