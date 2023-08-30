@@ -79,10 +79,10 @@ async fn infer_flake_input_name_url(
             let mut path_parts = parsed_url.path().split('/');
             path_parts.next(); // e.g. in `fh:` or `github:`, the org name
 
-            if let Some(input_name) = path_parts.next() {
-                Ok((input_name.to_string(), parsed_url))
-            } else {
-                Err(color_eyre::eyre::eyre!(
+            match (input_name, path_parts.next()) {
+                (Some(input_name), _) => Ok((input_name, parsed_url)),
+                (None, Some(input_name)) => Ok((input_name.to_string(), parsed_url)),
+                (None, _) =>  Err(color_eyre::eyre::eyre!(
                     "cannot infer an input name for {parsed_url}; please specify one with the `--input-name` flag"
                 ))
             }
@@ -106,7 +106,14 @@ async fn infer_flake_input_name_url(
                 ))?,
             };
 
-            get_flakehub_repo_and_url(api_addr, org, repo, version).await
+            let (flakehub_input, url) =
+                get_flakehub_repo_and_url(api_addr, org, repo, version).await?;
+
+            if let Some(input_name) = input_name {
+                Ok((input_name, url))
+            } else {
+                Ok((flakehub_input, url))
+            }
         }
         // A URL like `https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz`
         Ok(parsed_url) => {
