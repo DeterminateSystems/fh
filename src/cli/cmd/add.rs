@@ -185,7 +185,7 @@ fn upsert_flake_input(
     output: &mut String,
     attr_path: VecDeque<String>,
 ) -> color_eyre::Result<()> {
-    let mut first_raw = None;
+    let mut first_raw = InsertionPoint::None;
 
     update_flake_input(
         &expr,
@@ -196,17 +196,40 @@ fn upsert_flake_input(
         &mut first_raw,
     )?;
 
-    if let Some(first_raw) = first_raw {
-        // We don't do anything fancy like trying to insert
-        // `inputs = { <input_name>.url = "<input_value>"; };`
-        let flake_input =
-            format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-        insert_flake_input(first_raw, flake_input, input, output)?;
+    // We don't do anything fancy like trying to insert
+    // `inputs = { <input_name>.url = "<input_value>"; };`
+    let flake_input = format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
+
+    match first_raw {
+        InsertionPoint::AtPartRaw(first_raw) => {
+            insert_flake_input(first_raw, flake_input, input, output)?;
+        }
+        InsertionPoint::None => {
+            println!("derp: {:#?}", expr);
+            return Ok(());
+        }
+        InsertionPoint::InSpan(span) => {
+            let (_, end) = span_to_start_end_offsets(&input, span)?;
+            output.insert_str(end - 1, &flake_input);
+        }
     }
 
     println!("Added: {flake_input_name} -> {flake_input_value}");
 
     Ok(())
+}
+
+#[derive(Eq, PartialEq)]
+enum InsertionPoint<'a> {
+    None,
+    AtPartRaw(&'a nixel::PartRaw),
+    InSpan(&'a Box<nixel::Span>),
+}
+
+impl InsertionPoint<'_> {
+    fn is_none(&self) -> bool {
+        matches!(self, InsertionPoint::None)
+    }
 }
 
 fn update_flake_input<'a>(
@@ -215,10 +238,14 @@ fn update_flake_input<'a>(
     input: &str,
     output: &mut String,
     attr_path: &VecDeque<String>,
-    first_raw: &mut Option<&'a nixel::PartRaw>,
+    first_raw: &mut InsertionPoint<'a>,
 ) -> color_eyre::Result<()> {
     match expr {
         nixel::Expression::Map(map) => {
+            if map.bindings.is_empty() {
+                *first_raw = InsertionPoint::InSpan(&map.span)
+            }
+
             for binding in map.bindings.iter() {
                 match binding {
                     nixel::Binding::KeyValue(kv) => {
@@ -240,7 +267,7 @@ fn update_flake_input<'a>(
                         // this attr.
                         if first_raw.is_none() {
                             if let Some(raw) = this_raw_attr_path.pop_front() {
-                                *first_raw = Some(raw);
+                                *first_raw = InsertionPoint::AtPartRaw(raw);
                             }
                         }
 
@@ -298,7 +325,7 @@ fn update_flake_input<'a>(
         }
         nixel::Expression::String(s) => {
             replace_input_value(&s.parts, flake_input_value, input, output)?;
-            *first_raw = None;
+            *first_raw = InsertionPoint::None;
         }
         t => {
             let start = t.start();
