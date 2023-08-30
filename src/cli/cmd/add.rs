@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
+use color_eyre::eyre::WrapErr;
 
 use super::CommandExecute;
 
@@ -34,7 +35,9 @@ pub(crate) struct AddSubcommand {
 #[async_trait::async_trait]
 impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let input = tokio::fs::read_to_string(&self.flake_path).await?;
+        let input = tokio::fs::read_to_string(&self.flake_path)
+            .await
+            .wrap_err(format!("Flake not found: {}", self.flake_path.display()))?;
         let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
