@@ -13,6 +13,9 @@ pub(crate) struct SearchSubcommand {
     /// The search query.
     query: String,
 
+    #[clap(short, long, default_value = "10")]
+    max_results: usize,
+
     #[clap(from_global)]
     api_addr: url::Url,
 }
@@ -53,6 +56,9 @@ impl CommandExecute for SearchSubcommand {
                     let mut table = Table::new();
                     table.set_format(*TABLE_FORMAT);
                     table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                    let results: Vec<&SearchResult> =
+                        results.iter().take(self.max_results).collect();
 
                     for flake in results {
                         table.add_row(Row::new(vec![
