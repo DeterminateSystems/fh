@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::process::ExitCode;
 
 use super::TABLE_FORMAT;
-use crate::cli::cmd::FlakeHubClient;
+use crate::cli::{cmd::FlakeHubClient, FLAKEHUB_WEB_ROOT};
 
 use super::CommandExecute;
 
@@ -14,9 +14,6 @@ use super::CommandExecute;
 pub(crate) struct ListSubcommand {
     #[command(subcommand)]
     cmd: Subcommands,
-
-    #[clap(from_global)]
-    host: String,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -33,8 +30,8 @@ impl Flake {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self, host: &str) -> String {
-        format!("{}/flake/{}/{}", host, self.org, self.project)
+    fn url(&self) -> String {
+        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
     }
 }
 
@@ -74,7 +71,7 @@ impl CommandExecute for ListSubcommand {
                             for flake in flakes {
                                 table.add_row(Row::new(vec![
                                     Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url(&self.host)).with_style(Attr::Dim),
+                                    Cell::new(&flake.url()).with_style(Attr::Dim),
                                 ]));
                             }
 
@@ -99,7 +96,7 @@ impl CommandExecute for ListSubcommand {
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
                             for org in orgs {
-                                let url = format!("{}/org/{}", self.host, org);
+                                let url = format!("{}/org/{}", FLAKEHUB_WEB_ROOT, org);
                                 table.add_row(Row::new(vec![
                                     Cell::new(&org).with_style(Attr::Bold),
                                     Cell::new(&url).with_style(Attr::Dim),

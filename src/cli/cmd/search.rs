@@ -3,6 +3,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use std::process::ExitCode;
 
+use crate::cli::FLAKEHUB_WEB_ROOT;
+
 use super::{CommandExecute, FlakeHubClient, TABLE_FORMAT};
 
 /// Searches FlakeHub for flakes that match your query.
@@ -10,9 +12,6 @@ use super::{CommandExecute, FlakeHubClient, TABLE_FORMAT};
 pub(crate) struct SearchSubcommand {
     /// The search query.
     query: String,
-
-    #[clap(from_global)]
-    host: String,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -33,8 +32,8 @@ impl SearchResult {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self, host: &str) -> String {
-        format!("{}/flake/{}/{}", host, self.org, self.project)
+    fn url(&self) -> String {
+        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
     }
 }
 
@@ -58,7 +57,7 @@ impl CommandExecute for SearchSubcommand {
                     for flake in results {
                         table.add_row(Row::new(vec![
                             Cell::new(&flake.name()).with_style(Attr::Bold),
-                            Cell::new(&flake.url(&self.host)).with_style(Attr::Dim),
+                            Cell::new(&flake.url()).with_style(Attr::Dim),
                         ]));
                     }
 

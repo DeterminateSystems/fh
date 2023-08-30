@@ -1,5 +1,8 @@
 pub(crate) mod cmd;
 
+// For use in console output
+pub(self) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
+
 /// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
 pub(crate) struct Cli {
@@ -13,14 +16,6 @@ pub(crate) struct Cli {
         hide = true
     )]
     pub api_addr: url::Url,
-
-    #[clap(
-        global = true,
-        long,
-        default_value = "https://api.flakehub.com",
-        hide = true
-    )]
-    pub backend_host: String,
 
     #[clap(subcommand)]
     pub subcommand: cmd::FhSubcommands,
