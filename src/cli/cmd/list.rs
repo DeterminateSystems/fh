@@ -14,7 +14,7 @@ pub(crate) struct ListSubcommand {
     cmd: Subcommands,
 
     #[clap(from_global)]
-    host: url::Url,
+    api_addr: url::Url,
 }
 
 #[derive(Subcommand)]
@@ -30,7 +30,7 @@ impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.host)?;
+        let client = FlakeHubClient::new(&self.api_addr)?;
 
         match self.cmd {
             Flakes => {
@@ -47,7 +47,7 @@ impl CommandExecute for ListSubcommand {
                                     style(org.clone()).cyan(),
                                     style("/").white(),
                                     style(project.clone()).red(),
-                                    self.host,
+                                    self.api_addr,
                                     style(org).cyan(),
                                     style(project).red(),
                                 );
@@ -71,7 +71,7 @@ impl CommandExecute for ListSubcommand {
                                 println!(
                                     "{}\n    {}/org/{}",
                                     style(org.clone()).cyan(),
-                                    self.host,
+                                    self.api_addr,
                                     style(org).cyan(),
                                 );
                             }

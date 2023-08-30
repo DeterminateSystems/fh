@@ -29,7 +29,7 @@ pub(crate) struct AddSubcommand {
     pub(crate) input_ref: String,
 
     #[clap(from_global)]
-    host: url::Url,
+    api_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -39,7 +39,7 @@ impl CommandExecute for AddSubcommand {
         let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
-            infer_flake_input_name_url(self.host, self.input_ref, self.input_name).await?;
+            infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
         let attr_path: VecDeque<String> = [
             String::from("inputs"),
             flake_input_name.clone(),
@@ -63,7 +63,7 @@ impl CommandExecute for AddSubcommand {
 }
 
 async fn infer_flake_input_name_url(
-    host: url::Url,
+    api_addr: url::Url,
     flake_ref: String,
     input_name: Option<String>,
 ) -> color_eyre::Result<(String, url::Url)> {
@@ -104,7 +104,7 @@ async fn infer_flake_input_name_url(
                 ))?,
             };
 
-            get_flakehub_repo_and_url(host, org, repo, version).await
+            get_flakehub_repo_and_url(api_addr, org, repo, version).await
         }
         // A URL like `https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz`
         Ok(parsed_url) => {
@@ -121,7 +121,7 @@ async fn infer_flake_input_name_url(
 }
 
 async fn get_flakehub_repo_and_url(
-    host: url::Url,
+    api_addr: url::Url,
     org: &str,
     repo: &str,
     version: Option<&str>,
@@ -130,7 +130,7 @@ async fn get_flakehub_repo_and_url(
         .user_agent(APP_USER_AGENT)
         .build()?;
 
-    let mut flakehub_json_url = host.clone();
+    let mut flakehub_json_url = api_addr.clone();
     {
         let mut path_segments_mut = flakehub_json_url
             .path_segments_mut()
@@ -167,7 +167,7 @@ async fn get_flakehub_repo_and_url(
     // FIXME: detect Nix version and don't add .tar.gz if it supports it
     let version = format!("{}.tar.gz", res.simplified_version);
 
-    let mut flakehub_url = host.clone();
+    let mut flakehub_url = api_addr.clone();
     flakehub_url
         .path_segments_mut()
         .expect("flakehub url cannot be base (this should never happen)")
