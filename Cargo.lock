@@ -272,7 +272,6 @@ dependencies = [
  "encode_unicode 0.3.6",
  "lazy_static",
  "libc",
- "unicode-width",
  "windows-sys 0.45.0",
 ]
 
@@ -377,7 +376,6 @@ dependencies = [
  "async-trait",
  "clap",
  "color-eyre",
- "console",
  "indicatif",
  "lazy_static",
  "nixel",
