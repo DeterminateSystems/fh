@@ -4,7 +4,7 @@ mod search;
 
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
-use reqwest::{Client as HttpClient, ClientBuilder};
+use reqwest::Client as HttpClient;
 
 use crate::cli::cmd::list::Org;
 
@@ -46,7 +46,17 @@ pub(super) enum FhError {
 
 impl FlakeHubClient {
     pub(super) fn new(api_addr: &url::Url) -> Result<Self, FhError> {
-        let client = ClientBuilder::new().build()?;
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "Accept",
+            reqwest::header::HeaderValue::from_static("application/json"),
+        );
+
+        let client = reqwest::Client::builder()
+            .user_agent(crate::APP_USER_AGENT)
+            .default_headers(headers)
+            .build()?;
+
         Ok(Self {
             api_addr: api_addr.clone(),
             client,
