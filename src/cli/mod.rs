@@ -1,7 +1,7 @@
 pub(crate) mod cmd;
 
 // For use in console output
-pub(self) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
+pub(super) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
 
 /// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
