@@ -47,5 +47,5 @@
     };
   };
 
-  outputs = inputs: {};
+  outputs = inputs: { };
 }

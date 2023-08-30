@@ -6,5 +6,5 @@
   inputs.agenix.url = "github:ryantm/agenix";
   inputs.agenix.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = inputs: {};
+  outputs = inputs: { };
 }

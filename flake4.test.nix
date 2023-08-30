@@ -1,3 +1,3 @@
 {
-  outputs = _: {};
+  outputs = _: { };
 }
