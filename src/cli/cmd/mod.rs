@@ -42,6 +42,9 @@ pub(super) struct FlakeHubClient {
 pub(super) enum FhError {
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
+
+    #[error("url parse error: {0}")]
+    Url(#[from] url::ParseError),
 }
 
 impl FlakeHubClient {
@@ -66,11 +69,11 @@ impl FlakeHubClient {
     pub(super) async fn search(&self, query: String) -> Result<Vec<SearchResult>, FhError> {
         let params = [("q", query)];
 
-        let endpoint = format!("{}/search", self.api_addr);
+        let endpoint = self.api_addr.join("search")?;
 
         let results = self
             .client
-            .get(&endpoint)
+            .get(endpoint)
             .query(&params)
             .send()
             .await?
@@ -81,11 +84,11 @@ impl FlakeHubClient {
     }
 
     async fn flakes(&self) -> Result<Vec<Flake>, FhError> {
-        let endpoint = format!("{}/flakes", self.api_addr);
+        let endpoint = self.api_addr.join("flakes")?;
 
         let flakes = self
             .client
-            .get(&endpoint)
+            .get(endpoint)
             .send()
             .await?
             .json::<Vec<Flake>>()
@@ -95,11 +98,11 @@ impl FlakeHubClient {
     }
 
     async fn orgs(&self) -> Result<Vec<String>, FhError> {
-        let endpoint = format!("{}/orgs", self.api_addr);
+        let endpoint = self.api_addr.join("orgs")?;
 
         let orgs = self
             .client
-            .get(&endpoint)
+            .get(endpoint)
             .send()
             .await?
             .json::<Vec<Org>>()
