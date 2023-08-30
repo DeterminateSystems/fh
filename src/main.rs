@@ -7,6 +7,8 @@ use crate::cli::{
     Cli,
 };
 
+static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<std::process::ExitCode> {
     use FhSubcommands::*;

@@ -9,7 +9,6 @@ use clap::Parser;
 use super::CommandExecute;
 
 const NEWLINE: &str = "\n";
-static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
 /// Adds a flake input to your flake.nix.
 #[derive(Parser)]
@@ -126,8 +125,15 @@ async fn get_flakehub_repo_and_url(
     repo: &str,
     version: Option<&str>,
 ) -> color_eyre::Result<(String, url::Url)> {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(
+        "Accept",
+        reqwest::header::HeaderValue::from_static("application/json"),
+    );
+
     let client = reqwest::Client::builder()
-        .user_agent(APP_USER_AGENT)
+        .user_agent(crate::APP_USER_AGENT)
+        .default_headers(headers)
         .build()?;
 
     let mut flakehub_json_url = api_addr.clone();
@@ -157,14 +163,15 @@ async fn get_flakehub_repo_and_url(
         pretty_download_url: url::Url,
     }
 
-    let res = client
-        .get(&flakehub_json_url.to_string())
-        .send()
-        .await?
-        .json::<ProjectCanonicalNames>()
-        .await?;
+    let res = client.get(&flakehub_json_url.to_string()).send().await?;
 
-    Ok((res.project, res.pretty_download_url))
+    if res.status().is_success() {
+        let res = res.json::<ProjectCanonicalNames>().await?;
+
+        Ok((res.project, res.pretty_download_url))
+    } else {
+        Err(color_eyre::eyre::eyre!(res.text().await?))
+    }
 }
 
 fn upsert_flake_input(
@@ -193,6 +200,8 @@ fn upsert_flake_input(
             format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
         insert_flake_input(first_raw, flake_input, input, output)?;
     }
+
+    println!("Added: {flake_input_name} -> {flake_input_value}");
 
     Ok(())
 }
