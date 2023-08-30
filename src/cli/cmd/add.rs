@@ -201,6 +201,8 @@ fn upsert_flake_input(
         insert_flake_input(first_raw, flake_input, input, output)?;
     }
 
+    println!("Added: {flake_input_name} -> {flake_input_value}");
+
     Ok(())
 }
 
