@@ -449,13 +449,10 @@ impl AttrType {
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
         let final_named_arg = head.arguments.last();
-        let multiline_args = from_span.start.line != to_span.end.line;
 
-        if multiline_args {
-            // TODO: try to match the style
-        } else {
-            // TODO: don't need to match the style because it's all on the same line
-        }
+        // TODO: try to match the style of multiline function args (will be difficult because we
+        // don't get span information for each input arg...)
+        // let multiline_args = from_span.start.line != to_span.end.line;
 
         let start = position_to_offset(flake_contents, &from_span.start)?;
         let end = position_to_offset(flake_contents, &to_span.end)?;
