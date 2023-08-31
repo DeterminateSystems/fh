@@ -36,6 +36,14 @@ impl CommandExecute for AddSubcommand {
         let flake_contents = tokio::fs::read_to_string(&self.flake_path)
             .await
             .wrap_err_with(|| format!("Failed to open {}", self.flake_path.display()))?;
+
+        if flake_contents.is_empty() {
+            return Err(color_eyre::eyre::eyre!(
+                "{} was empty",
+                self.flake_path.display()
+            ))?;
+        }
+
         let parsed = nixel::parse(flake_contents.clone());
         let (flake_input_name, flake_input_url) =
             infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
