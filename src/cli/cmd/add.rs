@@ -216,8 +216,8 @@ fn upsert_flake_input(
     }
 }
 
-fn find_attrset<'a>(
-    expr: &'a nixel::Expression,
+fn find_attrset(
+    expr: &nixel::Expression,
     attr_path: Option<VecDeque<String>>,
 ) -> color_eyre::Result<Option<nixel::BindingKeyValue>> {
     match expr {
@@ -363,12 +363,12 @@ impl AttrType {
                     },
                     t => {
                         let start = t.start();
-                        return Err(color_eyre::eyre::eyre!(
+                        Err(color_eyre::eyre::eyre!(
                             "unsupported `outputs` expression type {} (at {}:{})",
                             t.variant_name(),
                             start.line,
                             start.column
-                        ));
+                        ))
                     }
                 }
             }
@@ -409,7 +409,7 @@ impl AttrType {
         added_cosmetic_newline: bool,
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
-        let (start, _) = span_to_start_end_offsets(&flake_contents, &span)?;
+        let (start, _) = span_to_start_end_offsets(flake_contents, &span)?;
 
         new_flake_contents.insert_str(start, flake_input);
 
@@ -430,7 +430,7 @@ impl AttrType {
             end: old_content_end_of_indentation_pos,
         };
         let (indentation_start, indentation_end) =
-            span_to_start_end_offsets(&flake_contents, &indentation_span)?;
+            span_to_start_end_offsets(flake_contents, &indentation_span)?;
         let indentation = &flake_contents[indentation_start..indentation_end];
 
         let offset = position_to_offset(&new_flake_contents, &old_content_pos)?;
@@ -483,7 +483,7 @@ impl AttrType {
                 if head.ellipsis {
                     // The ellipsis can _ONLY_ appear at the end of the set,
                     // never the beginning, so it's safe to insert `<name>, `
-                    let re = regex::Regex::new(&format!(r#"[^[:space:],]*\.\.\.[^[:space:],]*"#))?;
+                    let re = regex::Regex::new(r"[^[:space:],]*\.\.\.[^[:space:],]*")?;
 
                     if let Some(found) = re.find(&span_text) {
                         span_text.insert_str(found.start(), &format!("{flake_input_name}, "));
