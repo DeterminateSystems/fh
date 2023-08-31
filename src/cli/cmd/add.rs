@@ -35,7 +35,6 @@ pub(crate) struct AddSubcommand {
 impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let input = tokio::fs::read_to_string(&self.flake_path).await?;
-        let mut output = input.clone();
         let parsed = nixel::parse(input.clone());
         let (flake_input_name, flake_input_url) =
             infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
@@ -46,12 +45,11 @@ impl CommandExecute for AddSubcommand {
         ]
         .into();
 
-        upsert_flake_input(
+        let output = upsert_flake_input(
             *parsed.expression,
             flake_input_name,
             flake_input_url,
             input,
-            &mut output,
             input_url_attr_path,
         )?;
 
@@ -187,20 +185,16 @@ fn upsert_flake_input(
     flake_input_name: String,
     flake_input_value: url::Url,
     input: String,
-    output: &mut String,
     input_attr_path: VecDeque<String>,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<String> {
     match find_attrset(&expr, Some(input_attr_path))? {
         Some(attr) => {
             let nixel::Expression::String(existing_input_value) = *attr.to else {
-                todo!("inputs.asdf.url didn't point to string which isn't possible (this is enforced by nix)");
+                return Err(color_eyre::eyre::eyre!(
+                    "`inputs.{flake_input_name}.url` was not a string" // this is enforced by Nix itself
+                ))?;
             };
-            replace_input_value(
-                &existing_input_value.parts,
-                &flake_input_value,
-                &input,
-                output,
-            )?;
+            replace_input_value(&existing_input_value.parts, &flake_input_value, &input)
         }
         None => {
             let inputs_attr_path: VecDeque<String> = [String::from("inputs")].into();
@@ -213,41 +207,12 @@ fn upsert_flake_input(
                 flake_input_name,
                 flake_input_value,
                 input,
-                output,
                 expr.span(),
                 inputs_attr,
                 outputs_attr,
-            )?;
+            )
         }
     }
-
-    // TODO: handle empty flake.nix file
-    match find_existing_flake_input(&expr, &input_attr_path)? {
-        A {
-            existing_input_value: Some(existing_input_value),
-            ..
-        } => {
-        }
-        a @ A {
-            // existing_input_value: None,
-            // first_attr_raw,
-            // outputs_attr,
-            // inputs_attr,
-            ..
-        } => {
-            dbg!(&a);
-            panic!();
-            // TODO: DON'T MAKE THE CHANGES YET, JUST RECORD WHERE THEY SHOULD BE MADE.
-            // TODO: FIND OUTPUTS
-        }
-        _ => {
-            todo!();
-        }
-    }
-
-    println!("Added: {flake_input_name} -> {flake_input_value}");
-
-    Ok(())
 }
 
 fn find_attrset<'a>(
@@ -563,32 +528,10 @@ fn upsert_into_inputs_and_outputs(
     flake_input_name: String,
     flake_input_value: url::Url,
     input: String,
-    output: &mut String,
     root_span: nixel::Span,
     inputs_attr: Option<nixel::BindingKeyValue>,
     outputs_attr: Option<nixel::BindingKeyValue>,
-) -> Result<(), color_eyre::Report> {
-    // if we use the root  span, we want to insert the inputs at
-    let _ = root_span;
-    // TODO: use inputs pos to insert the inputs
-    // TODO: if there is no inputs, then what? insert as first in file? or maybe after the first in the file...?
-    // TODO: use outputs to insert the new input name
-    // let first_raw: Option<nixel::PartRaw> = todo!();
-    /*
-    possibilities:
-
-    1:
-    we have inputs, so we have a span
-    we might or might not have outputs
-    ignore the first span
-
-    2:
-    we have no inputs
-    we might or might not have outputs
-    use the root span as the place to insert the thing
-
-    */
-
+) -> color_eyre::Result<String> {
     let inputs_attr = inputs_attr.map(AttrType::Inputs);
     let outputs_attr = outputs_attr.map(AttrType::Outputs);
     let (first_attr_to_process, second_attr_to_process) = match (inputs_attr, outputs_attr) {
@@ -617,23 +560,34 @@ fn upsert_into_inputs_and_outputs(
         _ => (Some(AttrType::MissingInputsAndOutputs(root_span)), None),
     };
 
+    let mut output = input.clone();
     if let Some(first_attr_to_process) = first_attr_to_process {
-        first_attr_to_process.process(&input, output, &flake_input_name, &flake_input_value)?;
+        first_attr_to_process.process(
+            &input,
+            &mut output,
+            &flake_input_name,
+            &flake_input_value,
+        )?;
     }
     if let Some(second_attr_to_process) = second_attr_to_process {
-        second_attr_to_process.process(&input, output, &flake_input_name, &flake_input_value)?;
+        second_attr_to_process.process(
+            &input,
+            &mut output,
+            &flake_input_name,
+            &flake_input_value,
+        )?;
     }
 
-    Ok(())
+    Ok(output)
 }
 
 fn replace_input_value(
     parts: &[nixel::Part],
     flake_input_value: &url::Url,
     input: &str,
-    output: &mut String,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<String> {
     let mut parts_iter = parts.iter();
+    let mut output = input.to_string();
 
     if let Some(part) = parts_iter.next() {
         match part {
@@ -664,7 +618,7 @@ fn replace_input_value(
         ));
     }
 
-    Ok(())
+    Ok(output)
 }
 
 fn span_to_start_end_offsets(
