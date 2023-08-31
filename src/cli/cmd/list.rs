@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
-use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
+use prettytable::{row, Attr, Cell, Row, Table};
+use serde::Deserialize;
 use std::process::ExitCode;
 
-use crate::cli::cmd::FlakeHubClient;
+use super::TABLE_FORMAT;
+use crate::cli::{cmd::FlakeHubClient, FLAKEHUB_WEB_ROOT};
 
 use super::CommandExecute;
 
@@ -17,11 +19,32 @@ pub(crate) struct ListSubcommand {
     api_addr: url::Url,
 }
 
+#[derive(Deserialize)]
+pub(super) struct Flake {
+    org: String,
+    project: String,
+}
+
+impl Flake {
+    fn name(&self) -> String {
+        format!("{}/{}", self.org, self.project)
+    }
+
+    fn url(&self) -> String {
+        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct Org {
+    pub(super) name: String,
+}
+
 #[derive(Subcommand)]
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
-    /// List all currently public organizations on FlakeHub.
+    /// Lists all currently public organizations on FlakeHub.
     Orgs,
 }
 
@@ -41,17 +64,18 @@ impl CommandExecute for ListSubcommand {
                         if flakes.is_empty() {
                             println!("No results");
                         } else {
-                            for Flake { org, project } in flakes {
-                                println!(
-                                    "{}{}{}\n    {}/flake/{}/{}",
-                                    style(org.clone()).cyan(),
-                                    style("/").white(),
-                                    style(project.clone()).red(),
-                                    self.api_addr,
-                                    style(org).cyan(),
-                                    style(project).red(),
-                                );
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                            for flake in flakes {
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&flake.name()).with_style(Attr::Bold),
+                                    Cell::new(&flake.url()).with_style(Attr::Dim),
+                                ]));
                             }
+
+                            table.printstd();
                         }
                     }
                     Err(e) => {
@@ -67,14 +91,19 @@ impl CommandExecute for ListSubcommand {
                         if orgs.is_empty() {
                             println!("No results");
                         } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Organization", "FlakeHub URL"]);
+
                             for org in orgs {
-                                println!(
-                                    "{}\n    {}/org/{}",
-                                    style(org.clone()).cyan(),
-                                    self.api_addr,
-                                    style(org).cyan(),
-                                );
+                                let url = format!("{}/org/{}", FLAKEHUB_WEB_ROOT, org);
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&org).with_style(Attr::Bold),
+                                    Cell::new(&url).with_style(Attr::Dim),
+                                ]));
                             }
+
+                            table.printstd();
                         }
                     }
                     Err(e) => {
@@ -86,15 +115,4 @@ impl CommandExecute for ListSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-#[derive(serde_derive::Deserialize)]
-pub(super) struct Flake {
-    org: String,
-    project: String,
-}
-
-#[derive(serde_derive::Deserialize)]
-pub(super) struct Org {
-    pub(super) name: String,
 }
