@@ -24,10 +24,6 @@ pub(crate) struct SearchSubcommand {
 pub struct SearchResult {
     org: String,
     project: String,
-    #[allow(dead_code)]
-    description: Option<String>,
-    #[allow(dead_code)]
-    tags: Option<Vec<String>>,
 }
 
 impl SearchResult {
