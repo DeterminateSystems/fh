@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
+use color_eyre::eyre::WrapErr;
 
 use super::CommandExecute;
 
@@ -32,7 +33,9 @@ pub(crate) struct AddSubcommand {
 #[async_trait::async_trait]
 impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let flake_contents = tokio::fs::read_to_string(&self.flake_path).await?;
+        let flake_contents = tokio::fs::read_to_string(&self.flake_path)
+            .await
+            .wrap_err_with(|| format!("Failed to open {}", self.flake_path.display()))?;
         let parsed = nixel::parse(flake_contents.clone());
         let (flake_input_name, flake_input_url) =
             infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
