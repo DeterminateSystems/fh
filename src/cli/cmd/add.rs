@@ -51,8 +51,7 @@ impl CommandExecute for AddSubcommand {
             input_url_attr_path,
         )?;
 
-        // tokio::fs::write(self.flake_path, new_flake_contents).await?;
-        println!("{new_flake_contents}");
+        tokio::fs::write(self.flake_path, new_flake_contents).await?;
 
         Ok(ExitCode::SUCCESS)
     }
