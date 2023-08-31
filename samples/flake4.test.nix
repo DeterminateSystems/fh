@@ -1,3 +1,5 @@
 {
+  description = "lmbo";
+
   outputs = _: { };
 }
