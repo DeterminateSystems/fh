@@ -399,7 +399,9 @@ impl AttrType {
             AttrType::MissingOutputs((_inputs_span_from, _inputs_span_to)) => {
                 // I don't really want to give them an `outputs` if it doesn't already exist, but
                 // I've laid out the groundwork that it would be possible...
-                Err(color_eyre::eyre::eyre!("flake had no `outputs`"))?
+                Err(color_eyre::eyre::eyre!(
+                    "flake was missing an `outputs` attribute"
+                ))?
             }
             AttrType::MissingInputsAndOutputs(_root_span) => {
                 // I don't really want to deal with a flake that has no `inputs` or `outputs`
@@ -407,7 +409,7 @@ impl AttrType {
                 // If we do decide to suppor this, the simplest way would be: insert at the root
                 // span (\\n, then 2 spaces, then write inputs, don't care about outputs for now?)
                 Err(color_eyre::eyre::eyre!(
-                    "flake had neither `inputs` nor `outputs`"
+                    "flake was missing both the `inputs` and `outputs` attributes"
                 ))?
             }
         }
