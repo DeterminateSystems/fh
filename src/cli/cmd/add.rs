@@ -1,5 +1,3 @@
-// TODO: query flakehub api if it exists, error if not; also use org/repo name as returned by the api (so it includes proper caps)
-
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process::ExitCode;
