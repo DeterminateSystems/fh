@@ -63,7 +63,8 @@ async fn load_flake(flake_path: &PathBuf) -> color_eyre::eyre::Result<(String, n
   description = "My new flake.";
 
   outputs = { ... } @ inputs: {};
-}"#;
+}
+"#;
 
     let mut contents = tokio::fs::read_to_string(&flake_path)
         .await
