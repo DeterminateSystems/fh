@@ -1,0 +1,47 @@
+{
+  {{#if description}}
+  description = "{{ description }}";
+  {{/if}}
+
+  inputs = {
+    {{#each inputs}}
+    {{@key}}.url = "{{this}}";
+    {{/each}}
+  };
+
+  outputs = { self{{#each inputs}}, {{@key}}{{/each}} }:
+    let
+      {{#if overlays}}
+      overlays = [
+        (final: prev: {
+          {{#each overlays}}
+          {{this}};
+          {{/each}}
+        })
+      ];
+      {{/if}}
+      supportedSystems = [ {{#each systems}}"{{ this }}"{{#unless @last}} {{/unless}}{{/each}} ];
+      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
+        pkgs = import nixpkgs { inherit {{#if overlays }}overlays {{/if}}system; };
+      });
+    in {
+      {{#if dev_shells}}
+      devShells = forEachSupportedSystem ({ pkgs }: {
+        {{#each dev_shells}}
+        {{@key}} = pkgs.mkShell {
+          packages = with pkgs; [
+            {{#if this.packages}}
+            {{#each this.packages}}
+            {{this}}
+            {{/each}}
+            # Add any other desired packages here
+            {{else}}
+            # Add any desired packages here
+            {{/if}}
+          ];
+        };
+        {{/each}}
+      });
+      {{/if}}
+    };
+}

@@ -97,6 +97,7 @@
             buildInputs = with pkgs; [
               (fenixToolchain stdenv.hostPlatform.system)
               cargo-watch
+              rust-analyzer
               nixpkgs-fmt
               gcc.cc.lib
             ]

@@ -1,4 +1,5 @@
 mod add;
+mod init;
 mod list;
 mod search;
 
@@ -31,6 +32,7 @@ pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
     Search(search::SearchSubcommand),
     List(list::ListSubcommand),
+    Init(init::InitSubcommand),
 }
 
 pub(super) struct FlakeHubClient {
@@ -42,6 +44,12 @@ pub(super) struct FlakeHubClient {
 pub(super) enum FhError {
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
+
+    #[error("interactive initializer error: {0}")]
+    Interactive(#[from] inquire::InquireError),
+
+    #[error("the flake has no inputs")]
+    NoInputs,
 
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
