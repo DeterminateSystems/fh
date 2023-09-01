@@ -27,7 +27,7 @@
       {{/if}}
       supportedSystems = [ {{#each systems}}"{{ this }}"{{#unless @last}} {{/unless}}{{/each}} ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import nixpkgs { inherit {{#if overlays }}overlays {{/if}}system; };
+        pkgs = import nixpkgs { inherit {{#if has_overlays }}overlays {{/if}}system; };
       });
     in {
       {{#if dev_shells}}
