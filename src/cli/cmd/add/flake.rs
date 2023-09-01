@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 const NEWLINE: &str = "\n";
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn upsert_flake_input(
     expr: nixel::Expression,
     flake_input_name: String,
@@ -41,6 +42,7 @@ pub(crate) fn upsert_flake_input(
     }
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn find_attrset(
     expr: &nixel::Expression,
     attr_path: Option<VecDeque<String>>,
@@ -173,9 +175,19 @@ impl AttrType {
                     }
 
                     // I don't think this is possible, but just in case.
-                    len => Err(color_eyre::eyre::eyre!(
-                        "attrpath had unexpected length {len}"
-                    )),
+                    len => {
+                        tracing::warn!(
+                            "input's attrpath had unexpected length {len}; \
+                            please file a bug report at https://github.com/DeterminateSystems/fh with as much detail as possible"
+                        );
+
+                        let (from_span, _to_span) = self.span();
+
+                        let flake_input = format!(
+                            r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#
+                        );
+                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
+                    }
                 }
             }
             AttrType::Outputs(ref outputs_attr) => {
@@ -242,6 +254,7 @@ impl AttrType {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn insert_input(
         span: nixel::Span,
         flake_contents: &str,
@@ -280,6 +293,7 @@ impl AttrType {
         Ok(new_flake_contents)
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn insert_input_name_into_outputs_function(
         flake_input_name: &str,
         head: &nixel::FunctionHeadDestructured,
@@ -294,6 +308,7 @@ impl AttrType {
             .iter()
             .any(|arg| &*arg.identifier == flake_input_name)
         {
+            tracing::warn!("input {flake_input_name} was already in the `outputs` function args, not adding it again");
             return Ok(new_flake_contents);
         }
 
@@ -349,6 +364,7 @@ impl AttrType {
         Ok(new_flake_contents)
     }
 
+    #[tracing::instrument(skip_all)]
     fn kv_to_span(kv: &nixel::BindingKeyValue) -> (nixel::Span, nixel::Span) {
         (
             kv.from
@@ -360,6 +376,7 @@ impl AttrType {
         )
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn span(&self) -> (nixel::Span, nixel::Span) {
         match self {
             AttrType::Inputs(kv) | AttrType::Outputs(kv) => Self::kv_to_span(kv),
@@ -370,6 +387,7 @@ impl AttrType {
     }
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn upsert_into_inputs_and_outputs(
     flake_input_name: String,
     flake_input_value: url::Url,
@@ -424,6 +442,7 @@ pub(crate) fn upsert_into_inputs_and_outputs(
     Ok(flake_contents)
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn replace_input_value(
     parts: &[nixel::Part],
     flake_input_value: &url::Url,
@@ -464,6 +483,7 @@ pub(crate) fn replace_input_value(
     Ok(new_flake_contents)
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn span_to_start_end_offsets(
     flake_contents: &str,
     span: &nixel::Span,
@@ -477,6 +497,7 @@ pub(crate) fn span_to_start_end_offsets(
     ))
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn position_to_offset(
     flake_contents: &str,
     position: &nixel::Position,

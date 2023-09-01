@@ -17,7 +17,7 @@ const FALLBACK_FLAKE_CONTENTS: &str = r#"{
 "#;
 
 /// Adds a flake input to your flake.nix.
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub(crate) struct AddSubcommand {
     /// The flake.nix to modify.
     #[clap(long, default_value = "./flake.nix")]
@@ -65,6 +65,7 @@ impl CommandExecute for AddSubcommand {
     }
 }
 
+#[tracing::instrument(skip_all)]
 async fn load_flake(flake_path: &PathBuf) -> color_eyre::Result<(String, nixel::Parsed)> {
     let mut contents = tokio::fs::read_to_string(&flake_path)
         .await
@@ -93,6 +94,7 @@ async fn load_flake(flake_path: &PathBuf) -> color_eyre::Result<(String, nixel::
     Ok((contents, parsed))
 }
 
+#[tracing::instrument(skip_all)]
 async fn infer_flake_input_name_url(
     api_addr: url::Url,
     flake_ref: String,
@@ -158,6 +160,7 @@ async fn infer_flake_input_name_url(
     }
 }
 
+#[tracing::instrument(skip_all)]
 async fn get_flakehub_repo_and_url(
     api_addr: url::Url,
     org: &str,
