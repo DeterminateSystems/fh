@@ -100,7 +100,7 @@ Piping `fh list` commands to another program emits a CSV instead of the stylizid
 
 ## License
 
-[Apache 2.0](https://choosealicense.com/licenses/mit/)
+[Apache 2.0](https://choosealicense.com/licenses/apache-2.0/)
 
 
 ## Support
