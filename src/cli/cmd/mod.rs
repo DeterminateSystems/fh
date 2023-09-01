@@ -8,7 +8,7 @@ use reqwest::Client as HttpClient;
 
 use crate::cli::cmd::list::Org;
 
-use self::{list::Flake, search::SearchResult};
+use self::{list::Flake, list::Release, search::SearchResult};
 
 lazy_static! {
     pub(super) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
@@ -92,6 +92,20 @@ impl FlakeHubClient {
             .send()
             .await?
             .json::<Vec<Flake>>()
+            .await?;
+
+        Ok(flakes)
+    }
+
+    async fn releases(&self, flake: String) -> Result<Vec<Release>, FhError> {
+        let endpoint = self.api_addr.join(&format!("f/{}/releases", flake))?;
+
+        let flakes = self
+            .client
+            .get(endpoint)
+            .send()
+            .await?
+            .json::<Vec<Release>>()
             .await?;
 
         Ok(flakes)

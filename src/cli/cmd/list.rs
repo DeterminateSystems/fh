@@ -40,12 +40,19 @@ pub(super) struct Org {
     pub(super) name: String,
 }
 
+#[derive(Deserialize)]
+pub(super) struct Release {
+    version: String,
+}
+
 #[derive(Subcommand)]
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
+    /// List all releases for a specific flakes on FlakeHub.
+    Releases { flake: String },
 }
 
 #[async_trait::async_trait]
@@ -75,7 +82,11 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            table.printstd();
+                            if atty::is(atty::Stream::Stdout) {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
                         }
                     }
                     Err(e) => {
@@ -103,7 +114,11 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            table.printstd();
+                            if atty::is(atty::Stream::Stdout) {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
                         }
                     }
                     Err(e) => {
