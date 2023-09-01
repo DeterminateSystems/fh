@@ -61,6 +61,7 @@ impl CommandExecute for AddSubcommand {
 async fn load_flake(flake_path: &PathBuf) -> color_eyre::eyre::Result<(String, nixel::Parsed)> {
     let fallback = r#"{
   description = "My new flake.";
+
   outputs = { ... } @ inputs: {};
 }"#;
 
