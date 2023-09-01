@@ -117,7 +117,7 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Go projects
-        if project.is_go_project() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Rust dependencies?")?{
+        if project.is_go_project() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")?{
             if inputs.get("nixpkgs").is_none() {
                 if Prompt::bool(
                     "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
