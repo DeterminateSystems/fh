@@ -3,9 +3,9 @@
 
 `fh` is a scrappy CLI to search FlakeHub and add new inputs to your [Nix flake](https://zero-to-nix.com/concepts/flakes).
 
-## Installation
+## Usage
 
-Install `fh` from FlakeHub:
+Using `fh` from FlakeHub:
 
 ```console
 nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
@@ -13,6 +13,34 @@ nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 
 > **Note:** This builds `fh` locally on your computer.
 > Pre-built binaries aren't yet available.
+
+## Installation
+
+### NixOS
+
+To make the `fh` CLI readily available on a NixOS system:
+
+```nix
+{
+  description = "My NixOS config.";
+
+  inputs.fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz";
+
+  outputs = { nixpkgs, fh, ... } @ inputs: {
+    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        {
+          environment.systemPackages = [ fh.packages.x86_64-linux.default ];
+        }
+
+        # ... the rest of your modules here ...
+      ];
+    };
+  };
+}
+```
 
 ## Demo
 
