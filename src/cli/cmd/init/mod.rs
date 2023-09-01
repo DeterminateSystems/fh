@@ -18,7 +18,10 @@ const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
 ];
 
-const GO_VERSIONS: &[&str] = &["20", "19", "18", "16"];
+const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
+const JS_PACKAGING_TOOLS: &[&str] = &["pnpm", "yarn"];
+
+const GO_VERSIONS: &[&str] = &["20", "19", "18", "17"];
 
 const SYSTEMS: &[&str] = &[
     "x86_64-linux",
@@ -82,7 +85,7 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Rust projects
-        if project.is_rust_project() && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?")? {
+        if project.maybe_rust() && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?")? {
             // Add Rust overlay
             inputs.insert(
                 String::from("rust-overlay"),
@@ -120,7 +123,7 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Go projects
-        if project.is_go_project() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
+        if project.maybe_golang() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
             if inputs.get("nixpkgs").is_none() && Prompt::bool(
                 "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
             )? {
@@ -136,6 +139,21 @@ impl CommandExecute for InitSubcommand {
             if Prompt::bool("Would you like to provide a Go package output?")? {
                 let name = Prompt::string("Enter the name of the output", "default")?;
                 packages.insert(name, String::from("pkgs.buildGoPackage {}"));
+            }
+        }
+
+        if project.maybe_javascript() {
+            let version =
+                Select::new("Select a version of Node.js", NODE_VERSIONS.to_vec()).prompt()?;
+            dev_shell_packages.push(format!("nodejs-{version}_x"));
+
+            for tool in MultiSelect::new(
+                "Which packaging tools would you like to install (npm is already included)",
+                JS_PACKAGING_TOOLS.to_vec(),
+            )
+            .prompt()?
+            {
+                dev_shell_packages.push(format!("nodePackages.{tool}"));
             }
         }
 
@@ -266,11 +284,15 @@ impl Project {
         Self { root }
     }
 
-    fn is_go_project(&self) -> bool {
+    fn maybe_javascript(&self) -> bool {
+        self.has_file("package.json")
+    }
+
+    fn maybe_golang(&self) -> bool {
         self.has_file("go.mod")
     }
 
-    fn is_rust_project(&self) -> bool {
+    fn maybe_rust(&self) -> bool {
         self.has_file("Cargo.toml")
     }
 
