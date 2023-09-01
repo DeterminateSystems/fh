@@ -27,7 +27,7 @@ jobs:
           retention-days: 1
 
   build-artifacts-X64-Linux:
-    runs-on: ubuntu-22.04
+    runs-on: UbuntuLatest32Cores128G
     steps:
       - uses: actions/checkout@v3
 

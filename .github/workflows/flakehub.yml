@@ -24,6 +24,6 @@ jobs:
       - uses: "DeterminateSystems/nix-installer-action@main"
       - uses: "DeterminateSystems/flakehub-push@main"
         with:
-          visibility: "unlisted"
+          visibility: "public"
           name: "DeterminateSystems/fh"
           tag: "${{ inputs.tag }}"
