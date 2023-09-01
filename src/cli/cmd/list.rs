@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use serde::Deserialize;
+use std::io::IsTerminal;
 use std::process::ExitCode;
 
 use super::TABLE_FORMAT;
@@ -40,12 +41,19 @@ pub(super) struct Org {
     pub(super) name: String,
 }
 
+#[derive(Deserialize)]
+pub(super) struct Release {
+    version: String,
+}
+
 #[derive(Subcommand)]
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
+    /// List all releases for a specific flake on FlakeHub.
+    Releases { flake: String },
 }
 
 #[async_trait::async_trait]
@@ -62,7 +70,7 @@ impl CommandExecute for ListSubcommand {
                 match client.flakes().await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
-                            println!("No results");
+                            eprintln!("No results");
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -75,11 +83,15 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            table.printstd();
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
                         }
                     }
                     Err(e) => {
-                        println!("Error: {e}");
+                        eprintln!("Error: {e}");
                     }
                 }
             }
@@ -89,7 +101,7 @@ impl CommandExecute for ListSubcommand {
                 match client.orgs().await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
-                            println!("No results");
+                            eprintln!("No results");
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -103,11 +115,43 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            table.printstd();
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
                         }
                     }
                     Err(e) => {
-                        println!("Error: {e}");
+                        eprintln!("Error: {e}");
+                    }
+                }
+            }
+            Releases { flake } => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+                match client.releases(flake).await {
+                    Ok(releases) => {
+                        if releases.is_empty() {
+                            eprintln!("No results");
+                        } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Version"]);
+
+                            for release in releases {
+                                table.add_row(Row::new(vec![Cell::new(&release.version)]));
+                            }
+
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
                     }
                 }
             }

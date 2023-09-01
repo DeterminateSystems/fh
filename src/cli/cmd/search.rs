@@ -47,7 +47,7 @@ impl CommandExecute for SearchSubcommand {
         match client.search(self.query).await {
             Ok(results) => {
                 if results.is_empty() {
-                    println!("No results");
+                    eprintln!("No results");
                 } else {
                     let mut table = Table::new();
                     table.set_format(*TABLE_FORMAT);
@@ -67,7 +67,7 @@ impl CommandExecute for SearchSubcommand {
                 }
             }
             Err(e) => {
-                println!("Error: {e}");
+                eprintln!("Error: {e}");
             }
         }
 
