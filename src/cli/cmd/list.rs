@@ -126,6 +126,34 @@ impl CommandExecute for ListSubcommand {
                     }
                 }
             }
+            Releases { flake } => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+                match client.releases(flake).await {
+                    Ok(releases) => {
+                        if releases.is_empty() {
+                            eprintln!("No results");
+                        } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Version"]);
+
+                            for release in releases {
+                                table.add_row(Row::new(vec![Cell::new(&release.version)]));
+                            }
+
+                            if atty::is(atty::Stream::Stdout) {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                    }
+                }
+            }
         }
 
         Ok(ExitCode::SUCCESS)
