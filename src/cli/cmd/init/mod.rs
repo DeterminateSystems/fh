@@ -142,7 +142,7 @@ impl CommandExecute for InitSubcommand {
             }
         }
 
-        if project.maybe_javascript() {
+        if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")?{
             let version =
                 Select::new("Select a version of Node.js", NODE_VERSIONS.to_vec()).prompt()?;
             dev_shell_packages.push(format!("nodejs-{version}_x"));
