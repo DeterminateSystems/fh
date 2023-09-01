@@ -1,7 +1,7 @@
 
-# `fh`, the official FlakeHub CLI.
+# `fh`, the official FlakeHub CLI
 
-`fh` is a scrappy CLI to search FlakeHub, and add new inputs to your flake.
+`fh` is a scrappy CLI to search FlakeHub and add new inputs to your [Nix flake](https://zero-to-nix.com/concepts/flakes).
 
 ## Installation
 
@@ -11,14 +11,14 @@ Install `fh` from FlakeHub:
 nix profile install "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
-> **Note:** This will build fh on your computer locally.
-> Pre-built binaries aren't available yet.
+> **Note:** This builds `fh` locally on your computer.
+> Pre-built binaries aren't yet available.
 
 ## Demo
 
-### Add a flake published to FlakeHub to your flake.nix
+### Add a flake published to FlakeHub to your `flake.nix`
 
-`fh add` adds the most current release of the specified flake to your `flake.nix`, and update the `outputs` function to accept it.
+`fh add` adds the most current release of the specified flake to your `flake.nix` and updates the `outputs` function to accept it.
 
 ```console
 $ fh add nixos/nixpkgs
@@ -96,7 +96,7 @@ $ fh list flakes
 
 ## A note on automation
 
-Piping `fh list` commands to another program will emit a CSV instead of the stylizide table.
+Piping `fh list` commands to another program emits a CSV instead of the stylizide table.
 
 ## License
 
