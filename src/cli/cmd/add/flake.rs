@@ -506,7 +506,7 @@ mod test {
         let res = res.unwrap();
         let updated_nixpkgs_input = res
             .lines()
-            .find(|line| line.contains(&input_value.as_str()));
+            .find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -542,7 +542,7 @@ mod test {
         let res = res.unwrap();
         let updated_nixpkgs_input = res
             .lines()
-            .find(|line| line.contains(&input_value.as_str()));
+            .find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -580,7 +580,7 @@ mod test {
             let res = res.unwrap();
             let updated_nixpkgs_input = res
                 .lines()
-                .find(|line| line.contains(&input_value.as_str()));
+                .find(|line| line.contains(input_value.as_str()));
             assert!(updated_nixpkgs_input.is_some());
         }
     }
@@ -611,7 +611,7 @@ mod test {
         let res = res.unwrap();
         let updated_nixpkgs_input = res
             .lines()
-            .find(|line| line.contains(&input_value.as_str()));
+            .find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -683,7 +683,7 @@ mod test {
         let res = res.unwrap();
         let updated_nixpkgs_input = res
             .lines()
-            .find(|line| line.contains(&input_value.as_str()));
+            .find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
