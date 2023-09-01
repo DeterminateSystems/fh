@@ -42,11 +42,9 @@ impl CommandExecute for InitSubcommand {
         let mut dev_shells: HashMap<String, DevShell> = HashMap::new();
         let mut overlays: Vec<Overlay> = Vec::new();
 
-        if self.output.exists() {
-            if !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
-                println!("Exiting. Let's a build a new flake soon, though :)");
-                return Ok(ExitCode::SUCCESS);
-            }
+        if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
+            println!("Exiting. Let's a build a new flake soon, though :)");
+            return Ok(ExitCode::SUCCESS);
         }
 
         println!("Let's build a Nix flake!");
@@ -68,7 +66,7 @@ impl CommandExecute for InitSubcommand {
         if nixpkgs {
             inputs.insert(
                 String::from("nixpkgs"),
-                format!("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
+                String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
             );
         }
 
@@ -79,7 +77,7 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Rust projects
-        if project.is_rust_project() {
+        if project.is_rust_project() && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?")? {
             // Add Rust overlay
             inputs.insert(
                 String::from("rust-overlay"),
@@ -119,14 +117,15 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Go projects
-        if project.is_go_project() {
+        #[allow(clippy::collapsible_if)]
+        if project.is_go_project() && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?")?{
             if inputs.get("nixpkgs").is_none() {
                 if Prompt::bool(
                     "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
                 )? {
                     inputs.insert(
                         String::from("nixpkgs"),
-                        format!("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
+                        String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
                     );
                 }
 
@@ -163,11 +162,9 @@ impl CommandExecute for InitSubcommand {
         let mut flake_dot_nix = File::create(self.output)?;
         flake_dot_nix.write_all(output.as_bytes())?;
 
-        if !project.file_exists(".envrc") {
-            if Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")? {
-                let mut envrc = File::create(".envrc")?;
-                envrc.write_all(b"use flake")?;
-            }
+        if !project.file_exists(".envrc") && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")?{
+            let mut envrc = File::create(".envrc")?;
+            envrc.write_all(b"use flake")?;
         }
 
         println!(
