@@ -4,6 +4,7 @@ use inquire::{Confirm, MultiSelect, Select, Text};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -159,8 +160,19 @@ impl CommandExecute for InitSubcommand {
         let data: Value = serde_json::to_value(flake)?;
         let output = handlebars.render("flake", &data)?;
 
-        let mut flake_dot_nix = std::fs::File::create(self.output)?;
+        let mut flake_dot_nix = File::create(self.output)?;
         flake_dot_nix.write_all(output.as_bytes())?;
+
+        if !project.file_exists(".envrc") {
+            if Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")? {
+                let mut envrc = File::create(".envrc")?;
+                envrc.write_all(b"use flake")?;
+            }
+        }
+
+        println!(
+            "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
+        );
 
         Ok(ExitCode::SUCCESS)
     }
