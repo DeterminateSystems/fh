@@ -1,5 +1,8 @@
 use clap::Parser;
 use color_eyre::eyre::Result;
+use handlebars::{
+    Context, Handlebars, Helper, HelperDef, HelperResult, JsonRender, Output, RenderContext,
+};
 use inquire::{Confirm, MultiSelect, Select, Text};
 use serde::Serialize;
 use serde_json::Value;
@@ -41,6 +44,7 @@ impl CommandExecute for InitSubcommand {
         let mut dev_shell_packages: Vec<String> = Vec::new();
         let mut dev_shells: HashMap<String, DevShell> = HashMap::new();
         let mut overlays: Vec<Overlay> = Vec::new();
+        let mut packages: HashMap<String, String> = HashMap::new();
 
         if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
             println!("Exiting. Let's a build a new flake soon, though :)");
@@ -117,21 +121,23 @@ impl CommandExecute for InitSubcommand {
         }
 
         // Go projects
-        if project.is_go_project() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")?{
-            if inputs.get("nixpkgs").is_none() {
-                if Prompt::bool(
-                    "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
-                )? {
-                    inputs.insert(
-                        String::from("nixpkgs"),
-                        String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
-                    );
-                }
+        if project.is_go_project() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
+            if inputs.get("nixpkgs").is_none() && Prompt::bool(
+                "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
+            )? {
+                inputs.insert(
+                    String::from("nixpkgs"),
+                    String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
+                );
             }
-
             let go_version =
             Select::new("Select a version of Go", GO_VERSIONS.to_vec()).prompt()?;
             dev_shell_packages.push(format!("go_1_{go_version}"));
+
+            if Prompt::bool("Would you like to provide a Go package output?")? {
+                let name = Prompt::string("Enter the name of the output", "default")?;
+                packages.insert(name, String::from("pkgs.buildGoPackage {}"));
+            }
         }
 
         dev_shells.insert(
@@ -151,9 +157,33 @@ impl CommandExecute for InitSubcommand {
 
         flake.validate()?;
 
-        let mut handlebars = handlebars::Handlebars::new();
+        #[derive(Clone, Copy)]
+        struct OverlayHelper;
+
+        impl HelperDef for OverlayHelper {
+            fn call<'reg: 'rc, 'rc>(
+                &self,
+                h: &Helper,
+                _: &Handlebars,
+                _: &Context,
+                _: &mut RenderContext,
+                out: &mut dyn Output,
+            ) -> HelperResult {
+                let key = h.param(0).unwrap();
+                out.write(key.value().render().as_ref())?;
+
+                if let Some(value) = h.param(1) {
+                    out.write(&format!(" = {};", value.value().render()))?;
+                }
+
+                Ok(())
+            }
+        }
+
+        let mut handlebars = Handlebars::new();
+        handlebars.register_helper("overlay", Box::new(OverlayHelper));
         handlebars
-            .register_template_string("flake", include_str!("../../../assets/flake.hbs"))
+            .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
             .map_err(Box::new)?;
         let data: Value = serde_json::to_value(flake)?;
         let output = handlebars.render("flake", &data)?;
@@ -179,6 +209,17 @@ struct Prompt;
 impl Prompt {
     fn bool(msg: &str) -> Result<bool, FhError> {
         Confirm::new(msg).prompt().map_err(FhError::Interactive)
+    }
+
+    fn string(msg: &str, default: &str) -> Result<String, FhError> {
+        match Text::new(msg).prompt() {
+            Ok(text) => Ok(if text.is_empty() {
+                String::from(text)
+            } else {
+                String::from(default)
+            }),
+            Err(e) => Err(FhError::Interactive(e)),
+        }
     }
 
     fn maybe_string(msg: &str) -> Result<Option<String>, FhError> {

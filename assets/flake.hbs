@@ -15,7 +15,7 @@
       overlays = [
         (final: prev: {
           {{#each overlays}}
-          {{this}};
+          {{overlay this}};
           {{/each}}
         })
       ];
@@ -42,6 +42,9 @@
         };
         {{/each}}
       });
+      {{/if}}
+
+      {{#if packages}}
       {{/if}}
     };
 }
