@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use serde::Deserialize;
+use std::io::IsTerminal;
 use std::process::ExitCode;
 
 use super::TABLE_FORMAT;
@@ -82,7 +83,7 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            if atty::is(atty::Stream::Stdout) {
+                            if std::io::stdout().is_terminal() {
                                 table.printstd();
                             } else {
                                 table.to_csv(std::io::stdout())?;
@@ -114,7 +115,7 @@ impl CommandExecute for ListSubcommand {
                                 ]));
                             }
 
-                            if atty::is(atty::Stream::Stdout) {
+                            if std::io::stdout().is_terminal() {
                                 table.printstd();
                             } else {
                                 table.to_csv(std::io::stdout())?;
@@ -142,7 +143,7 @@ impl CommandExecute for ListSubcommand {
                                 table.add_row(Row::new(vec![Cell::new(&release.version)]));
                             }
 
-                            if atty::is(atty::Stream::Stdout) {
+                            if std::io::stdout().is_terminal() {
                                 table.printstd();
                             } else {
                                 table.to_csv(std::io::stdout())?;

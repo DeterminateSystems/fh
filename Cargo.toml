@@ -33,4 +33,3 @@ serde = "1.0.188"
 serde_derive = "1.0.188"
 url = { version = "2.4.0", features = ["serde"] }
 regex = "1.9.4"
-atty = "0.2.14"
