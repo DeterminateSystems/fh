@@ -33,19 +33,8 @@ pub(crate) struct AddSubcommand {
 #[async_trait::async_trait]
 impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let flake_contents = tokio::fs::read_to_string(&self.flake_path)
-            .await
-            .wrap_err_with(|| format!("Failed to open {}", self.flake_path.display()))
-            .map(|contents| if contents.is_empty() {
-                r#"{
-  description = "...";
-  outputs = { ... } @ inputs: {};
-}"#.to_string()
-            } else {
-                contents
-            })?;
+        let (flake_contents, parsed) = load_flake(&self.flake_path).await?;
 
-        let parsed = nixel::parse(flake_contents.clone());
         let (flake_input_name, flake_input_url) =
             infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
         let input_url_attr_path: VecDeque<String> = [
@@ -67,6 +56,32 @@ impl CommandExecute for AddSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+async fn load_flake(flake_path: &PathBuf) -> color_eyre::eyre::Result<(String, nixel::Parsed)> {
+    let fallback = r#"{
+        description = "My new flake.";
+        outputs = { ... } @ inputs: {};
+      }"#;
+
+    let mut contents = tokio::fs::read_to_string(&flake_path)
+        .await
+        .wrap_err_with(|| format!("Failed to open {}", flake_path.display()))?;
+
+    if contents.trim().is_empty() {
+        contents = fallback.to_string();
+    };
+
+    let mut parsed = nixel::parse(contents.clone());
+
+    if let nixel::Expression::Map(map) = *parsed.expression.clone() {
+        if map.bindings.is_empty() {
+            contents = fallback.to_string();
+            parsed = nixel::parse(contents.clone());
+        }
+    }
+
+    Ok((contents, parsed))
 }
 
 async fn infer_flake_input_name_url(
