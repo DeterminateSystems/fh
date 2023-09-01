@@ -3,6 +3,17 @@
 
 `fh` is a scrappy CLI to search FlakeHub, and add new inputs to your flake.
 
+## Installation
+
+Install `fh` from FlakeHub:
+
+```console
+nix profile install "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
+```
+
+> **Note:** This will build fh on your computer locally.
+> Pre-built binaries aren't available yet.
+
 ## Demo
 
 ### Add a flake published to FlakeHub to your flake.nix
@@ -83,16 +94,10 @@ $ fh list flakes
 ...
 ```
 
-## Installation
+## A note on automation
 
-Install `fh` from FlakeHub:
+Piping `fh list` commands to another program will emit a CSV instead of the stylizide table.
 
-```console
-nix profile install "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
-```
-
-> **Note:** This will build fh on your computer locally.
-> Pre-built binaries aren't available yet.
 ## License
 
 [Apache 2.0](https://choosealicense.com/licenses/mit/)
