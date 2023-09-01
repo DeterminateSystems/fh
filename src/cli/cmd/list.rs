@@ -62,7 +62,7 @@ impl CommandExecute for ListSubcommand {
                 match client.flakes().await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
-                            println!("No results");
+                            eprintln!("No results");
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -79,7 +79,7 @@ impl CommandExecute for ListSubcommand {
                         }
                     }
                     Err(e) => {
-                        println!("Error: {e}");
+                        eprintln!("Error: {e}");
                     }
                 }
             }
@@ -89,7 +89,7 @@ impl CommandExecute for ListSubcommand {
                 match client.orgs().await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
-                            println!("No results");
+                            eprintln!("No results");
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -107,7 +107,7 @@ impl CommandExecute for ListSubcommand {
                         }
                     }
                     Err(e) => {
-                        println!("Error: {e}");
+                        eprintln!("Error: {e}");
                     }
                 }
             }
