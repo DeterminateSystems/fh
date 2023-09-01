@@ -275,6 +275,15 @@ impl AttrType {
         flake_contents: &str,
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
+
+        if head
+            .arguments
+            .iter()
+            .any(|arg| &*arg.identifier == flake_input_name)
+        {
+            return Ok(new_flake_contents);
+        }
+
         let final_named_arg = head.arguments.last();
 
         // TODO: try to match the style of multiline function args (will be difficult because we
