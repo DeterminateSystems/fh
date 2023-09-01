@@ -1,6 +1,6 @@
 use clap::Parser;
 use color_eyre::eyre::Result;
-use inquire::{Confirm, MultiSelect, Text};
+use inquire::{Confirm, MultiSelect, Select, Text};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -13,6 +13,8 @@ use super::{CommandExecute, FhError};
 const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
 ];
+
+const GO_VERSIONS: &[&str] = &["20", "19", "18", "16"];
 
 const SYSTEMS: &[&str] = &[
     "x86_64-linux",
@@ -75,6 +77,7 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
+        // Rust projects
         if project.is_rust_project() {
             // Add Rust overlay
             inputs.insert(
@@ -111,6 +114,24 @@ impl CommandExecute for InitSubcommand {
 
             if Prompt::bool("Do you want to add Rust Analyzer to the environment?")? {
                 dev_shell_packages.push(String::from("rust-analyzer"));
+            }
+        }
+
+        // Go projects
+        if project.is_go_project() {
+            if inputs.get("nixpkgs").is_none() {
+                if Prompt::bool(
+                    "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
+                )? {
+                    inputs.insert(
+                        String::from("nixpkgs"),
+                        format!("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
+                    );
+                }
+
+                let go_version =
+                    Select::new("Select a version of Go", GO_VERSIONS.to_vec()).prompt()?;
+                dev_shell_packages.push(format!("go_1_{go_version}"));
             }
         }
 
@@ -190,16 +211,20 @@ enum Overlay {
     KV(String, String),
 }
 
-pub(crate) struct Project {
+struct Project {
     root: PathBuf,
 }
 
 impl Project {
-    pub(crate) fn new(root: PathBuf) -> Self {
+    fn new(root: PathBuf) -> Self {
         Self { root }
     }
 
-    pub(crate) fn is_rust_project(&self) -> bool {
+    fn is_go_project(&self) -> bool {
+        self.has_file("go.mod")
+    }
+
+    fn is_rust_project(&self) -> bool {
         self.has_file("Cargo.toml")
     }
 
