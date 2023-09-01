@@ -11,13 +11,18 @@
 
   outputs = { self{{#each inputs}}, {{@key}}{{/each}} }:
     let
-      {{#if overlays}}
+      {{#if has_overlays}}
       overlays = [
+        {{#each overlay_refs}}
+        {{this}}
+        {{/each}}
+        {{#if overlay_attrs}}
         (final: prev: {
-          {{#each overlays}}
-          {{overlay this}};
+          {{#each overlay_attrs}}
+          {{@key}} = {{this}};
           {{/each}}
         })
+        {{/if}}
       ];
       {{/if}}
       supportedSystems = [ {{#each systems}}"{{ this }}"{{#unless @last}} {{/unless}}{{/each}} ];

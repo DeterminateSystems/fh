@@ -43,7 +43,8 @@ impl CommandExecute for InitSubcommand {
         let mut inputs: HashMap<String, String> = HashMap::new();
         let mut dev_shell_packages: Vec<String> = Vec::new();
         let mut dev_shells: HashMap<String, DevShell> = HashMap::new();
-        let mut overlays: Vec<Overlay> = Vec::new();
+        let mut overlay_refs: Vec<String> = Vec::new();
+        let mut overlay_attrs: HashMap<String, String> = HashMap::new();
         let mut packages: HashMap<String, String> = HashMap::new();
 
         if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
@@ -87,7 +88,7 @@ impl CommandExecute for InitSubcommand {
                 String::from("rust-overlay"),
                 String::from("github:oxalica/rust-overlay"),
             );
-            overlays.push(Overlay::Raw(String::from("rust-overlay.overlays.default")));
+            overlay_refs.push(String::from("rust-overlay.overlays.default"));
 
             // Add an overlay for inferring a toolchain
             let rust_toolchain_func = String::from(if project.file_exists("rust-toolchain") {
@@ -98,10 +99,8 @@ impl CommandExecute for InitSubcommand {
                 // TODO: make this more granular
                 "prev.rust-bin.latest.default"
             });
-            overlays.push(Overlay::KV(
-                String::from("rustToolchain"),
-                rust_toolchain_func,
-            ));
+
+            overlay_attrs.insert(String::from("rustToolchain"), rust_toolchain_func);
             dev_shell_packages.push(String::from("rustToolchain"));
 
             // Add cargo-* tools
@@ -152,7 +151,9 @@ impl CommandExecute for InitSubcommand {
             inputs,
             systems,
             dev_shells,
-            overlays,
+            overlay_refs: overlay_refs.clone(),
+            overlay_attrs: overlay_attrs.clone(),
+            has_overlays: overlay_refs.len() + overlay_attrs.keys().len() > 0,
         };
 
         flake.validate()?;
@@ -214,9 +215,9 @@ impl Prompt {
     fn string(msg: &str, default: &str) -> Result<String, FhError> {
         match Text::new(msg).prompt() {
             Ok(text) => Ok(if text.is_empty() {
-                String::from(text)
-            } else {
                 String::from(default)
+            } else {
+                text
             }),
             Err(e) => Err(FhError::Interactive(e)),
         }
@@ -236,7 +237,9 @@ struct Flake {
     inputs: HashMap<String, String>,
     systems: Vec<String>,
     dev_shells: HashMap<String, DevShell>,
-    overlays: Vec<Overlay>,
+    overlay_refs: Vec<String>,
+    overlay_attrs: HashMap<String, String>,
+    has_overlays: bool,
 }
 
 impl Flake {
@@ -252,12 +255,6 @@ impl Flake {
 #[derive(Debug, Serialize)]
 struct DevShell {
     packages: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-enum Overlay {
-    Raw(String),
-    KV(String, String),
 }
 
 struct Project {
