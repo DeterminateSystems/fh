@@ -275,6 +275,15 @@ impl AttrType {
         flake_contents: &str,
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
+
+        if head
+            .arguments
+            .iter()
+            .any(|arg| &*arg.identifier == flake_input_name)
+        {
+            return Ok(new_flake_contents);
+        }
+
         let final_named_arg = head.arguments.last();
 
         // TODO: try to match the style of multiline function args (will be difficult because we
@@ -690,6 +699,49 @@ mod test {
         assert_eq!(
             updated_outputs,
             "outputs = { self, nixpkgs-new, ... } @ tes: { };"
+        );
+    }
+
+    #[test]
+    fn test_flake_6_doesnt_duplicate_outputs_args() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake6.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let updated_outputs = res.lines().find(|line| line.contains("outputs"));
+        assert!(updated_outputs.is_some());
+
+        let updated_outputs = updated_outputs.unwrap().trim();
+        assert_eq!(
+            updated_outputs,
+            "outputs = { self, nixpkgs, ... } @ tes: { };"
         );
     }
 }

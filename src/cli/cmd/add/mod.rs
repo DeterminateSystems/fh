@@ -65,7 +65,7 @@ impl CommandExecute for AddSubcommand {
     }
 }
 
-async fn load_flake(flake_path: &PathBuf) -> color_eyre::eyre::Result<(String, nixel::Parsed)> {
+async fn load_flake(flake_path: &PathBuf) -> color_eyre::Result<(String, nixel::Parsed)> {
     let mut contents = tokio::fs::read_to_string(&flake_path)
         .await
         .or_else(|e| {
