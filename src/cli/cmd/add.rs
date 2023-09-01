@@ -505,7 +505,7 @@ impl AttrType {
                     }
                 } else {
                     // unfortunately this is legal, but I don't wanna support it
-                    return Err(color_eyre::eyre::eyre!("empty set is kinda cringe"))?;
+                    return Err(color_eyre::eyre::eyre!("the `outputs` function doesn't take any arguments, and fh add doesn't support that yet. Replace it with: outputs = {{ ... }}: and try again."))?;
                 }
             }
         }
