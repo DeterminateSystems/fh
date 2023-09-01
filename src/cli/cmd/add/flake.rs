@@ -504,9 +504,7 @@ mod test {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        let updated_nixpkgs_input = res
-            .lines()
-            .find(|line| line.contains(input_value.as_str()));
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -540,9 +538,7 @@ mod test {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        let updated_nixpkgs_input = res
-            .lines()
-            .find(|line| line.contains(input_value.as_str()));
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -578,9 +574,8 @@ mod test {
             assert!(res.is_ok());
 
             let res = res.unwrap();
-            let updated_nixpkgs_input = res
-                .lines()
-                .find(|line| line.contains(input_value.as_str()));
+            let updated_nixpkgs_input =
+                res.lines().find(|line| line.contains(input_value.as_str()));
             assert!(updated_nixpkgs_input.is_some());
         }
     }
@@ -609,9 +604,7 @@ mod test {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        let updated_nixpkgs_input = res
-            .lines()
-            .find(|line| line.contains(input_value.as_str()));
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
@@ -681,9 +674,7 @@ mod test {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        let updated_nixpkgs_input = res
-            .lines()
-            .find(|line| line.contains(input_value.as_str()));
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
         assert!(updated_nixpkgs_input.is_some());
 
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
