@@ -1,4 +1,5 @@
 pub(crate) mod cmd;
+mod instrumentation;
 
 // For use in console output
 pub(super) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
@@ -19,4 +20,7 @@ pub(crate) struct Cli {
 
     #[clap(subcommand)]
     pub subcommand: cmd::FhSubcommands,
+
+    #[clap(flatten)]
+    pub instrumentation: instrumentation::Instrumentation,
 }
