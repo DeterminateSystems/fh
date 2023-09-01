@@ -8,7 +8,7 @@
 Install `fh` from FlakeHub:
 
 ```console
-nix profile install "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
+nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
 > **Note:** This builds `fh` locally on your computer.
