@@ -61,6 +61,8 @@
             name = "fh-${version}";
             src = self;
 
+            doCheck = true;
+
             LIBCLANG_PATH = "${final.libclang.lib}/lib";
             NIX_CFLAGS_COMPILE = lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
 
