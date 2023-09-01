@@ -477,3 +477,228 @@ pub(crate) fn position_to_offset(
         position.column
     ))
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_flake_1_rewrite_less_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake1.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res
+            .lines()
+            .find(|line| line.contains(&input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+    }
+
+    #[test]
+    fn test_flake_2_rewrite_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake2.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res
+            .lines()
+            .find(|line| line.contains(&input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+    }
+
+    #[test]
+    fn test_flake_3_rewriting_various_input_formats() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake3.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        for input in ["nixpkgs1", "nixpkgs2", "nixpkgs3"] {
+            let input_name = input.to_string();
+            let input_value =
+                url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+
+            let res = super::upsert_flake_input(
+                *parsed.expression.clone(),
+                input_name.clone(),
+                input_value.clone(),
+                flake_contents.clone(),
+                ["inputs", &input_name, "url"]
+                    .map(ToString::to_string)
+                    .into(),
+            );
+            assert!(res.is_ok());
+
+            let res = res.unwrap();
+            let updated_nixpkgs_input = res
+                .lines()
+                .find(|line| line.contains(&input_value.as_str()));
+            assert!(updated_nixpkgs_input.is_some());
+        }
+    }
+
+    #[test]
+    fn test_flake_4_add_new_input_before_existing_outputs() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake4.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res
+            .lines()
+            .find(|line| line.contains(&input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let inputs_line_idx = res
+            .lines()
+            .enumerate()
+            .find_map(|(idx, line)| {
+                if line.contains("inputs") {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        let outputs_line_idx = res
+            .lines()
+            .enumerate()
+            .find_map(|(idx, line)| {
+                if line.contains("outputs") {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        assert!(
+            inputs_line_idx < outputs_line_idx,
+            "`inputs` should have been inserted above `outputs`"
+        );
+
+        // (there's no other `inputs`, so we insert a cosmetic newline, instead of having it right
+        // on top of `outputs`)
+        assert_eq!(
+            inputs_line_idx + 2,
+            outputs_line_idx,
+            "`inputs` should have been inserted exactly 2 lines above `outputs`"
+        );
+    }
+
+    #[test]
+    fn test_flake_5_rewrite_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake5.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs-new");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res
+            .lines()
+            .find(|line| line.contains(&input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs-new.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let updated_outputs = res.lines().find(|line| line.contains("outputs"));
+        assert!(updated_outputs.is_some());
+
+        let updated_outputs = updated_outputs.unwrap().trim();
+        assert_eq!(
+            updated_outputs,
+            "outputs = { self, nixpkgs-new, ... } @ tes: { };"
+        );
+    }
+}
