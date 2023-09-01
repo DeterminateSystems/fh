@@ -51,7 +51,7 @@ enum Subcommands {
     Flakes,
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
-    /// List all releases for a specific flakes on FlakeHub.
+    /// List all releases for a specific flake on FlakeHub.
     Releases { flake: String },
 }
 
