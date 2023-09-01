@@ -148,23 +148,35 @@ impl AttrType {
         flake_input_name: &str,
         flake_input_value: &url::Url,
     ) -> color_eyre::Result<String> {
-        let mut added_cosmetic_newline = false;
-
-        // We don't do anything fancy like trying to match the existing format of e.g.
-        // `inputs = { <input_name>.url = "<input_value>"; };`
-        let mut flake_input =
-            format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-
         match self {
-            AttrType::Inputs(_) => {
-                let (from_span, _to_span) = self.span();
+            AttrType::Inputs(ref inputs_attr) => {
+                match inputs_attr.from.len() {
+                    // inputs = { nixpkgs.url = ""; };
+                    1 => {
+                        let first_input = find_attrset(&inputs_attr.to, None)?.expect("");
+                        let (from_span, _to_span) = Self::kv_to_span(&first_input);
+                        let flake_input =
+                            format!(r#"{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
+                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
+                    }
 
-                AttrType::insert_input_above_span(
-                    from_span,
-                    flake_contents,
-                    &flake_input,
-                    added_cosmetic_newline,
-                )
+                    // inputs.nixpkgs = { url = ""; inputs.something.follows = ""; };
+                    // OR
+                    // inputs.nixpkgs.url = "";
+                    2 | 3 => {
+                        let (from_span, _to_span) = self.span();
+
+                        let flake_input = format!(
+                            r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#
+                        );
+                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
+                    }
+
+                    // I don't think this is possible, but just in case.
+                    len => Err(color_eyre::eyre::eyre!(
+                        "attrpath had unexpected length {len}"
+                    )),
+                }
             }
             AttrType::Outputs(ref outputs_attr) => {
                 let (from_span, to_span) = self.span();
@@ -200,14 +212,15 @@ impl AttrType {
             AttrType::MissingInputs((outputs_span_from, _outputs_span_to)) => {
                 // If we're not adding our new input above an existing `inputs` construct, let's add
                 // another newline so that it looks nicer.
-                flake_input.push_str(NEWLINE);
-                added_cosmetic_newline = true;
+                let flake_input = format!(
+                    r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}{NEWLINE}"#
+                );
 
-                AttrType::insert_input_above_span(
+                AttrType::insert_input(
                     outputs_span_from,
                     flake_contents,
                     &flake_input,
-                    added_cosmetic_newline,
+                    true, // we need to adjust the line numbers since we added an extra newline above
                 )
             }
             AttrType::MissingOutputs((_inputs_span_from, _inputs_span_to)) => {
@@ -229,7 +242,7 @@ impl AttrType {
         }
     }
 
-    pub(crate) fn insert_input_above_span(
+    pub(crate) fn insert_input(
         span: nixel::Span,
         flake_contents: &str,
         flake_input: &str,
@@ -336,16 +349,20 @@ impl AttrType {
         Ok(new_flake_contents)
     }
 
+    fn kv_to_span(kv: &nixel::BindingKeyValue) -> (nixel::Span, nixel::Span) {
+        (
+            kv.from
+                .iter()
+                .next()
+                .map(|v| v.span())
+                .expect("attr existed, thus it must have a span"),
+            kv.to.span(),
+        )
+    }
+
     pub(crate) fn span(&self) -> (nixel::Span, nixel::Span) {
         match self {
-            AttrType::Inputs(attr) | AttrType::Outputs(attr) => (
-                attr.from
-                    .iter()
-                    .next()
-                    .map(|v| v.span())
-                    .expect("attr existed, thus it must have a span"),
-                attr.to.span(),
-            ),
+            AttrType::Inputs(kv) | AttrType::Outputs(kv) => Self::kv_to_span(kv),
             AttrType::MissingInputs(_)
             | AttrType::MissingOutputs(_)
             | AttrType::MissingInputsAndOutputs(_) => todo!(),
@@ -660,7 +677,7 @@ mod test {
     }
 
     #[test]
-    fn test_flake_5_rewrite_simple_flake_input() {
+    fn test_flake_5_insert_input_into_stylized_inputs_attrs() {
         let flake_contents = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/samples/flake5.test.nix"
@@ -689,7 +706,7 @@ mod test {
         let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
         assert_eq!(
             updated_nixpkgs_input,
-            "inputs.nixpkgs-new.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+            "nixpkgs-new.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
         );
 
         let updated_outputs = res.lines().find(|line| line.contains("outputs"));
