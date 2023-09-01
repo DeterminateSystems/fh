@@ -7,7 +7,7 @@ on:
 
 jobs:
   rust-fmt-and-clippy:
-    runs-on: ubuntu-22.04
+    runs-on: UbuntuLatest32Cores128G
     steps:
       - uses: actions/checkout@v3
 
