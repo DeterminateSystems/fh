@@ -35,14 +35,15 @@ impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let flake_contents = tokio::fs::read_to_string(&self.flake_path)
             .await
-            .wrap_err_with(|| format!("Failed to open {}", self.flake_path.display()))?;
-
-        if flake_contents.is_empty() {
-            return Err(color_eyre::eyre::eyre!(
-                "{} was empty",
-                self.flake_path.display()
-            ))?;
-        }
+            .wrap_err_with(|| format!("Failed to open {}", self.flake_path.display()))
+            .map(|contents| if contents.is_empty() {
+                r#"{
+  description = "...";
+  outputs = { ... } @ inputs: {};
+}"#.to_string()
+            } else {
+                contents
+            })?;
 
         let parsed = nixel::parse(flake_contents.clone());
         let (flake_input_name, flake_input_url) =
