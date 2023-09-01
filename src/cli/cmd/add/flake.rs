@@ -1,219 +1,8 @@
 use std::collections::VecDeque;
-use std::path::PathBuf;
-use std::process::ExitCode;
-
-use clap::Parser;
-use color_eyre::eyre::WrapErr;
-
-use super::CommandExecute;
 
 const NEWLINE: &str = "\n";
 
-/// Adds a flake input to your flake.nix.
-#[derive(Parser)]
-pub(crate) struct AddSubcommand {
-    /// The flake.nix to modify.
-    #[clap(long, default_value = "./flake.nix")]
-    pub(crate) flake_path: PathBuf,
-    /// The name of the flake input.
-    ///
-    /// If not provided, it will be inferred from the provided input URL (if possible).
-    #[clap(long)]
-    pub(crate) input_name: Option<String>,
-    /// The flake reference to add as an input.
-    ///
-    /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2305.*` (without a URL
-    /// scheme) will be inferred as a FlakeHub input.
-    pub(crate) input_ref: String,
-
-    #[clap(from_global)]
-    api_addr: url::Url,
-}
-
-#[async_trait::async_trait]
-impl CommandExecute for AddSubcommand {
-    async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let (flake_contents, parsed) = load_flake(&self.flake_path).await?;
-
-        let (flake_input_name, flake_input_url) =
-            infer_flake_input_name_url(self.api_addr, self.input_ref, self.input_name).await?;
-        let input_url_attr_path: VecDeque<String> = [
-            String::from("inputs"),
-            flake_input_name.clone(),
-            String::from("url"),
-        ]
-        .into();
-
-        let new_flake_contents = upsert_flake_input(
-            *parsed.expression,
-            flake_input_name,
-            flake_input_url,
-            flake_contents,
-            input_url_attr_path,
-        )?;
-
-        tokio::fs::write(self.flake_path, new_flake_contents).await?;
-
-        Ok(ExitCode::SUCCESS)
-    }
-}
-
-async fn load_flake(flake_path: &PathBuf) -> color_eyre::eyre::Result<(String, nixel::Parsed)> {
-    let fallback = r#"{
-  description = "My new flake.";
-
-  outputs = { ... } @ inputs: {};
-}
-"#;
-
-    let mut contents = tokio::fs::read_to_string(&flake_path)
-        .await
-        .or_else(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                Ok(fallback.to_string())
-            } else {
-                Err(e)
-            }
-        })
-        .wrap_err_with(|| format!("Failed to open {}", flake_path.display()))?;
-
-    if contents.trim().is_empty() {
-        contents = fallback.to_string();
-    };
-
-    let mut parsed = nixel::parse(contents.clone());
-
-    if let nixel::Expression::Map(map) = *parsed.expression.clone() {
-        if map.bindings.is_empty() {
-            contents = fallback.to_string();
-            parsed = nixel::parse(contents.clone());
-        }
-    }
-
-    Ok((contents, parsed))
-}
-
-async fn infer_flake_input_name_url(
-    api_addr: url::Url,
-    flake_ref: String,
-    input_name: Option<String>,
-) -> color_eyre::Result<(String, url::Url)> {
-    let url_result = flake_ref.parse::<url::Url>();
-
-    match url_result {
-        // A URL like `github:nixos/nixpkgs`
-        Ok(parsed_url) if parsed_url.host().is_none() => {
-            // TODO: validate that the format of all Nix-supported schemes allows us to do this;
-            // else, have an allowlist of schemes
-            let mut path_parts = parsed_url.path().split('/');
-            path_parts.next(); // e.g. in `fh:` or `github:`, the org name
-
-            match (input_name, path_parts.next()) {
-                (Some(input_name), _) => Ok((input_name, parsed_url)),
-                (None, Some(input_name)) => Ok((input_name.to_string(), parsed_url)),
-                (None, _) =>  Err(color_eyre::eyre::eyre!(
-                    "cannot infer an input name for {parsed_url}; please specify one with the `--input-name` flag"
-                ))
-            }
-        }
-        // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2305`
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            let (org, repo, version) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
-                // `nixos/nixpkgs/0.2305`
-                [org, repo, version] => {
-                    let version = version.strip_suffix(".tar.gz").unwrap_or(version);
-                    let version = version.strip_prefix('v').unwrap_or(version);
-
-                    (org, repo, Some(version))
-                }
-                // `nixos/nixpkgs`
-                [org, repo] => {
-                    (org, repo, None)
-                }
-                _ => Err(color_eyre::eyre::eyre!(
-                    "flakehub input did not match the expected format of `org/repo` or `org/repo/version`"
-                ))?,
-            };
-
-            let (flakehub_input, url) =
-                get_flakehub_repo_and_url(api_addr, org, repo, version).await?;
-
-            if let Some(input_name) = input_name {
-                Ok((input_name, url))
-            } else {
-                Ok((flakehub_input, url))
-            }
-        }
-        // A URL like `https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz`
-        Ok(parsed_url) => {
-            if let Some(input_name) = input_name {
-                Ok((input_name, parsed_url))
-            } else {
-                Err(color_eyre::eyre::eyre!(
-                    "cannot infer an input name for `{flake_ref}`; please specify one with the `--input-name` flag"
-                ))?
-            }
-        }
-        Err(e) => Err(e)?,
-    }
-}
-
-async fn get_flakehub_repo_and_url(
-    api_addr: url::Url,
-    org: &str,
-    repo: &str,
-    version: Option<&str>,
-) -> color_eyre::Result<(String, url::Url)> {
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(
-        "Accept",
-        reqwest::header::HeaderValue::from_static("application/json"),
-    );
-
-    let client = reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
-        .default_headers(headers)
-        .build()?;
-
-    let mut flakehub_json_url = api_addr.clone();
-    {
-        let mut path_segments_mut = flakehub_json_url
-            .path_segments_mut()
-            .expect("flakehub url cannot be base (this should never happen)");
-
-        match version {
-            Some(version) => {
-                path_segments_mut
-                    .push("version")
-                    .push(org)
-                    .push(repo)
-                    .push(version);
-            }
-            None => {
-                path_segments_mut.push("f").push(org).push(repo);
-            }
-        }
-    }
-
-    #[derive(Debug, serde_derive::Deserialize)]
-    struct ProjectCanonicalNames {
-        project: String,
-        // FIXME: detect Nix version and strip .tar.gz if it supports it
-        pretty_download_url: url::Url,
-    }
-
-    let res = client.get(&flakehub_json_url.to_string()).send().await?;
-
-    if res.status().is_success() {
-        let res = res.json::<ProjectCanonicalNames>().await?;
-
-        Ok((res.project, res.pretty_download_url))
-    } else {
-        Err(color_eyre::eyre::eyre!(res.text().await?))
-    }
-}
-
-fn upsert_flake_input(
+pub(crate) fn upsert_flake_input(
     expr: nixel::Expression,
     flake_input_name: String,
     flake_input_value: url::Url,
@@ -252,7 +41,7 @@ fn upsert_flake_input(
     }
 }
 
-fn find_attrset(
+pub(crate) fn find_attrset(
     expr: &nixel::Expression,
     attr_path: Option<VecDeque<String>>,
 ) -> color_eyre::Result<Option<nixel::BindingKeyValue>> {
@@ -344,7 +133,7 @@ fn find_attrset(
     Ok(None)
 }
 
-enum AttrType {
+pub(crate) enum AttrType {
     Inputs(nixel::BindingKeyValue),
     Outputs(nixel::BindingKeyValue),
     MissingInputs((nixel::Span, nixel::Span)),
@@ -353,7 +142,7 @@ enum AttrType {
 }
 
 impl AttrType {
-    fn process(
+    pub(crate) fn process(
         self,
         flake_contents: &str,
         flake_input_name: &str,
@@ -440,7 +229,7 @@ impl AttrType {
         }
     }
 
-    fn insert_input_above_span(
+    pub(crate) fn insert_input_above_span(
         span: nixel::Span,
         flake_contents: &str,
         flake_input: &str,
@@ -478,7 +267,7 @@ impl AttrType {
         Ok(new_flake_contents)
     }
 
-    fn insert_input_name_into_outputs_function(
+    pub(crate) fn insert_input_name_into_outputs_function(
         flake_input_name: &str,
         head: &nixel::FunctionHeadDestructured,
         from_span: nixel::Span,
@@ -538,7 +327,7 @@ impl AttrType {
         Ok(new_flake_contents)
     }
 
-    fn span(&self) -> (nixel::Span, nixel::Span) {
+    pub(crate) fn span(&self) -> (nixel::Span, nixel::Span) {
         match self {
             AttrType::Inputs(attr) | AttrType::Outputs(attr) => (
                 attr.from
@@ -555,7 +344,7 @@ impl AttrType {
     }
 }
 
-fn upsert_into_inputs_and_outputs(
+pub(crate) fn upsert_into_inputs_and_outputs(
     flake_input_name: String,
     flake_input_value: url::Url,
     mut flake_contents: String,
@@ -609,7 +398,7 @@ fn upsert_into_inputs_and_outputs(
     Ok(flake_contents)
 }
 
-fn replace_input_value(
+pub(crate) fn replace_input_value(
     parts: &[nixel::Part],
     flake_input_value: &url::Url,
     flake_contents: &str,
@@ -649,7 +438,7 @@ fn replace_input_value(
     Ok(new_flake_contents)
 }
 
-fn span_to_start_end_offsets(
+pub(crate) fn span_to_start_end_offsets(
     flake_contents: &str,
     span: &nixel::Span,
 ) -> color_eyre::Result<(usize, usize)> {
@@ -662,7 +451,7 @@ fn span_to_start_end_offsets(
     ))
 }
 
-fn position_to_offset(
+pub(crate) fn position_to_offset(
     flake_contents: &str,
     position: &nixel::Position,
 ) -> color_eyre::Result<usize> {
@@ -687,4 +476,220 @@ fn position_to_offset(
         position.line,
         position.column
     ))
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_flake_1_rewrite_less_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake1.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+    }
+
+    #[test]
+    fn test_flake_2_rewrite_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake2.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+    }
+
+    #[test]
+    fn test_flake_3_rewriting_various_input_formats() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake3.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        for input in ["nixpkgs1", "nixpkgs2", "nixpkgs3"] {
+            let input_name = input.to_string();
+            let input_value =
+                url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+
+            let res = super::upsert_flake_input(
+                *parsed.expression.clone(),
+                input_name.clone(),
+                input_value.clone(),
+                flake_contents.clone(),
+                ["inputs", &input_name, "url"]
+                    .map(ToString::to_string)
+                    .into(),
+            );
+            assert!(res.is_ok());
+
+            let res = res.unwrap();
+            let updated_nixpkgs_input =
+                res.lines().find(|line| line.contains(input_value.as_str()));
+            assert!(updated_nixpkgs_input.is_some());
+        }
+    }
+
+    #[test]
+    fn test_flake_4_add_new_input_before_existing_outputs() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake4.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let inputs_line_idx = res
+            .lines()
+            .enumerate()
+            .find_map(|(idx, line)| {
+                if line.contains("inputs") {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        let outputs_line_idx = res
+            .lines()
+            .enumerate()
+            .find_map(|(idx, line)| {
+                if line.contains("outputs") {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        assert!(
+            inputs_line_idx < outputs_line_idx,
+            "`inputs` should have been inserted above `outputs`"
+        );
+
+        // (there's no other `inputs`, so we insert a cosmetic newline, instead of having it right
+        // on top of `outputs`)
+        assert_eq!(
+            inputs_line_idx + 2,
+            outputs_line_idx,
+            "`inputs` should have been inserted exactly 2 lines above `outputs`"
+        );
+    }
+
+    #[test]
+    fn test_flake_5_rewrite_simple_flake_input() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake5.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs-new");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let updated_nixpkgs_input = res.lines().find(|line| line.contains(input_value.as_str()));
+        assert!(updated_nixpkgs_input.is_some());
+
+        let updated_nixpkgs_input = updated_nixpkgs_input.unwrap().trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "inputs.nixpkgs-new.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let updated_outputs = res.lines().find(|line| line.contains("outputs"));
+        assert!(updated_outputs.is_some());
+
+        let updated_outputs = updated_outputs.unwrap().trim();
+        assert_eq!(
+            updated_outputs,
+            "outputs = { self, nixpkgs-new, ... } @ tes: { };"
+        );
+    }
 }
