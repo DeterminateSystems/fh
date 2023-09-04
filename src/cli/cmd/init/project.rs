@@ -10,16 +10,20 @@ impl Project {
     }
 
     // Languages
-    pub(super) fn maybe_python(&self) -> bool {
-        self.has_one_of(&["setup.py", "requirements.txt"])
+    pub(super) fn maybe_golang(&self) -> bool {
+        self.has_file("go.mod")
     }
 
     pub(super) fn maybe_javascript(&self) -> bool {
         self.has_file("package.json")
     }
 
-    pub(super) fn maybe_golang(&self) -> bool {
-        self.has_file("go.mod")
+    pub(super) fn maybe_python(&self) -> bool {
+        self.has_one_of(&["setup.py", "requirements.txt"])
+    }
+
+    pub(super) fn maybe_ruby(&self) -> bool {
+        self.has_one_of(&["Gemfile", "config.ru", "Rakefile"])
     }
 
     pub(super) fn maybe_rust(&self) -> bool {

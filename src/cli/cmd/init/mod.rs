@@ -1,12 +1,11 @@
 mod project;
+mod prompt;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
-use handlebars::{
-    Context, Handlebars, Helper, HelperDef, HelperResult, JsonRender, Output, RenderContext,
-};
-use inquire::{Confirm, MultiSelect, Select, Text};
+use handlebars::Handlebars;
 use project::Project;
+use prompt::Prompt;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -20,19 +19,24 @@ use super::{CommandExecute, FhError};
 const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
 ];
-
 const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
 const JS_PACKAGING_TOOLS: &[&str] = &["pnpm", "yarn"];
 const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.09"];
 const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
+const RUBY_VERSIONS: &[&str] = &["3.2", "3.1"];
 const GO_VERSIONS: &[&str] = &["20", "19", "18", "17"];
-
+const COMMON_TOOLS: &[&str] = &["curl", "Git", "jq", "wget"];
 const SYSTEMS: &[&str] = &[
     "x86_64-linux",
     "aarch64-linux",
     "x86_64-darwin",
     "aarch64-darwin",
 ];
+
+// Helper functions
+fn version_as_attr(v: &str) -> String {
+    v.replace('.', "")
+}
 
 /// Create a new flake.nix using an interactive initializer.
 #[derive(Parser)]
@@ -64,16 +68,9 @@ impl CommandExecute for InitSubcommand {
         let project = Project::new(self.root);
         let description = Prompt::maybe_string("A description for your flake")?;
 
-        let systems =
-            MultiSelect::new("Which systems would you like to support?", SYSTEMS.to_vec())
-                .prompt()?
-                .iter()
-                .map(|s| String::from(*s))
-                .collect();
+        let systems = Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
 
-        let nixpkgs = Confirm::new("Do you want to include a Nixpkgs input?")
-            .with_default(false)
-            .prompt()?;
+        let nixpkgs = Prompt::bool("Do you want to include a Nixpkgs input?")?;
 
         if nixpkgs {
             inputs.insert(
@@ -88,18 +85,57 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
+        // Go projects
+        if project.maybe_golang() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
+            if inputs.get("nixpkgs").is_none() && Prompt::bool(
+                "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
+            )? {
+                inputs.insert(
+                    String::from("nixpkgs"),
+                    String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
+                );
+            }
+            let go_version = Prompt::select("Select a version of Go", GO_VERSIONS)?;
+            dev_shell_packages.push(format!("go_1_{go_version}"));
+
+            if Prompt::bool("Would you like to provide a Go package output?")? {
+                let name = Prompt::string("Enter the name of the output", "default")?;
+                packages.insert(name, String::from("pkgs.buildGoPackage {}"));
+            }
+        }
+
+        // JavaScript projects
+        if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")? {
+            let version =
+                Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
+            dev_shell_packages.push(format!("nodejs-{version}_x"));
+
+            for tool in Prompt::multi_select(
+                "Which packaging tools would you like to install (npm is already included)",
+                JS_PACKAGING_TOOLS,
+            )? {
+                dev_shell_packages.push(format!("nodePackages.{tool}"));
+            }
+        }
+
         // Python projects
         if project.maybe_python() && Prompt::bool("This seems to be a Python project. Would you like to initialize your flake with built-in Python dependencies?")? {
-            let python_version = Select::new("Select a version of Python", PYTHON_VERSIONS.to_vec()).prompt()?;
-            let python_version_attr = python_version.replace(".", "");
+            let python_version = Prompt::select("Select a version of Python", PYTHON_VERSIONS)?;
+            let python_version_attr = version_as_attr(&python_version);
             dev_shell_packages.push(format!("python{python_version_attr}"));
-            let python_tools = MultiSelect::new(
+            let python_tools = Prompt::multi_select(
                 "You can add any of these Python tools to your environment if you wish",
-                PYTHON_TOOLS.to_vec(),
-            )
-            .prompt()?;
+                PYTHON_TOOLS,
+            )?;
             let tools_pkgs = format!("(with python{python_version_attr}Packages; [ {} ])", python_tools.join(" "));
             dev_shell_packages.push(tools_pkgs);
+        }
+
+        // Ruby projects
+        if project.maybe_ruby() && Prompt::bool("This seems to be a Ruby project. Would you like to initialize your flake with built-in Ruby dependencies?")? {
+            let ruby_version = Prompt::select("Select a version of Ruby", RUBY_VERSIONS)?;
+            let ruby_version_attr = version_as_attr(&ruby_version);
+            dev_shell_packages.push(format!("ruby_{ruby_version_attr}"));
         }
 
         // Rust projects
@@ -125,13 +161,10 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("rustToolchain"));
 
             // Add cargo-* tools
-            for tool in MultiSelect::new(
+            for tool in Prompt::multi_select(
                 "You can add any of these Cargo tools to your environment if you wish",
-                CARGO_TOOLS.to_vec(),
-            )
-            .prompt()?
-            .iter()
-            {
+                CARGO_TOOLS,
+            )? {
                 dev_shell_packages.push(format!("cargo-{tool}"));
             }
 
@@ -140,47 +173,21 @@ impl CommandExecute for InitSubcommand {
             }
         }
 
-        // Go projects
-        if project.maybe_golang() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
-            if inputs.get("nixpkgs").is_none() && Prompt::bool(
-                "You'll need a Nixpkgs input for Go projects. Would you like to add one?",
-            )? {
-                inputs.insert(
-                    String::from("nixpkgs"),
-                    String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
-                );
-            }
-            let go_version =
-            Select::new("Select a version of Go", GO_VERSIONS.to_vec()).prompt()?;
-            dev_shell_packages.push(format!("go_1_{go_version}"));
-
-            if Prompt::bool("Would you like to provide a Go package output?")? {
-                let name = Prompt::string("Enter the name of the output", "default")?;
-                packages.insert(name, String::from("pkgs.buildGoPackage {}"));
-            }
-        }
-
-        // JavaScript projects
-        if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")? {
-            let version =
-                Select::new("Select a version of Node.js", NODE_VERSIONS.to_vec()).prompt()?;
-            dev_shell_packages.push(format!("nodejs-{version}_x"));
-
-            for tool in MultiSelect::new(
-                "Which packaging tools would you like to install (npm is already included)",
-                JS_PACKAGING_TOOLS.to_vec(),
-            )
-            .prompt()?
-            {
-                dev_shell_packages.push(format!("nodePackages.{tool}"));
-            }
-        }
-
         // Zig projects
         if project.maybe_zig() && Prompt::bool("This seems to be a Zig project. Would you like to initialize your flake with built-in Zig dependencies?")? {
             dev_shell_packages.push(String::from("zig"));
         }
 
+        // Other tools
+        for tool in Prompt::multi_select(
+            "You can add any of these standard utilities to your environment if you wish",
+            COMMON_TOOLS,
+        )? {
+            let attr = tool.to_lowercase();
+            dev_shell_packages.push(attr);
+        }
+
+        // Add the default devShell
         dev_shells.insert(
             String::from("default"),
             DevShell {
@@ -200,31 +207,7 @@ impl CommandExecute for InitSubcommand {
 
         flake.validate()?;
 
-        #[derive(Clone, Copy)]
-        struct OverlayHelper;
-
-        impl HelperDef for OverlayHelper {
-            fn call<'reg: 'rc, 'rc>(
-                &self,
-                h: &Helper,
-                _: &Handlebars,
-                _: &Context,
-                _: &mut RenderContext,
-                out: &mut dyn Output,
-            ) -> HelperResult {
-                let key = h.param(0).unwrap();
-                out.write(key.value().render().as_ref())?;
-
-                if let Some(value) = h.param(1) {
-                    out.write(&format!(" = {};", value.value().render()))?;
-                }
-
-                Ok(())
-            }
-        }
-
         let mut handlebars = Handlebars::new();
-        handlebars.register_helper("overlay", Box::new(OverlayHelper));
         handlebars
             .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
             .map_err(Box::new)?;
@@ -237,39 +220,13 @@ impl CommandExecute for InitSubcommand {
         if !project.has_file(".envrc") && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")?{
             let mut envrc = File::create(".envrc")?;
             envrc.write_all(b"use flake")?;
+        } else {
+            println!(
+                "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
+            );
         }
-
-        println!(
-            "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
-        );
 
         Ok(ExitCode::SUCCESS)
-    }
-}
-
-struct Prompt;
-
-impl Prompt {
-    fn bool(msg: &str) -> Result<bool, FhError> {
-        Confirm::new(msg).prompt().map_err(FhError::Interactive)
-    }
-
-    fn string(msg: &str, default: &str) -> Result<String, FhError> {
-        match Text::new(msg).prompt() {
-            Ok(text) => Ok(if text.is_empty() {
-                String::from(default)
-            } else {
-                text
-            }),
-            Err(e) => Err(FhError::Interactive(e)),
-        }
-    }
-
-    fn maybe_string(msg: &str) -> Result<Option<String>, FhError> {
-        match Text::new(msg).prompt() {
-            Ok(text) => Ok(if text.is_empty() { None } else { Some(text) }),
-            Err(e) => Err(FhError::Interactive(e)),
-        }
     }
 }
 
