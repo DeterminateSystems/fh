@@ -1,9 +1,12 @@
+mod project;
+
 use clap::Parser;
 use color_eyre::eyre::Result;
 use handlebars::{
     Context, Handlebars, Helper, HelperDef, HelperResult, JsonRender, Output, RenderContext,
 };
 use inquire::{Confirm, MultiSelect, Select, Text};
+use project::Project;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -20,7 +23,8 @@ const CARGO_TOOLS: &[&str] = &[
 
 const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
 const JS_PACKAGING_TOOLS: &[&str] = &["pnpm", "yarn"];
-
+const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.09"];
+const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
 const GO_VERSIONS: &[&str] = &["20", "19", "18", "17"];
 
 const SYSTEMS: &[&str] = &[
@@ -84,6 +88,20 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
+        // Python projects
+        if project.maybe_python() && Prompt::bool("This seems to be a Python project. Would you like to initialize your flake with built-in Python dependencies?")? {
+            let python_version = Select::new("Select a version of Python", PYTHON_VERSIONS.to_vec()).prompt()?;
+            let python_version_attr = python_version.replace(".", "");
+            dev_shell_packages.push(format!("python{python_version_attr}"));
+            let python_tools = MultiSelect::new(
+                "You can add any of these Python tools to your environment if you wish",
+                PYTHON_TOOLS.to_vec(),
+            )
+            .prompt()?;
+            let tools_pkgs = format!("(with python{python_version_attr}Packages; [ {} ])", python_tools.join(" "));
+            dev_shell_packages.push(tools_pkgs);
+        }
+
         // Rust projects
         if project.maybe_rust() && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?")? {
             // Add Rust overlay
@@ -94,9 +112,9 @@ impl CommandExecute for InitSubcommand {
             overlay_refs.push(String::from("rust-overlay.overlays.default"));
 
             // Add an overlay for inferring a toolchain
-            let rust_toolchain_func = String::from(if project.file_exists("rust-toolchain") {
+            let rust_toolchain_func = String::from(if project.has_file("rust-toolchain") {
                 "prev.rust-bin.fromRustupToolchainFile ./rust-toolchain"
-            } else if project.file_exists("rust-toolchain.toml") {
+            } else if project.has_file("rust-toolchain.toml") {
                 "prev.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
             } else {
                 // TODO: make this more granular
@@ -142,7 +160,8 @@ impl CommandExecute for InitSubcommand {
             }
         }
 
-        if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")?{
+        // JavaScript projects
+        if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")? {
             let version =
                 Select::new("Select a version of Node.js", NODE_VERSIONS.to_vec()).prompt()?;
             dev_shell_packages.push(format!("nodejs-{version}_x"));
@@ -155,6 +174,11 @@ impl CommandExecute for InitSubcommand {
             {
                 dev_shell_packages.push(format!("nodePackages.{tool}"));
             }
+        }
+
+        // Zig projects
+        if project.maybe_zig() && Prompt::bool("This seems to be a Zig project. Would you like to initialize your flake with built-in Zig dependencies?")? {
+            dev_shell_packages.push(String::from("zig"));
         }
 
         dev_shells.insert(
@@ -210,7 +234,7 @@ impl CommandExecute for InitSubcommand {
         let mut flake_dot_nix = File::create(self.output)?;
         flake_dot_nix.write_all(output.as_bytes())?;
 
-        if !project.file_exists(".envrc") && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")?{
+        if !project.has_file(".envrc") && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")?{
             let mut envrc = File::create(".envrc")?;
             envrc.write_all(b"use flake")?;
         }
@@ -273,39 +297,4 @@ impl Flake {
 #[derive(Debug, Serialize)]
 struct DevShell {
     packages: Vec<String>,
-}
-
-struct Project {
-    root: PathBuf,
-}
-
-impl Project {
-    fn new(root: PathBuf) -> Self {
-        Self { root }
-    }
-
-    fn maybe_javascript(&self) -> bool {
-        self.has_file("package.json")
-    }
-
-    fn maybe_golang(&self) -> bool {
-        self.has_file("go.mod")
-    }
-
-    fn maybe_rust(&self) -> bool {
-        self.has_file("Cargo.toml")
-    }
-
-    fn has_file(&self, file: &str) -> bool {
-        self.root.join(file).exists()
-    }
-
-    #[allow(dead_code)]
-    fn has_one_of(&self, files: &[&str]) -> bool {
-        files.iter().any(|f| self.has_file(f))
-    }
-
-    fn file_exists(&self, file: &str) -> bool {
-        self.root.join(file).exists()
-    }
 }
