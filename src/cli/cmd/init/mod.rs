@@ -69,6 +69,10 @@ impl CommandExecute for InitSubcommand {
         let description = Prompt::maybe_string("A description for your flake")?;
 
         let systems = Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
+        if systems.is_empty() {
+            eprintln!("You need to select at least one system");
+            return Ok(ExitCode::FAILURE);
+        }
 
         let nixpkgs = Prompt::bool("Do you want to include a Nixpkgs input?")?;
 
