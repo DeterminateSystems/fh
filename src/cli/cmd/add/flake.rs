@@ -97,8 +97,7 @@ pub(crate) fn find_all_attrsets_by_path(
 
     match expr {
         nixel::Expression::Map(map) => {
-            let mut bindings = map.bindings.iter().peekable();
-            while let Some(binding) = bindings.next() {
+            for binding in map.bindings.iter() {
                 match binding {
                     nixel::Binding::KeyValue(kv) => {
                         if let Some(ref attr_path) = attr_path {
