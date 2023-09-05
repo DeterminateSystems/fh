@@ -98,11 +98,6 @@ impl CommandExecute for InitSubcommand {
             }
             let go_version = Prompt::select("Select a version of Go", GO_VERSIONS)?;
             dev_shell_packages.push(format!("go_1_{go_version}"));
-
-            if Prompt::bool("Would you like to provide a Go package output?")? {
-                let name = Prompt::string("Enter the name of the output", "default")?;
-                packages.insert(name, String::from("pkgs.buildGoPackage {}"));
-            }
         }
 
         // Java projects
@@ -213,7 +208,7 @@ impl CommandExecute for InitSubcommand {
 
         // Other tools
         for tool in Prompt::multi_select(
-            "You can add any of these standard utilities to your environment if you wish",
+            "Add any of these standard utilities to your environment if you wish",
             COMMON_TOOLS,
         )? {
             let attr = tool.to_lowercase();
