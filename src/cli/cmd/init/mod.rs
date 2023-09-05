@@ -65,6 +65,7 @@ impl CommandExecute for InitSubcommand {
         let mut dev_shells: HashMap<String, DevShell> = HashMap::new();
         let mut overlay_refs: Vec<String> = Vec::new();
         let mut overlay_attrs: HashMap<String, String> = HashMap::new();
+        let mut env_vars: HashMap<String, String> = HashMap::new();
 
         if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
             println!("Exiting. Let's a build a new flake soon, though :)");
@@ -207,11 +208,10 @@ impl CommandExecute for InitSubcommand {
             if Prompt::bool("Do you want to add Rust Analyzer to the environment?")? {
                 dev_shell_packages.push(String::from("rust-analyzer"));
             }
-        }
 
-        // Terraform projects
-        if project.maybe_terraform()? && Prompt::bool("This seems to be a Terraform project. Would you like to initialize your flake with built-in Terraform dependencies?")? {
-            dev_shell_packages.push(String::from("terraform"));
+            if Prompt::bool("Do you want to enable Rust backtrace in the environment?")? {
+                env_vars.insert(String::from("RUST_BACKTRACE"), String::from("1"));
+            }
         }
 
         // Zig projects
@@ -249,6 +249,7 @@ impl CommandExecute for InitSubcommand {
             String::from("default"),
             DevShell {
                 packages: dev_shell_packages,
+                env_vars,
             },
         );
 
@@ -315,4 +316,5 @@ impl Flake {
 #[derive(Debug, Serialize)]
 struct DevShell {
     packages: Vec<String>,
+    env_vars: HashMap<String, String>,
 }

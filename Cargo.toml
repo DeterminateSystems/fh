@@ -40,4 +40,3 @@ tracing = "0.1.37"
 tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 url = { version = "2.4.0", features = ["serde"] }
-glob = "0.3.1"

@@ -42,9 +42,6 @@ pub(super) struct FlakeHubClient {
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum FhError {
-    #[error("glob error: {0}")]
-    Glob(#[from] glob::PatternError),
-
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 

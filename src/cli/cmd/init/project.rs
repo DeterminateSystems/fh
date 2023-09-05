@@ -1,9 +1,5 @@
 use std::path::PathBuf;
 
-use glob::glob;
-
-use crate::cli::cmd::FhError;
-
 pub(super) struct Project {
     root: PathBuf,
 }
@@ -59,10 +55,6 @@ impl Project {
         self.has_file("pnpm-lock.yaml")
     }
 
-    pub(super) fn maybe_terraform(&self) -> Result<bool, FhError> {
-        self.in_glob("**/*.tf")
-    }
-
     pub(super) fn maybe_yarn(&self) -> bool {
         self.has_file("yarn.lock")
     }
@@ -75,10 +67,6 @@ impl Project {
     // Helpers
     pub(super) fn has_file(&self, file: &str) -> bool {
         self.root.join(file).exists()
-    }
-
-    fn in_glob(&self, pattern: &str) -> Result<bool, FhError> {
-        Ok(glob(pattern)?.any(|res| res.is_ok()))
     }
 
     fn has_one_of(&self, files: &[&str]) -> bool {

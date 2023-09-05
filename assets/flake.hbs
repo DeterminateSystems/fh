@@ -44,6 +44,13 @@
             # Add any desired packages here
             {{/if}}
           ];
+          {{#if this.env_vars}}
+
+          # Environment variables
+          {{#each this.env_vars}}
+          {{@key}} = "{{this}}";
+          {{/each}}
+          {{/if}}
         };
         {{/each}}
       });
