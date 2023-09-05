@@ -14,6 +14,10 @@ impl Project {
         self.has_file("go.mod")
     }
 
+    pub(super) fn maybe_java(&self) -> bool {
+        self.has_one_of(&["pom.xml", "build.gradle"])
+    }
+
     pub(super) fn maybe_javascript(&self) -> bool {
         self.has_file("package.json")
     }

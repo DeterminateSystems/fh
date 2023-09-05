@@ -20,7 +20,6 @@ const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
 ];
 const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
-const JS_PACKAGING_TOOLS: &[&str] = &["pnpm", "yarn"];
 const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.09"];
 const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
 const RUBY_VERSIONS: &[&str] = &["3.2", "3.1"];
@@ -33,6 +32,7 @@ const SYSTEMS: &[&str] = &[
     "aarch64-darwin",
 ];
 const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
+const JAVA_VERSIONS: &[&str] = &["19", "18", "17", "16", "15"];
 
 // Helper functions
 fn version_as_attr(v: &str) -> String {
@@ -81,7 +81,7 @@ impl CommandExecute for InitSubcommand {
         }
 
         if Prompt::bool(
-            "Do you want to add the commonly used Nix formatter (nixpkgs-fmt) to your environment?",
+            "Do you want to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
         )? {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
@@ -105,17 +105,40 @@ impl CommandExecute for InitSubcommand {
             }
         }
 
+        // Java projects
+        if project.maybe_java() && Prompt::bool("This seems to be a Java project. Would you like to initialize your flake with built-in Java dependencies?")? {
+            let java_version = Prompt::select("Which JDK version?", JAVA_VERSIONS)?;
+            dev_shell_packages.push(format!("jdk{java_version}"));
+
+            if project.has_file("pom.xml") {
+                if Prompt::bool("This seems to be a Maven project. Would you like to add it to your environment")? {
+                    dev_shell_packages.push(String::from("maven"));
+                }
+            }
+
+            if project.has_file("build.gradle") {
+                if Prompt::bool("This seems to be a Gradle project. Would you like to add it to your environment")? {
+                    dev_shell_packages.push(String::from("gradle"));
+                }
+            }
+        }
+
         // JavaScript projects
         if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")? {
             let version =
                 Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
             dev_shell_packages.push(format!("nodejs-{version}_x"));
 
-            for tool in Prompt::multi_select(
-                "Which packaging tools would you like to install (npm is already included)",
-                JS_PACKAGING_TOOLS,
-            )? {
-                dev_shell_packages.push(format!("nodePackages.{tool}"));
+            if project.has_file("pnpm-lock.yaml") {
+                if Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
+                    dev_shell_packages.push(format!("nodePackages.pnpm"));
+                }
+            }
+
+            if project.has_file("yarn.lock") {
+                if Prompt::bool("This seems to be a Yarn project. Would you like to add it to your environment?")? {
+                    dev_shell_packages.push(format!("nodePackages.yarn"));
+                }
             }
         }
 
