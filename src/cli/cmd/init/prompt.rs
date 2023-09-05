@@ -17,9 +17,22 @@ impl Prompt {
 
     pub(super) fn guided_multi_select(
         msg: &str,
+        thing: &str,
         options: Vec<MultiSelectOption>,
     ) -> Result<Vec<String>, FhError> {
         let selected: Vec<String> = MultiSelect::new(msg, options)
+            .with_formatter(&|opts| {
+                format!(
+                    "You selected {} {}{}: {}",
+                    opts.len(),
+                    thing,
+                    if opts.len() > 1 { "s" } else { "" },
+                    opts.iter()
+                        .map(|opt| opt.value.0)
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                )
+            })
             .prompt()?
             .iter()
             .map(|s| s.0.to_owned())

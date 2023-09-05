@@ -79,6 +79,7 @@ impl CommandExecute for InitSubcommand {
         fn get_systems() -> Result<Vec<String>, FhError> {
             let selected = Prompt::guided_multi_select(
                 "Which systems would you like to support?",
+                "system",
                 SYSTEMS.to_vec(),
             )?;
 
