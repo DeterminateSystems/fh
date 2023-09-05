@@ -14,6 +14,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use self::prompt::MultiSelectOption;
+
 use super::{CommandExecute, FhError};
 
 const CARGO_TOOLS: &[&str] = &[
@@ -25,11 +27,17 @@ const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
 const RUBY_VERSIONS: &[&str] = &["3.2", "3.1"];
 const GO_VERSIONS: &[&str] = &["20", "19", "18", "17"];
 const COMMON_TOOLS: &[&str] = &["curl", "Git", "jq", "wget"];
-const SYSTEMS: &[&str] = &[
-    "x86_64-linux",
-    "aarch64-linux",
-    "x86_64-darwin",
-    "aarch64-darwin",
+const SYSTEMS: &[MultiSelectOption] = &[
+    MultiSelectOption(
+        "x86_64-linux",
+        "Linux on a 64-bit x86 processor, like Intel or AMD",
+    ),
+    MultiSelectOption("aarch64-linux", "Linux on a 64-bit Arm processor"),
+    MultiSelectOption("x86_64-darwin", "macOS on Intel CPUs"),
+    MultiSelectOption(
+        "aarch64-darwin",
+        "macOS on Apple Silicon, like the M1 or M2 chips",
+    ),
 ];
 const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
 const JAVA_VERSIONS: &[&str] = &["19", "18", "17", "16", "15"];
@@ -39,7 +47,7 @@ fn version_as_attr(v: &str) -> String {
     v.replace('.', "")
 }
 
-/// Create a new flake.nix using an interactive initializer.
+/// Create a new flake.nix using an opinionated interactive initializer.
 #[derive(Parser)]
 pub(crate) struct InitSubcommand {
     #[clap(long, short, default_value = ".")]
@@ -66,11 +74,13 @@ impl CommandExecute for InitSubcommand {
         println!("Let's build a Nix flake!");
 
         let project = Project::new(self.root);
-        let description = Prompt::maybe_string("A description for your flake")?;
+        let description = Prompt::maybe_string("An optional description for your flake")?;
 
         fn get_systems() -> Result<Vec<String>, FhError> {
-            let selected =
-                Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
+            let selected = Prompt::guided_multi_select(
+                "Which systems would you like to support?",
+                SYSTEMS.to_vec(),
+            )?;
 
             if selected.is_empty() {
                 println!("❌ You need to select at least one system to support");
