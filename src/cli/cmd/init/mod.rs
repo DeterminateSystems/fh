@@ -3,16 +3,16 @@ mod prompt;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
-use handlebars::{Handlebars, Path};
+use handlebars::Handlebars;
 use project::Project;
 use prompt::Prompt;
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::{collections::HashMap, path::Path};
 
 use super::{CommandExecute, FhError};
 
@@ -74,6 +74,7 @@ impl CommandExecute for InitSubcommand {
 
             if selected.is_empty() {
                 println!("❌ You need to select at least one system to support");
+                #[allow(clippy::needless_return)]
                 return get_systems();
             } else {
                 Ok(selected)
