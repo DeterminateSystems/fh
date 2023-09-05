@@ -42,14 +42,32 @@ impl Project {
         self.has_file("Cargo.toml")
     }
 
-    pub(super) fn maybe_terraform(&self) -> Result<bool, FhError> {
-        self.in_glob("**/*.tf")
-    }
-
     pub(super) fn maybe_zig(&self) -> bool {
         self.has_file("build.zig")
     }
 
+    // Tools
+    pub(super) fn maybe_gradle(&self) -> bool {
+        self.has_file("build.gradle")
+    }
+
+    pub(super) fn maybe_maven(&self) -> bool {
+        self.has_file("pom.xml")
+    }
+
+    pub(super) fn maybe_pnpm(&self) -> bool {
+        self.has_file("pnpm-lock.yaml")
+    }
+
+    pub(super) fn maybe_terraform(&self) -> Result<bool, FhError> {
+        self.in_glob("**/*.tf")
+    }
+
+    pub(super) fn maybe_yarn(&self) -> bool {
+        self.has_file("yarn.lock")
+    }
+
+    // direnv
     pub(super) fn uses_direnv(&self) -> bool {
         self.has_file(".envrc")
     }

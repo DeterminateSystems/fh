@@ -110,11 +110,11 @@ impl CommandExecute for InitSubcommand {
             let java_version = Prompt::select("Which JDK version?", JAVA_VERSIONS)?;
             dev_shell_packages.push(format!("jdk{java_version}"));
 
-            if project.has_file("pom.xml") && Prompt::bool("This seems to be a Maven project. Would you like to add it to your environment")? {
+            if project.maybe_maven() && Prompt::bool("This seems to be a Maven project. Would you like to add it to your environment")? {
                 dev_shell_packages.push(String::from("maven"));
             }
 
-            if project.has_file("build.gradle") && Prompt::bool("This seems to be a Gradle project. Would you like to add it to your environment")? {
+            if project.maybe_gradle() && Prompt::bool("This seems to be a Gradle project. Would you like to add it to your environment")? {
                 dev_shell_packages.push(String::from("gradle"));
             }
         }
@@ -125,11 +125,11 @@ impl CommandExecute for InitSubcommand {
                 Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
             dev_shell_packages.push(format!("nodejs-{version}_x"));
 
-            if project.has_file("pnpm-lock.yaml") && Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
+            if project.maybe_pnpm() && Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
                 dev_shell_packages.push(String::from("nodePackages.pnpm"));
             }
 
-            if project.has_file("yarn.lock") && Prompt::bool("This seems to be a Yarn project. Would you like to add it to your environment?")? {
+            if project.maybe_yarn() && Prompt::bool("This seems to be a Yarn project. Would you like to add it to your environment?")? {
                 dev_shell_packages.push(String::from("nodePackages.yarn"));
             }
         }
