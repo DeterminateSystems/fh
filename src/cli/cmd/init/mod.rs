@@ -68,20 +68,24 @@ impl CommandExecute for InitSubcommand {
         let project = Project::new(self.root);
         let description = Prompt::maybe_string("A description for your flake")?;
 
-        let systems = Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
-        if systems.is_empty() {
-            eprintln!("You need to select at least one system");
-            return Ok(ExitCode::FAILURE);
+        fn get_systems() -> Result<Vec<String>, FhError> {
+            let selected =
+                Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
+
+            if selected.is_empty() {
+                println!("You need to select at least one system to support");
+                return get_systems();
+            } else {
+                Ok(selected)
+            }
         }
 
-        let nixpkgs = Prompt::bool("Do you want to include a Nixpkgs input?")?;
+        let systems = get_systems()?;
 
-        if nixpkgs {
-            inputs.insert(
-                String::from("nixpkgs"),
-                String::from("https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz"), // TODO: make this more granular
-            );
-        }
+        inputs.insert(
+            String::from("nixpkgs"),
+            String::from("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz"), // TODO: make this more granular
+        );
 
         if Prompt::bool(
             "Do you want to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
