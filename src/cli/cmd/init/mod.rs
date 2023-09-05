@@ -82,16 +82,13 @@ impl CommandExecute for InitSubcommand {
 
         let systems = get_systems()?;
 
+        // We could conceivably create a version of `fh init` that doesn't involve Nixpkgs. But for the time
+        // being so much relies on it that we don't have a great opt-out story, so best to include it in all
+        // flakes.
         inputs.insert(
             String::from("nixpkgs"),
-            String::from("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz"), // TODO: make this more granular
+            String::from("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz"), // TODO: make this a more granular choice
         );
-
-        if Prompt::bool(
-            "Do you want to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
-        )? {
-            dev_shell_packages.push(String::from("nixpkgs-fmt"));
-        }
 
         // Go projects
         if project.maybe_golang() && Prompt::bool("This seems to be a Go project. Would you like to initialize your flake with built-in Go dependencies?")? {
@@ -214,7 +211,23 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(attr);
         }
 
-        // Add the default devShell
+        // Nix formatter
+        if Prompt::bool(
+            "Do you want to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
+        )? {
+            dev_shell_packages.push(String::from("nixpkgs-fmt"));
+        }
+
+        // If the dev shell will be empty, prompt users to ensure that they still want a flake
+        if dev_shell_packages.is_empty() {
+            if Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Do you still want to create a flake?")? {
+                println!("Run `fh init` again to get started");
+            } else {
+                println!("See you next time!");
+            }
+            return Ok(ExitCode::SUCCESS);
+        }
+
         dev_shells.insert(
             String::from("default"),
             DevShell {
