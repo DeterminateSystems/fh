@@ -57,7 +57,6 @@ impl CommandExecute for InitSubcommand {
         let mut dev_shells: HashMap<String, DevShell> = HashMap::new();
         let mut overlay_refs: Vec<String> = Vec::new();
         let mut overlay_attrs: HashMap<String, String> = HashMap::new();
-        let mut packages: HashMap<String, String> = HashMap::new();
 
         if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?")? {
             println!("Exiting. Let's a build a new flake soon, though :)");
@@ -105,16 +104,12 @@ impl CommandExecute for InitSubcommand {
             let java_version = Prompt::select("Which JDK version?", JAVA_VERSIONS)?;
             dev_shell_packages.push(format!("jdk{java_version}"));
 
-            if project.has_file("pom.xml") {
-                if Prompt::bool("This seems to be a Maven project. Would you like to add it to your environment")? {
-                    dev_shell_packages.push(String::from("maven"));
-                }
+            if project.has_file("pom.xml") && Prompt::bool("This seems to be a Maven project. Would you like to add it to your environment")? {
+                dev_shell_packages.push(String::from("maven"));
             }
 
-            if project.has_file("build.gradle") {
-                if Prompt::bool("This seems to be a Gradle project. Would you like to add it to your environment")? {
-                    dev_shell_packages.push(String::from("gradle"));
-                }
+            if project.has_file("build.gradle") && Prompt::bool("This seems to be a Gradle project. Would you like to add it to your environment")? {
+                dev_shell_packages.push(String::from("gradle"));
             }
         }
 
@@ -124,23 +119,19 @@ impl CommandExecute for InitSubcommand {
                 Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
             dev_shell_packages.push(format!("nodejs-{version}_x"));
 
-            if project.has_file("pnpm-lock.yaml") {
-                if Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
-                    dev_shell_packages.push(format!("nodePackages.pnpm"));
-                }
+            if project.has_file("pnpm-lock.yaml") && Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
+                dev_shell_packages.push(String::from("nodePackages.pnpm"));
             }
 
-            if project.has_file("yarn.lock") {
-                if Prompt::bool("This seems to be a Yarn project. Would you like to add it to your environment?")? {
-                    dev_shell_packages.push(format!("nodePackages.yarn"));
-                }
+            if project.has_file("yarn.lock") && Prompt::bool("This seems to be a Yarn project. Would you like to add it to your environment?")? {
+                dev_shell_packages.push(String::from("nodePackages.yarn"));
             }
         }
 
         // PHP projects
         if project.maybe_php() && Prompt::bool("This seems to be a PHP project. Would you like to initialize your flake with built-in PHO dependencies?")? {
             inputs.insert(String::from("loophp"), String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"));
-            overlay_refs.push(format!("loophp.overlays.default"));
+            overlay_refs.push(String::from("loophp.overlays.default"));
             let php_version = Prompt::select("Select a version of Ruby", PHP_VERSIONS)?;
             let php_version_attr = version_as_attr(&php_version);
             dev_shell_packages.push(format!("php{php_version_attr}"));

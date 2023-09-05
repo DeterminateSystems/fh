@@ -9,17 +9,6 @@ impl Prompt {
         Confirm::new(msg).prompt().map_err(FhError::Interactive)
     }
 
-    pub(super) fn string(msg: &str, default: &str) -> Result<String, FhError> {
-        match Text::new(msg).prompt() {
-            Ok(text) => Ok(if text.is_empty() {
-                String::from(default)
-            } else {
-                text
-            }),
-            Err(e) => Err(FhError::Interactive(e)),
-        }
-    }
-
     pub(super) fn select(msg: &str, options: &[&str]) -> Result<String, FhError> {
         Ok(Select::new(msg, options.to_vec()).prompt()?.to_string())
     }
