@@ -32,6 +32,7 @@ const SYSTEMS: &[&str] = &[
     "x86_64-darwin",
     "aarch64-darwin",
 ];
+const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
 
 // Helper functions
 fn version_as_attr(v: &str) -> String {
@@ -116,6 +117,15 @@ impl CommandExecute for InitSubcommand {
             )? {
                 dev_shell_packages.push(format!("nodePackages.{tool}"));
             }
+        }
+
+        // PHP projects
+        if project.maybe_php() && Prompt::bool("This seems to be a PHP project. Would you like to initialize your flake with built-in PHO dependencies?")? {
+            inputs.insert(String::from("loophp"), String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"));
+            overlay_refs.push(format!("loophp.overlays.default"));
+            let php_version = Prompt::select("Select a version of Ruby", PHP_VERSIONS)?;
+            let php_version_attr = version_as_attr(&php_version);
+            dev_shell_packages.push(format!("php{php_version_attr}"));
         }
 
         // Python projects

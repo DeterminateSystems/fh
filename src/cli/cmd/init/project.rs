@@ -18,6 +18,10 @@ impl Project {
         self.has_file("package.json")
     }
 
+    pub(super) fn maybe_php(&self) -> bool {
+        self.has_one_of(&["composer.json", "php.ini"])
+    }
+
     pub(super) fn maybe_python(&self) -> bool {
         self.has_one_of(&["setup.py", "requirements.txt"])
     }
