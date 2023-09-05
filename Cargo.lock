@@ -444,6 +444,7 @@ dependencies = [
  "async-trait",
  "clap",
  "color-eyre",
+ "glob",
  "handlebars",
  "indicatif",
  "inquire",

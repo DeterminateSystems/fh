@@ -1,5 +1,9 @@
 use std::path::PathBuf;
 
+use glob::glob;
+
+use crate::cli::cmd::FhError;
+
 pub(super) struct Project {
     root: PathBuf,
 }
@@ -38,6 +42,10 @@ impl Project {
         self.has_file("Cargo.toml")
     }
 
+    pub(super) fn maybe_terraform(&self) -> Result<bool, FhError> {
+        self.in_glob("**/*.tf")
+    }
+
     pub(super) fn maybe_zig(&self) -> bool {
         self.has_file("build.zig")
     }
@@ -51,7 +59,10 @@ impl Project {
         self.root.join(file).exists()
     }
 
-    #[allow(dead_code)]
+    fn in_glob(&self, pattern: &str) -> Result<bool, FhError> {
+        Ok(glob(pattern)?.any(|res| res.is_ok()))
+    }
+
     fn has_one_of(&self, files: &[&str]) -> bool {
         files.iter().any(|f| self.has_file(f))
     }

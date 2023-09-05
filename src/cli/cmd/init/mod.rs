@@ -198,6 +198,11 @@ impl CommandExecute for InitSubcommand {
             }
         }
 
+        // Terraform projects
+        if project.maybe_terraform()? && Prompt::bool("This seems to be a Terraform project. Would you like to initialize your flake with built-in Terraform dependencies?")? {
+            dev_shell_packages.push(String::from("terraform"));
+        }
+
         // Zig projects
         if project.maybe_zig() && Prompt::bool("This seems to be a Zig project. Would you like to initialize your flake with built-in Zig dependencies?")? {
             dev_shell_packages.push(String::from("zig"));
