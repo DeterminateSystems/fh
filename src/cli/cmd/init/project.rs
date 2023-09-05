@@ -42,6 +42,10 @@ impl Project {
         self.has_file("build.zig")
     }
 
+    pub(super) fn uses_direnv(&self) -> bool {
+        self.has_file(".envrc")
+    }
+
     // Helpers
     pub(super) fn has_file(&self, file: &str) -> bool {
         self.root.join(file).exists()

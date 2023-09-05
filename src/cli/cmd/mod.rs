@@ -48,6 +48,9 @@ pub(super) enum FhError {
     #[error("interactive initializer error: {0}")]
     Interactive(#[from] inquire::InquireError),
 
+    #[error("file error: {0}")]
+    Filesystem(#[from] std::io::Error),
+
     #[error("the flake has no inputs")]
     NoInputs,
 

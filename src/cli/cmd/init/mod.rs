@@ -3,16 +3,16 @@ mod prompt;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
-use handlebars::Handlebars;
+use handlebars::{Handlebars, Path};
 use project::Project;
 use prompt::Prompt;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::{collections::HashMap, path::Path};
 
 use super::{CommandExecute, FhError};
 
@@ -252,14 +252,12 @@ impl CommandExecute for InitSubcommand {
             .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
             .map_err(Box::new)?;
         let data: Value = serde_json::to_value(flake)?;
-        let output = handlebars.render("flake", &data)?;
+        let flake_string = handlebars.render("flake", &data)?;
 
-        let mut flake_dot_nix = File::create(self.output)?;
-        flake_dot_nix.write_all(output.as_bytes())?;
+        write_file(self.output, flake_string)?;
 
-        if !project.has_file(".envrc") && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")?{
-            let mut envrc = File::create(".envrc")?;
-            envrc.write_all(b"use flake")?;
+        if !project.uses_direnv() && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")? {
+            write_file(PathBuf::from(".envrc"), String::from("use flake"))?;
         } else {
             println!(
                 "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
@@ -268,6 +266,12 @@ impl CommandExecute for InitSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+fn write_file(path: PathBuf, content: String) -> Result<(), FhError> {
+    let mut file = File::create(path)?;
+    file.write_all(content.as_bytes())?;
+    Ok(())
 }
 
 #[derive(Debug, Serialize)]
