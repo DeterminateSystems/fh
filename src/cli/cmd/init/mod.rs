@@ -73,7 +73,7 @@ impl CommandExecute for InitSubcommand {
                 Prompt::multi_select("Which systems would you like to support?", SYSTEMS)?;
 
             if selected.is_empty() {
-                println!("You need to select at least one system to support");
+                println!("❌ You need to select at least one system to support");
                 return get_systems();
             } else {
                 Ok(selected)
