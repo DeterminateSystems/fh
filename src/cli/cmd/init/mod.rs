@@ -272,7 +272,7 @@ impl CommandExecute for InitSubcommand {
             },
         );
 
-        let flake = Flake {
+        let data = TemplateData {
             description,
             inputs,
             systems,
@@ -282,14 +282,14 @@ impl CommandExecute for InitSubcommand {
             has_overlays: overlay_refs.len() + overlay_attrs.keys().len() > 0,
         };
 
-        flake.validate()?;
+        data.validate()?;
 
         let mut handlebars = Handlebars::new();
         handlebars
             .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
             .map_err(Box::new)?;
-        let data: Value = serde_json::to_value(flake)?;
-        let flake_string = handlebars.render("flake", &data)?;
+
+        let flake_string = handlebars.render("flake", &data.as_json()?)?;
 
         write_file(self.output, flake_string)?;
 
@@ -312,7 +312,7 @@ fn write_file(path: PathBuf, content: String) -> Result<(), FhError> {
 }
 
 #[derive(Debug, Serialize)]
-struct Flake {
+struct TemplateData {
     description: Option<String>,
     inputs: HashMap<String, String>,
     systems: Vec<String>,
@@ -322,7 +322,11 @@ struct Flake {
     has_overlays: bool,
 }
 
-impl Flake {
+impl TemplateData {
+    fn as_json(&self) -> Result<Value, serde_json::Error> {
+        serde_json::to_value(self)
+    }
+
     fn validate(&self) -> Result<(), FhError> {
         if self.inputs.is_empty() {
             return Err(FhError::NoInputs);
