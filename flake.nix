@@ -70,6 +70,7 @@
             nativeBuildInputs = with final; [
               pkg-config
               rustPlatform.bindgenHook
+              installShellFiles
             ];
 
             buildInputs = with final; [
@@ -80,6 +81,13 @@
               Security
               SystemConfiguration
             ]);
+
+            postInstall = ''
+              installShellCompletion --cmd am \
+                --bash <("$out/bin/fh" completion bash) \
+                --zsh <("$out/bin/fh" completion zsh) \
+                --fish <("$out/bin/fh" completion fish)
+            '';
           };
       };
 

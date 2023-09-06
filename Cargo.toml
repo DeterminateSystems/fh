@@ -14,6 +14,7 @@ clap = { version = "4.3.2", default-features = false, features = [
   "help",
   "std",
 ] }
+clap_complete = "4.4.0"
 color-eyre = "0.6.2"
 indicatif = { version = "0.17.6", default-features = false }
 lazy_static = "1.4.0"

@@ -1,4 +1,5 @@
 mod add;
+mod completion;
 mod list;
 mod search;
 
@@ -31,6 +32,7 @@ pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
     Search(search::SearchSubcommand),
     List(list::ListSubcommand),
+    Completion(completion::CompletionSubcommand),
 }
 
 pub(super) struct FlakeHubClient {
