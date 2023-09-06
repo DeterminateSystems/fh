@@ -235,6 +235,25 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
+        if Prompt::bool("Would you like to add any environment variables?")? {
+            loop {
+                let name = Prompt::maybe_string("Variable name")?;
+                if let Some(name) = name {
+                    let value = Prompt::maybe_string("Variable value")?;
+                    if let Some(value) = value {
+                        env_vars.insert(name, value);
+                        if !Prompt::bool("Enter another variable?")? {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
         // If the dev shell will be empty, prompt users to ensure that they still want a flake
         if dev_shell_packages.is_empty() {
             if Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Do you still want to create a flake?")? {
