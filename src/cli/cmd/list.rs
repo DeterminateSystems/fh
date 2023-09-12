@@ -26,6 +26,12 @@ pub(super) struct Flake {
     project: String,
 }
 
+#[derive(Deserialize)]
+pub(super) struct Version {
+    version: String,
+    simplified_version: String,
+}
+
 impl Flake {
     fn name(&self) -> String {
         format!("{}/{}", self.org, self.project)
@@ -54,6 +60,8 @@ enum Subcommands {
     Orgs,
     /// List all releases for a specific flake on FlakeHub.
     Releases { flake: String },
+    /// List all versions that match the provided version constraint.
+    Versions { flake: String, constraint: String },
 }
 
 #[async_trait::async_trait]
@@ -141,6 +149,37 @@ impl CommandExecute for ListSubcommand {
 
                             for release in releases {
                                 table.add_row(Row::new(vec![Cell::new(&release.version)]));
+                            }
+
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                    }
+                }
+            }
+            Versions { flake, constraint } => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+                match client.versions(flake.clone(), constraint.clone()).await {
+                    Ok(versions) => {
+                        if versions.is_empty() {
+                            eprintln!("No versions match the provided constraint");
+                        } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Simplified version", "Full version"]);
+
+                            for version in versions {
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&version.simplified_version).with_style(Attr::Bold),
+                                    Cell::new(&version.version).with_style(Attr::Dim),
+                                ]));
                             }
 
                             if std::io::stdout().is_terminal() {
