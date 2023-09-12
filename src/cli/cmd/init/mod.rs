@@ -98,9 +98,21 @@ impl CommandExecute for InitSubcommand {
         // We could conceivably create a version of `fh init` that doesn't involve Nixpkgs. But for the time
         // being so much relies on it that we don't have a great opt-out story, so best to include it in all
         // flakes.
+        let nixpkgs = match Prompt::select(
+            "Which Nixpkgs version would you like to include?",
+            &["23.05", "latest", "unstable"],
+        )?
+        .as_str()
+        {
+            "23.05" => "0.2305.*",
+            "latest" => "*",
+            "unstable" => "0.1.*",
+            _ => "*",
+        };
+
         inputs.insert(
             String::from("nixpkgs"),
-            String::from("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz"), // TODO: make this a more granular choice
+            format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs}.tar.gz"), // TODO: make this a more granular choice
         );
 
         // Go projects
