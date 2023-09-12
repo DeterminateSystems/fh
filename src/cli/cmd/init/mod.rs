@@ -101,9 +101,9 @@ impl CommandExecute for InitSubcommand {
 
         let systems = get_systems()?;
 
-        // We could conceivably create a version of `fh init` that doesn't involve Nixpkgs. But for the time
-        // being so much relies on it that we don't have a great opt-out story, so best to include it in all
-        // flakes.
+        // We could conceivably create a version of `fh init` Nixpkgs included only if certain other choices
+        // are made. But for the time being so much relies on it that we don't have a great opt-out story,
+        // so best to just include it in all flakes.
         let nixpkgs = match Prompt::select(
             "Which Nixpkgs version would you like to include?",
             &[
@@ -115,6 +115,7 @@ impl CommandExecute for InitSubcommand {
         )?
         .as_str()
         {
+            // MAYBE: find an enum-based approach to this
             "23.05" => String::from("0.2305.*"),
             "latest" => String::from("*"),
             "unstable" => String::from("0.1.*"),
@@ -126,7 +127,7 @@ impl CommandExecute for InitSubcommand {
 
         inputs.insert(
             String::from("nixpkgs"),
-            format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs}.tar.gz"), // TODO: make this a more granular choice
+            format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs}.tar.gz"),
         );
 
         // Go projects
