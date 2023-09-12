@@ -13,6 +13,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use url::Url;
+
+use super::FlakeHubClient;
 
 use self::prompt::MultiSelectOption;
 
@@ -55,6 +58,9 @@ pub(crate) struct InitSubcommand {
 
     #[clap(long, short, default_value = "./flake.nix")]
     output: PathBuf,
+
+    #[clap(from_global)]
+    api_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -100,14 +106,22 @@ impl CommandExecute for InitSubcommand {
         // flakes.
         let nixpkgs = match Prompt::select(
             "Which Nixpkgs version would you like to include?",
-            &["23.05", "latest", "unstable"],
+            &[
+                "23.05",
+                "latest",
+                "unstable",
+                "select a specific release (not recommended in most cases)",
+            ],
         )?
         .as_str()
         {
-            "23.05" => "0.2305.*",
-            "latest" => "*",
-            "unstable" => "0.1.*",
-            _ => "*",
+            "23.05" => String::from("0.2305.*"),
+            "latest" => String::from("*"),
+            "unstable" => String::from("0.1.*"),
+            "select a specific release (not recommended in most cases)" => {
+                select_nixpkgs(&self.api_addr).await?
+            }
+            _ => String::from("*"), // Unreachable
         };
 
         inputs.insert(
@@ -321,6 +335,14 @@ fn write_file(path: PathBuf, content: String) -> Result<(), FhError> {
     let mut file = File::create(path)?;
     file.write_all(content.as_bytes())?;
     Ok(())
+}
+
+async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
+    let client = &FlakeHubClient::new(api_addr)?;
+    let releases = client.releases(String::from("NixOS/nixpkgs")).await?;
+    let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
+    let release = Prompt::select("Choose one of the following Nixpkgs releases", &releases)?;
+    Ok(release)
 }
 
 #[derive(Debug, Serialize)]

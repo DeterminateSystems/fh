@@ -43,7 +43,7 @@ pub(super) struct Org {
 
 #[derive(Deserialize)]
 pub(super) struct Release {
-    version: String,
+    pub(crate) version: String,
 }
 
 #[derive(Subcommand)]

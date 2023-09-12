@@ -7,9 +7,10 @@ use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
 
-use crate::cli::cmd::list::Org;
-
-use self::{list::Flake, list::Release, search::SearchResult};
+use self::{
+    list::{Flake, Org, Release},
+    search::SearchResult,
+};
 
 lazy_static! {
     pub(super) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
