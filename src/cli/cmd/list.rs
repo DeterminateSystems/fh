@@ -61,7 +61,12 @@ enum Subcommands {
     /// List all releases for a specific flake on FlakeHub.
     Releases { flake: String },
     /// List all versions that match the provided version constraint.
-    Versions { flake: String, constraint: String },
+    Versions {
+        /// The flake for which you want to list compatible versions.
+        flake: String,
+        /// The version constraint as a string.
+        constraint: String,
+    },
 }
 
 #[async_trait::async_trait]
