@@ -59,7 +59,10 @@ enum Subcommands {
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
     /// List all releases for a specific flake on FlakeHub.
-    Releases { flake: String },
+    Releases {
+        /// The flake for which you want to list releases.
+        flake: String,
+    },
     /// List all versions that match the provided version constraint.
     Versions {
         /// The flake for which you want to list compatible versions.
