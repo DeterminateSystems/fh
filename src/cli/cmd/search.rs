@@ -4,7 +4,7 @@ use prettytable::{row, Attr, Cell, Row, Table};
 use std::process::ExitCode;
 use url::Url;
 
-use super::{CommandExecute, FlakeHubClient, TABLE_FORMAT};
+use super::{list::FLAKEHUB_WEB_ROOT, CommandExecute, FlakeHubClient, TABLE_FORMAT};
 
 /// Searches FlakeHub for flakes that match your query.
 #[derive(Debug, Parser)]
@@ -30,8 +30,8 @@ impl SearchResult {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self, api_addr: &Url) -> String {
-        let mut url = api_addr.clone();
+    fn url(&self) -> String {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).unwrap();
         {
             let mut segs = url
                 .path_segments_mut()
@@ -62,10 +62,10 @@ impl CommandExecute for SearchSubcommand {
                     let results: Vec<&SearchResult> =
                         results.iter().take(self.max_results).collect();
 
-                    for flake in results {
+                    for result in results {
                         table.add_row(Row::new(vec![
-                            Cell::new(&flake.name()).with_style(Attr::Bold),
-                            Cell::new(&flake.url(&self.api_addr)).with_style(Attr::Dim),
+                            Cell::new(&result.name()).with_style(Attr::Bold),
+                            Cell::new(&result.url()).with_style(Attr::Dim),
                         ]));
                     }
 

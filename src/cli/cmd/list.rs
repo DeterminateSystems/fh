@@ -11,6 +11,8 @@ use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
 
+pub(super) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
+
 /// Lists key FlakeHub resources.
 #[derive(Parser)]
 pub(crate) struct ListSubcommand {
@@ -58,8 +60,8 @@ impl Flake {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self, api_addr: &Url) -> String {
-        let mut url = api_addr.clone();
+    fn url(&self) -> String {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).unwrap();
         {
             let mut segs = url
                 .path_segments_mut()
@@ -124,7 +126,7 @@ impl CommandExecute for ListSubcommand {
                             for flake in flakes {
                                 table.add_row(Row::new(vec![
                                     Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url(&self.api_addr)).with_style(Attr::Dim),
+                                    Cell::new(&flake.url()).with_style(Attr::Dim),
                                 ]));
                             }
 
@@ -152,7 +154,7 @@ impl CommandExecute for ListSubcommand {
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
                             for org in orgs {
-                                let mut url = self.api_addr.clone();
+                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).unwrap();
                                 {
                                     let mut segs = url.path_segments_mut().expect(
                                         "flakehub url cannot be base (this should never happen)",
@@ -228,12 +230,10 @@ impl CommandExecute for ListSubcommand {
                             ]);
 
                             for version in versions {
-                                let mut flakehub_root = self.api_addr.clone();
+                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).unwrap();
 
                                 {
-                                    let mut path_segments_mut = flakehub_root
-                                        .path_segments_mut()
-                                        .expect(
+                                    let mut path_segments_mut = url.path_segments_mut().expect(
                                         "flakehub url cannot be base (this should never happen)",
                                     );
 
@@ -247,8 +247,7 @@ impl CommandExecute for ListSubcommand {
                                 table.add_row(Row::new(vec![
                                     Cell::new(&version.simplified_version).with_style(Attr::Bold),
                                     Cell::new(&version.version).with_style(Attr::Dim),
-                                    Cell::new(flakehub_root.as_ref())
-                                        .with_style(Attr::Underline(true)),
+                                    Cell::new(url.as_ref()).with_style(Attr::Underline(true)),
                                 ]));
                             }
 
