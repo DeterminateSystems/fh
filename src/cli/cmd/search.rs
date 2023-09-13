@@ -2,10 +2,9 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use std::process::ExitCode;
+use url::Url;
 
-use crate::cli::FLAKEHUB_WEB_ROOT;
-
-use super::{CommandExecute, FlakeHubClient, TABLE_FORMAT};
+use super::{list::FLAKEHUB_WEB_ROOT, CommandExecute, FlakeHubClient, TABLE_FORMAT};
 
 /// Searches FlakeHub for flakes that match your query.
 #[derive(Debug, Parser)]
@@ -32,7 +31,15 @@ impl SearchResult {
     }
 
     fn url(&self) -> String {
-        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("flake").push(&self.org).push(&self.project);
+        }
+        url.to_string()
     }
 }
 
@@ -56,10 +63,10 @@ impl CommandExecute for SearchSubcommand {
                     let results: Vec<&SearchResult> =
                         results.iter().take(self.max_results).collect();
 
-                    for flake in results {
+                    for result in results {
                         table.add_row(Row::new(vec![
-                            Cell::new(&flake.name()).with_style(Attr::Bold),
-                            Cell::new(&flake.url()).with_style(Attr::Dim),
+                            Cell::new(&result.name()).with_style(Attr::Bold),
+                            Cell::new(&result.url()).with_style(Attr::Dim),
                         ]));
                     }
 

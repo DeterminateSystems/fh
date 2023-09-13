@@ -9,7 +9,11 @@ use reqwest::Client as HttpClient;
 
 use crate::cli::cmd::list::Org;
 
-use self::{list::Flake, list::Release, search::SearchResult};
+use self::{
+    list::Flake,
+    list::{Release, Version},
+    search::SearchResult,
+};
 
 lazy_static! {
     pub(super) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
@@ -47,6 +51,9 @@ pub(super) enum FhError {
 
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
+
+    #[error("flake name parsing error: {0}")]
+    FlakeParse(String),
 }
 
 impl FlakeHubClient {
@@ -99,12 +106,18 @@ impl FlakeHubClient {
         Ok(flakes)
     }
 
-    async fn releases(&self, flake: String) -> Result<Vec<Release>, FhError> {
-        let endpoint = self.api_addr.join(&format!("f/{}/releases", flake))?;
+    async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("f").push(org).push(project).push("releases");
+        }
 
         let flakes = self
             .client
-            .get(endpoint)
+            .get(&endpoint.to_string())
             .send()
             .await?
             .json::<Vec<Release>>()
@@ -128,5 +141,36 @@ impl FlakeHubClient {
             .collect();
 
         Ok(orgs)
+    }
+
+    async fn versions(
+        &self,
+        org: &str,
+        project: &str,
+        constraint: &str,
+    ) -> Result<Vec<Version>, FhError> {
+        let version = urlencoding::encode(constraint);
+
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("version")
+                .push("resolve")
+                .push(org)
+                .push(project)
+                .push(&version);
+        }
+
+        let versions = self
+            .client
+            .get(endpoint)
+            .send()
+            .await?
+            .json::<Vec<Version>>()
+            .await?;
+
+        Ok(versions)
     }
 }

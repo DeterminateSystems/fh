@@ -4,11 +4,14 @@ use prettytable::{row, Attr, Cell, Row, Table};
 use serde::Deserialize;
 use std::io::IsTerminal;
 use std::process::ExitCode;
+use url::Url;
 
-use super::TABLE_FORMAT;
-use crate::cli::{cmd::FlakeHubClient, FLAKEHUB_WEB_ROOT};
+use super::{FhError, TABLE_FORMAT};
+use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
+
+pub(super) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
 
 /// Lists key FlakeHub resources.
 #[derive(Parser)]
@@ -20,10 +23,36 @@ pub(crate) struct ListSubcommand {
     api_addr: url::Url,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub(super) struct Flake {
-    org: String,
-    project: String,
+    pub(super) org: String,
+    pub(super) project: String,
+}
+
+impl TryFrom<String> for Flake {
+    type Error = FhError;
+
+    fn try_from(flake_ref: String) -> Result<Self, Self::Error> {
+        let (org, project) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
+            // `nixos/nixpkgs`
+            [org, repo] => (org, repo),
+            _ => {
+                return Err(FhError::FlakeParse(format!(
+                    "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}"
+                )))
+            }
+        };
+        Ok(Self {
+            org: String::from(org),
+            project: String::from(project),
+        })
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct Version {
+    version: String,
+    simplified_version: String,
 }
 
 impl Flake {
@@ -32,7 +61,15 @@ impl Flake {
     }
 
     fn url(&self) -> String {
-        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("flake").push(&self.org).push(&self.project);
+        }
+        url.to_string()
     }
 }
 
@@ -57,6 +94,13 @@ enum Subcommands {
         /// The flake for which you want to list releases.
         flake: String,
     },
+    /// List all versions that match the provided version constraint.
+    Versions {
+        /// The flake for which you want to list compatible versions.
+        flake: String,
+        /// The version constraint as a string.
+        constraint: String,
+    },
 }
 
 #[async_trait::async_trait]
@@ -70,6 +114,7 @@ impl CommandExecute for ListSubcommand {
             Flakes => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
                 match client.flakes().await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
@@ -93,14 +138,13 @@ impl CommandExecute for ListSubcommand {
                             }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => return Err(e.into()),
                 }
             }
             Orgs => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
                 match client.orgs().await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
@@ -110,11 +154,21 @@ impl CommandExecute for ListSubcommand {
                             table.set_format(*TABLE_FORMAT);
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
+                            let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+                                "failed to parse flakehub web root url (this should never happen)",
+                            );
+
                             for org in orgs {
-                                let url = format!("{}/org/{}", FLAKEHUB_WEB_ROOT, org);
+                                {
+                                    let mut segs = url.path_segments_mut().expect(
+                                        "flakehub url cannot be base (this should never happen)",
+                                    );
+                                    segs.push("org").push(&org);
+                                }
+
                                 table.add_row(Row::new(vec![
                                     Cell::new(&org).with_style(Attr::Bold),
-                                    Cell::new(&url).with_style(Attr::Dim),
+                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
                                 ]));
                             }
 
@@ -125,15 +179,16 @@ impl CommandExecute for ListSubcommand {
                             }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => return Err(e.into()),
                 }
             }
             Releases { flake } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
-                match client.releases(flake).await {
+
+                let flake = Flake::try_from(flake)?;
+
+                match client.releases(&flake.org, &flake.project).await {
                     Ok(releases) => {
                         if releases.is_empty() {
                             eprintln!("No results");
@@ -153,9 +208,63 @@ impl CommandExecute for ListSubcommand {
                             }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            Versions { flake, constraint } => {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(ProgressStyle::default_spinner());
+
+                let flake = Flake::try_from(flake)?.clone();
+
+                match client
+                    .versions(&flake.org, &flake.project, &constraint)
+                    .await
+                {
+                    Ok(versions) => {
+                        if versions.is_empty() {
+                            eprintln!("No versions match the provided constraint");
+                        } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row![
+                                "Simplified version",
+                                "FlakeHub URL",
+                                "Full version",
+                            ]);
+
+                            for version in versions {
+                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+                                    "failed to parse flakehub web root url (this should never happen)",
+                                );
+
+                                {
+                                    let mut path_segments_mut = url.path_segments_mut().expect(
+                                        "flakehub url cannot be base (this should never happen)",
+                                    );
+
+                                    path_segments_mut
+                                        .push("flake")
+                                        .push(&flake.org)
+                                        .push(&flake.project)
+                                        .push(&version.simplified_version);
+                                }
+
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&version.simplified_version).with_style(Attr::Bold),
+                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
+                                    Cell::new(&version.version).with_style(Attr::Dim),
+                                ]));
+                            }
+
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
+                        }
                     }
+                    Err(e) => return Err(e.into()),
                 }
             }
         }
