@@ -212,7 +212,7 @@ impl CommandExecute for ListSubcommand {
                                 table.add_row(Row::new(vec![
                                     Cell::new(&version.simplified_version).with_style(Attr::Bold),
                                     Cell::new(&version.version).with_style(Attr::Dim),
-                                    Cell::new(&flakehub_root.to_string())
+                                    Cell::new(flakehub_root.as_ref())
                                         .with_style(Attr::Underline(true)),
                                 ]));
                             }
