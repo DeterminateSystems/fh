@@ -225,8 +225,8 @@ impl CommandExecute for ListSubcommand {
                             table.set_format(*TABLE_FORMAT);
                             table.set_titles(row![
                                 "Simplified version",
+                                "FlakeHub URL",
                                 "Full version",
-                                "FlakeHub URL"
                             ]);
 
                             for version in versions {
@@ -246,8 +246,8 @@ impl CommandExecute for ListSubcommand {
 
                                 table.add_row(Row::new(vec![
                                     Cell::new(&version.simplified_version).with_style(Attr::Bold),
+                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
                                     Cell::new(&version.version).with_style(Attr::Dim),
-                                    Cell::new(url.as_ref()).with_style(Attr::Underline(true)),
                                 ]));
                             }
 
