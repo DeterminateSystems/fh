@@ -178,12 +178,42 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row!["Simplified version", "Full version"]);
+                            table.set_titles(row![
+                                "Simplified version",
+                                "Full version",
+                                "FlakeHub URL"
+                            ]);
+
+                            let (org, project) = match flake.split('/').collect::<Vec<_>>()[..] {
+                                // `nixos/nixpkgs`
+                                [org, project] => (org, project),
+                                _ => Err(color_eyre::eyre::eyre!(
+                                    "flakehub input did not match the expected format of `org/repo`"
+                                ))?,
+                            };
 
                             for version in versions {
+                                let mut flakehub_root = self.api_addr.clone();
+
+                                {
+                                    let mut path_segments_mut = flakehub_root
+                                        .path_segments_mut()
+                                        .expect(
+                                        "flakehub url cannot be base (this should never happen)",
+                                    );
+
+                                    path_segments_mut
+                                        .push("flake")
+                                        .push(org)
+                                        .push(project)
+                                        .push(&version.simplified_version);
+                                }
+
                                 table.add_row(Row::new(vec![
                                     Cell::new(&version.simplified_version).with_style(Attr::Bold),
                                     Cell::new(&version.version).with_style(Attr::Dim),
+                                    Cell::new(&flakehub_root.to_string())
+                                        .with_style(Attr::Underline(true)),
                                 ]));
                             }
 
