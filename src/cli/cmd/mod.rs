@@ -154,7 +154,11 @@ impl FlakeHubClient {
             let mut segs = endpoint
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
-            segs.push("versions").push(org).push(project).push(&version);
+            segs.push("version")
+                .push("resolve")
+                .push(org)
+                .push(project)
+                .push(&version);
         }
 
         let versions = self
