@@ -111,6 +111,7 @@ impl CommandExecute for ListSubcommand {
             Flakes => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
                 match client.flakes().await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
@@ -133,14 +134,14 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
-                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => Err(e.into()),
+                    Err(e) => return Err(e.into()),
                 }
             }
             Orgs => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
                 match client.orgs().await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
@@ -171,9 +172,8 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
-                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => Err(e.into()),
+                    Err(e) => return Err(e.into()),
                 }
             }
             Releases { flake } => {
@@ -182,7 +182,7 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?;
 
-                match client.releases(flake).await {
+                match client.releases(&flake.org, &flake.project).await {
                     Ok(releases) => {
                         if releases.is_empty() {
                             eprintln!("No results");
@@ -201,18 +201,20 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
-                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => Err(e.into()),
+                    Err(e) => return Err(e.into()),
                 }
             }
             Versions { flake, constraint } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                let flake = Flake::try_from(flake)?;
+                let flake = Flake::try_from(flake)?.clone();
 
-                match client.versions(flake.clone(), constraint.clone()).await {
+                match client
+                    .versions(&flake.org, &flake.project, &constraint)
+                    .await
+                {
                     Ok(versions) => {
                         if versions.is_empty() {
                             eprintln!("No versions match the provided constraint");
@@ -256,11 +258,12 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
-                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => Err(e.into()),
+                    Err(e) => return Err(e.into()),
                 }
             }
         }
+
+        Ok(ExitCode::SUCCESS)
     }
 }

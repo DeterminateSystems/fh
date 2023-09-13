@@ -104,16 +104,13 @@ impl FlakeHubClient {
         Ok(flakes)
     }
 
-    async fn releases(&self, flake: Flake) -> Result<Vec<Release>, FhError> {
+    async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
         let mut endpoint = self.api_addr.clone();
         {
             let mut segs = endpoint
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
-            segs.push("f")
-                .push(&flake.org)
-                .push(&flake.project)
-                .push("releases");
+            segs.push("f").push(org).push(project).push("releases");
         }
 
         let flakes = self
@@ -144,18 +141,20 @@ impl FlakeHubClient {
         Ok(orgs)
     }
 
-    async fn versions(&self, flake: Flake, constraint: String) -> Result<Vec<Version>, FhError> {
-        let version = urlencoding::encode(&constraint);
+    async fn versions(
+        &self,
+        org: &str,
+        project: &str,
+        constraint: &str,
+    ) -> Result<Vec<Version>, FhError> {
+        let version = urlencoding::encode(constraint);
 
         let mut endpoint = self.api_addr.clone();
         {
             let mut segs = endpoint
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
-            segs.push("versions")
-                .push(&flake.org)
-                .push(&flake.project)
-                .push(&version);
+            segs.push("versions").push(org).push(project).push(&version);
         }
 
         let versions = self
