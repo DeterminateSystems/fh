@@ -49,6 +49,9 @@ pub(super) enum FhError {
 
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
+
+    #[error("flake name parsing error: {0}")]
+    FlakeParse(String),
 }
 
 impl FlakeHubClient {
@@ -101,12 +104,21 @@ impl FlakeHubClient {
         Ok(flakes)
     }
 
-    async fn releases(&self, flake: String) -> Result<Vec<Release>, FhError> {
-        let endpoint = self.api_addr.join(&format!("f/{}/releases", flake))?;
+    async fn releases(&self, flake: Flake) -> Result<Vec<Release>, FhError> {
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("f")
+                .push(&flake.org)
+                .push(&flake.project)
+                .push("releases");
+        }
 
         let flakes = self
             .client
-            .get(endpoint)
+            .get(&endpoint.to_string())
             .send()
             .await?
             .json::<Vec<Release>>()
@@ -132,12 +144,19 @@ impl FlakeHubClient {
         Ok(orgs)
     }
 
-    async fn versions(&self, flake: String, constraint: String) -> Result<Vec<Version>, FhError> {
+    async fn versions(&self, flake: Flake, constraint: String) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(&constraint);
 
-        let endpoint = self
-            .api_addr
-            .join(&format!("versions/{}/{}", flake, version))?;
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("versions")
+                .push(&flake.org)
+                .push(&flake.project)
+                .push(&version);
+        }
 
         let versions = self
             .client

@@ -4,9 +4,10 @@ use prettytable::{row, Attr, Cell, Row, Table};
 use serde::Deserialize;
 use std::io::IsTerminal;
 use std::process::ExitCode;
+use url::Url;
 
-use super::TABLE_FORMAT;
-use crate::cli::{cmd::FlakeHubClient, FLAKEHUB_WEB_ROOT};
+use super::{FhError, TABLE_FORMAT};
+use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
 
@@ -20,10 +21,30 @@ pub(crate) struct ListSubcommand {
     api_addr: url::Url,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub(super) struct Flake {
-    org: String,
-    project: String,
+    pub(super) org: String,
+    pub(super) project: String,
+}
+
+impl TryFrom<String> for Flake {
+    type Error = FhError;
+
+    fn try_from(flake_ref: String) -> Result<Self, Self::Error> {
+        let (org, project) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
+            // `nixos/nixpkgs`
+            [org, repo] => (org, repo),
+            _ => {
+                return Err(FhError::FlakeParse(format!(
+                    "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}"
+                )))
+            }
+        };
+        Ok(Self {
+            org: String::from(org),
+            project: String::from(project),
+        })
+    }
 }
 
 #[derive(Deserialize)]
@@ -37,8 +58,15 @@ impl Flake {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self) -> String {
-        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
+    fn url(&self, api_addr: &Url) -> String {
+        let mut url = api_addr.clone();
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("flake").push(&self.org).push(&self.project);
+        }
+        url.to_string()
     }
 }
 
@@ -95,7 +123,7 @@ impl CommandExecute for ListSubcommand {
                             for flake in flakes {
                                 table.add_row(Row::new(vec![
                                     Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url()).with_style(Attr::Dim),
+                                    Cell::new(&flake.url(&self.api_addr)).with_style(Attr::Dim),
                                 ]));
                             }
 
@@ -123,10 +151,17 @@ impl CommandExecute for ListSubcommand {
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
                             for org in orgs {
-                                let url = format!("{}/org/{}", FLAKEHUB_WEB_ROOT, org);
+                                let mut url = self.api_addr.clone();
+                                {
+                                    let mut segs = url.path_segments_mut().expect(
+                                        "flakehub url cannot be base (this should never happen)",
+                                    );
+                                    segs.push("org").push(&org);
+                                }
+
                                 table.add_row(Row::new(vec![
                                     Cell::new(&org).with_style(Attr::Bold),
-                                    Cell::new(&url).with_style(Attr::Dim),
+                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
                                 ]));
                             }
 
@@ -144,6 +179,9 @@ impl CommandExecute for ListSubcommand {
             Releases { flake } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
+                let flake = Flake::try_from(flake)?;
+
                 match client.releases(flake).await {
                     Ok(releases) => {
                         if releases.is_empty() {
@@ -171,6 +209,9 @@ impl CommandExecute for ListSubcommand {
             Versions { flake, constraint } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
+
+                let flake = Flake::try_from(flake)?;
+
                 match client.versions(flake.clone(), constraint.clone()).await {
                     Ok(versions) => {
                         if versions.is_empty() {
@@ -184,14 +225,6 @@ impl CommandExecute for ListSubcommand {
                                 "FlakeHub URL"
                             ]);
 
-                            let (org, project) = match flake.split('/').collect::<Vec<_>>()[..] {
-                                // `nixos/nixpkgs`
-                                [org, project] => (org, project),
-                                _ => Err(color_eyre::eyre::eyre!(
-                                    "flakehub input did not match the expected format of `org/repo`"
-                                ))?,
-                            };
-
                             for version in versions {
                                 let mut flakehub_root = self.api_addr.clone();
 
@@ -204,8 +237,8 @@ impl CommandExecute for ListSubcommand {
 
                                     path_segments_mut
                                         .push("flake")
-                                        .push(org)
-                                        .push(project)
+                                        .push(&flake.org)
+                                        .push(&flake.project)
                                         .push(&version.simplified_version);
                                 }
 

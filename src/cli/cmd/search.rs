@@ -2,8 +2,7 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use std::process::ExitCode;
-
-use crate::cli::FLAKEHUB_WEB_ROOT;
+use url::Url;
 
 use super::{CommandExecute, FlakeHubClient, TABLE_FORMAT};
 
@@ -31,8 +30,15 @@ impl SearchResult {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self) -> String {
-        format!("{}/flake/{}/{}", FLAKEHUB_WEB_ROOT, self.org, self.project)
+    fn url(&self, api_addr: &Url) -> String {
+        let mut url = api_addr.clone();
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("flake").push(&self.org).push(&self.project);
+        }
+        url.to_string()
     }
 }
 
@@ -59,7 +65,7 @@ impl CommandExecute for SearchSubcommand {
                     for flake in results {
                         table.add_row(Row::new(vec![
                             Cell::new(&flake.name()).with_style(Attr::Bold),
-                            Cell::new(&flake.url()).with_style(Attr::Dim),
+                            Cell::new(&flake.url(&self.api_addr)).with_style(Attr::Dim),
                         ]));
                     }
 
