@@ -1,4 +1,5 @@
 mod add;
+mod completion;
 mod init;
 mod list;
 mod search;
@@ -31,9 +32,10 @@ pub trait CommandExecute {
 #[derive(clap::Subcommand)]
 pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
-    Search(search::SearchSubcommand),
-    List(list::ListSubcommand),
+    Completion(completion::CompletionSubcommand),
     Init(init::InitSubcommand),
+    List(list::ListSubcommand),
+    Search(search::SearchSubcommand),
 }
 
 pub(super) struct FlakeHubClient {

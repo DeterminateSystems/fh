@@ -7,6 +7,8 @@ use std::process::ExitCode;
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
 
+use self::flake::InputsInsertionLocation;
+
 use super::CommandExecute;
 
 const FALLBACK_FLAKE_CONTENTS: &str = r#"{
@@ -32,6 +34,12 @@ pub(crate) struct AddSubcommand {
     /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2305.*` (without a URL
     /// scheme) will be inferred as a FlakeHub input.
     pub(crate) input_ref: String,
+    /// Whether to insert a new input at the top of or the bottom of an existing `inputs` attrset.
+    #[clap(long, default_value_t = InputsInsertionLocation::Top)]
+    pub(crate) insertion_location: InputsInsertionLocation,
+    /// Print to stdout the new flake.nix contents instead of writing it to disk.
+    #[clap(long)]
+    pub(crate) dry_run: bool,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -57,9 +65,14 @@ impl CommandExecute for AddSubcommand {
             flake_input_url,
             flake_contents,
             input_url_attr_path,
+            self.insertion_location,
         )?;
 
-        tokio::fs::write(self.flake_path, new_flake_contents).await?;
+        if self.dry_run {
+            println!("{new_flake_contents}");
+        } else {
+            tokio::fs::write(self.flake_path, new_flake_contents).await?;
+        }
 
         Ok(ExitCode::SUCCESS)
     }

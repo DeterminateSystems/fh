@@ -53,7 +53,10 @@ enum Subcommands {
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
     /// List all releases for a specific flake on FlakeHub.
-    Releases { flake: String },
+    Releases {
+        /// The flake for which you want to list releases.
+        flake: String,
+    },
 }
 
 #[async_trait::async_trait]

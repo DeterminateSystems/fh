@@ -13,7 +13,9 @@ clap = { version = "4.3.2", default-features = false, features = [
   "env",
   "help",
   "std",
+  "error-context",
 ] }
+clap_complete = "4.4.0"
 color-eyre = "0.6.2"
 handlebars = "4.4.0"
 indicatif = { version = "0.17.6", default-features = false }

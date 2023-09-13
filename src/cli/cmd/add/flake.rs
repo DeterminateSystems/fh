@@ -9,8 +9,9 @@ pub(crate) fn upsert_flake_input(
     flake_input_value: url::Url,
     flake_contents: String,
     input_attr_path: VecDeque<String>,
+    inputs_insertion_location: InputsInsertionLocation,
 ) -> color_eyre::Result<String> {
-    match find_attrset(&expr, Some(input_attr_path))? {
+    match find_first_attrset_by_path(&expr, Some(input_attr_path))? {
         Some(attr) => {
             let nixel::Expression::String(existing_input_value) = *attr.to else {
                 return Err(color_eyre::eyre::eyre!(
@@ -27,8 +28,39 @@ pub(crate) fn upsert_flake_input(
             let inputs_attr_path: VecDeque<String> = [String::from("inputs")].into();
             let outputs_attr_path: VecDeque<String> = [String::from("outputs")].into();
 
-            let inputs_attr = find_attrset(&expr, Some(inputs_attr_path))?;
-            let outputs_attr = find_attrset(&expr, Some(outputs_attr_path))?;
+            let inputs_attr = match inputs_insertion_location {
+                InputsInsertionLocation::Top => {
+                    find_first_attrset_by_path(&expr, Some(inputs_attr_path))?
+                }
+                InputsInsertionLocation::Bottom => {
+                    let all_toplevel_inputs =
+                        find_all_attrsets_by_path(&expr, Some(inputs_attr_path))?;
+                    let mut all_inputs = Vec::new();
+
+                    for v in all_toplevel_inputs {
+                        let nixel::Part::Raw(raw) = &v.from[0] else {
+                            continue;
+                        };
+
+                        if &*raw.content == "inputs" {
+                            // inputs = { ... }
+                            if v.from.len() == 1 {
+                                all_inputs.extend(find_all_attrsets_by_path(&v.to, None)?);
+                            }
+                            // inputs.nixpkgs = { ... }
+                            // OR
+                            // inputs.nixpkgs.url = ""
+                            else {
+                                all_inputs.push(v);
+                            }
+                        }
+                    }
+
+                    all_inputs.into_iter().last()
+                }
+            };
+
+            let outputs_attr = find_first_attrset_by_path(&expr, Some(outputs_attr_path))?;
 
             upsert_into_inputs_and_outputs(
                 flake_input_name,
@@ -37,16 +69,32 @@ pub(crate) fn upsert_flake_input(
                 expr.span(),
                 inputs_attr,
                 outputs_attr,
+                inputs_insertion_location,
             )
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
-pub(crate) fn find_attrset(
+pub(crate) fn find_first_attrset_by_path(
     expr: &nixel::Expression,
     attr_path: Option<VecDeque<String>>,
 ) -> color_eyre::Result<Option<nixel::BindingKeyValue>> {
+    // While this may be more expensive when we only care about the first thing it returns, it
+    // decreases maintenance burden by keeping these two functions using the same implementation
+    // under the hood.
+    Ok(find_all_attrsets_by_path(expr, attr_path)?
+        .into_iter()
+        .next())
+}
+
+#[tracing::instrument(skip_all)]
+pub(crate) fn find_all_attrsets_by_path(
+    expr: &nixel::Expression,
+    attr_path: Option<VecDeque<String>>,
+) -> color_eyre::Result<Vec<nixel::BindingKeyValue>> {
+    let mut found_kvs = Vec::new();
+
     match expr {
         nixel::Expression::Map(map) => {
             for binding in map.bindings.iter() {
@@ -97,17 +145,23 @@ pub(crate) fn find_attrset(
                             // If `most_recent_attr_matched` is true, that means we've found the
                             // attr we want! Probably.
                             if most_recent_attr_matched {
-                                return Ok(Some(kv.to_owned()));
+                                found_kvs.push(kv.to_owned());
+                                continue;
                             }
 
                             // If `this_attr_path` is empty, that means we've matched as much of the
                             // attr path as we can of this key node, and thus we need to recurse into
                             // its value node to continue checking if we want this input or not.
                             if this_attr_path.is_empty() {
-                                return find_attrset(&kv.to, Some(search_attr_path));
+                                found_kvs.extend(find_all_attrsets_by_path(
+                                    &kv.to,
+                                    Some(search_attr_path),
+                                )?);
+                                continue;
                             }
                         } else {
-                            return Ok(Some(kv.to_owned()));
+                            found_kvs.push(kv.to_owned());
+                            continue;
                         }
                     }
                     nixel::Binding::Inherit(inherit) => {
@@ -132,9 +186,10 @@ pub(crate) fn find_attrset(
         }
     }
 
-    Ok(None)
+    Ok(found_kvs)
 }
 
+#[derive(Debug)]
 pub(crate) enum AttrType {
     Inputs(nixel::BindingKeyValue),
     Outputs(nixel::BindingKeyValue),
@@ -143,50 +198,100 @@ pub(crate) enum AttrType {
     MissingInputsAndOutputs(nixel::Span),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum InputsInsertionLocation {
+    /// The new input will be inserted at the top (either above all other `inputs`, or as the first input inside of `inputs = { ... }`)
+    Top,
+    /// The new input will be inserted at the bottom (either below all other `inputs`, or as the last input inside of `inputs = { ... }`)
+    Bottom,
+}
+
+impl std::fmt::Display for InputsInsertionLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputsInsertionLocation::Top => f.write_str("top"),
+            InputsInsertionLocation::Bottom => f.write_str("bottom"),
+        }
+    }
+}
+
+impl std::str::FromStr for InputsInsertionLocation {
+    type Err = color_eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "top" => InputsInsertionLocation::Top,
+            "bottom" | "🥺" => InputsInsertionLocation::Bottom,
+            _ => {
+                return Err(color_eyre::eyre::eyre!(
+                    "only `top` and `bottom` are valid insertion locations"
+                ))
+            }
+        })
+    }
+}
+
 impl AttrType {
     pub(crate) fn process(
         self,
         flake_contents: &str,
         flake_input_name: &str,
         flake_input_value: &url::Url,
+        insertion_location: InputsInsertionLocation,
     ) -> color_eyre::Result<String> {
         match self {
             AttrType::Inputs(ref inputs_attr) => {
                 match inputs_attr.from.len() {
                     // inputs = { nixpkgs.url = ""; };
                     1 => {
-                        let first_input = find_attrset(&inputs_attr.to, None)?.expect("");
-                        let (from_span, _to_span) = Self::kv_to_span(&first_input);
                         let flake_input =
                             format!(r#"{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
-                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
+
+                        match insertion_location {
+                            InputsInsertionLocation::Top => {
+                                let first_input =
+                                    find_first_attrset_by_path(&inputs_attr.to, None)?
+                                        .expect("there must be a first input");
+                                let (from_span, _to_span) = Self::kv_to_span(&first_input);
+
+                                self.insert_input(from_span, None, flake_contents, &flake_input)
+                            }
+                            InputsInsertionLocation::Bottom => {
+                                let (from_span, to_span) = self.span();
+
+                                self.insert_input(
+                                    from_span,
+                                    Some(to_span),
+                                    flake_contents,
+                                    &flake_input,
+                                )
+                            }
+                        }
                     }
 
                     // inputs.nixpkgs = { url = ""; inputs.something.follows = ""; };
                     // OR
                     // inputs.nixpkgs.url = "";
-                    2 | 3 => {
-                        let (from_span, _to_span) = self.span();
-
+                    // OR
+                    // inputs.nixpkgs.inputs.something.follows = "";
+                    // etc...
+                    _len => {
+                        let (from_span, to_span) = self.span();
                         let flake_input = format!(
                             r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#
                         );
-                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
-                    }
 
-                    // I don't think this is possible, but just in case.
-                    len => {
-                        tracing::warn!(
-                            "input's attrpath had unexpected length {len}; \
-                            please file a bug report at https://github.com/DeterminateSystems/fh with as much detail as possible"
-                        );
-
-                        let (from_span, _to_span) = self.span();
-
-                        let flake_input = format!(
-                            r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#
-                        );
-                        AttrType::insert_input(from_span, flake_contents, &flake_input, false)
+                        match insertion_location {
+                            InputsInsertionLocation::Top => {
+                                self.insert_input(from_span, None, flake_contents, &flake_input)
+                            }
+                            InputsInsertionLocation::Bottom => self.insert_input(
+                                from_span,
+                                Some(to_span),
+                                flake_contents,
+                                &flake_input,
+                            ),
+                        }
                     }
                 }
             }
@@ -221,18 +326,15 @@ impl AttrType {
                     }
                 }
             }
-            AttrType::MissingInputs((outputs_span_from, _outputs_span_to)) => {
-                // If we're not adding our new input above an existing `inputs` construct, let's add
-                // another newline so that it looks nicer.
-                let flake_input = format!(
-                    r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}{NEWLINE}"#
-                );
+            AttrType::MissingInputs((ref outputs_span_from, ref _outputs_span_to)) => {
+                let flake_input =
+                    format!(r#"inputs.{flake_input_name}.url = "{flake_input_value}";{NEWLINE}"#);
 
-                AttrType::insert_input(
-                    outputs_span_from,
+                self.insert_input(
+                    outputs_span_from.clone(),
+                    None,
                     flake_contents,
                     &flake_input,
-                    true, // we need to adjust the line numbers since we added an extra newline above
                 )
             }
             AttrType::MissingOutputs((_inputs_span_from, _inputs_span_to)) => {
@@ -245,7 +347,7 @@ impl AttrType {
             AttrType::MissingInputsAndOutputs(_root_span) => {
                 // I don't really want to deal with a flake that has no `inputs` or `outputs`
                 // either, but again, I've laid the groundwork to do so...
-                // If we do decide to suppor this, the simplest way would be: insert at the root
+                // If we do decide to support this, the simplest way would be: insert at the root
                 // span (\\n, then 2 spaces, then write inputs, don't care about outputs for now?)
                 Err(color_eyre::eyre::eyre!(
                     "flake was missing both the `inputs` and `outputs` attributes"
@@ -256,27 +358,19 @@ impl AttrType {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn insert_input(
-        span: nixel::Span,
+        &self,
+        from_span: nixel::Span,
+        to_span: Option<nixel::Span>,
         flake_contents: &str,
         flake_input: &str,
-        added_cosmetic_newline: bool,
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
-        let (start, _) = span_to_start_end_offsets(flake_contents, &span)?;
-
-        new_flake_contents.insert_str(start, flake_input);
 
         let old_content_start_of_indentation_pos = nixel::Position {
-            line: span.start.line,
+            line: from_span.start.line,
             column: 1,
         };
-        let old_content_pos = nixel::Position {
-            // we moved the old contents to the next line...
-            line: span.start.line + 1 + if added_cosmetic_newline { 1 } else { 0 },
-            // ...at the very beginning
-            column: 1,
-        };
-        let old_content_end_of_indentation_pos = span.start;
+        let old_content_end_of_indentation_pos = from_span.start.clone();
 
         let indentation_span = nixel::Span {
             start: Box::new(old_content_start_of_indentation_pos),
@@ -286,9 +380,24 @@ impl AttrType {
             span_to_start_end_offsets(flake_contents, &indentation_span)?;
         let indentation = &flake_contents[indentation_start..indentation_end];
 
+        let line = if let Some(to_span) = to_span {
+            to_span.end.line + 1
+        } else {
+            from_span.start.line
+        };
+        let old_content_pos = nixel::Position { line, column: 1 };
         let offset = position_to_offset(&new_flake_contents, &old_content_pos)?;
 
-        new_flake_contents.insert_str(offset, indentation);
+        let mut input = format!("{indentation}{flake_input}");
+
+        // If we're not adding our new input above or below an existing `inputs` construct, let's
+        // add another newline so that it looks nicer.
+        let add_cosmetic_newline = matches!(self, AttrType::MissingInputs(_));
+        if add_cosmetic_newline {
+            input.push_str(NEWLINE);
+        }
+
+        new_flake_contents.insert_str(offset, &input);
 
         Ok(new_flake_contents)
     }
@@ -395,6 +504,7 @@ pub(crate) fn upsert_into_inputs_and_outputs(
     root_span: nixel::Span,
     inputs_attr: Option<nixel::BindingKeyValue>,
     outputs_attr: Option<nixel::BindingKeyValue>,
+    insertion_location: InputsInsertionLocation,
 ) -> color_eyre::Result<String> {
     let inputs_attr = inputs_attr.map(AttrType::Inputs);
     let outputs_attr = outputs_attr.map(AttrType::Outputs);
@@ -429,6 +539,7 @@ pub(crate) fn upsert_into_inputs_and_outputs(
             &flake_contents,
             &flake_input_name,
             &flake_input_value,
+            insertion_location,
         )?;
     }
     if let Some(second_attr_to_process) = second_attr_to_process {
@@ -436,6 +547,7 @@ pub(crate) fn upsert_into_inputs_and_outputs(
             &flake_contents,
             &flake_input_name,
             &flake_input_value,
+            insertion_location,
         )?;
     }
 
@@ -527,6 +639,8 @@ pub(crate) fn position_to_offset(
 
 #[cfg(test)]
 mod test {
+    use super::InputsInsertionLocation;
+
     #[test]
     fn test_flake_1_rewrite_less_simple_flake_input() {
         let flake_contents = include_str!(concat!(
@@ -547,6 +661,7 @@ mod test {
             ["inputs", &input_name, "url"]
                 .map(ToString::to_string)
                 .into(),
+            InputsInsertionLocation::Top,
         );
         assert!(res.is_ok());
 
@@ -581,6 +696,7 @@ mod test {
             ["inputs", &input_name, "url"]
                 .map(ToString::to_string)
                 .into(),
+            InputsInsertionLocation::Top,
         );
         assert!(res.is_ok());
 
@@ -617,6 +733,7 @@ mod test {
                 ["inputs", &input_name, "url"]
                     .map(ToString::to_string)
                     .into(),
+                InputsInsertionLocation::Top,
             );
             assert!(res.is_ok());
 
@@ -647,6 +764,7 @@ mod test {
             ["inputs", &input_name, "url"]
                 .map(ToString::to_string)
                 .into(),
+            InputsInsertionLocation::Top,
         );
         assert!(res.is_ok());
 
@@ -717,6 +835,7 @@ mod test {
             ["inputs", &input_name, "url"]
                 .map(ToString::to_string)
                 .into(),
+            InputsInsertionLocation::Top,
         );
         assert!(res.is_ok());
 
@@ -760,6 +879,7 @@ mod test {
             ["inputs", &input_name, "url"]
                 .map(ToString::to_string)
                 .into(),
+            InputsInsertionLocation::Top,
         );
         assert!(res.is_ok());
 
@@ -781,5 +901,64 @@ mod test {
             updated_outputs,
             "outputs = { self, nixpkgs, ... } @ tes: { };"
         );
+    }
+
+    #[test]
+    fn test_flake_7_inserts_at_the_bottom() {
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake7.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let input_name = String::from("nixpkgs-new");
+        let input_value =
+            url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let res = super::upsert_flake_input(
+            *parsed.expression,
+            input_name.clone(),
+            input_value.clone(),
+            flake_contents,
+            ["inputs", &input_name, "url"]
+                .map(ToString::to_string)
+                .into(),
+            InputsInsertionLocation::Bottom,
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        eprintln!("{}", res);
+        let nixpkgs_input = res.lines().enumerate().find_map(|(idx, line)| {
+            if line.contains(input_value.as_str()) {
+                Some((idx, line))
+            } else {
+                None
+            }
+        });
+        assert!(nixpkgs_input.is_some());
+        let Some((nixpkgs_input_idx, nixpkgs_input)) = nixpkgs_input else {
+            unreachable!();
+        };
+
+        let updated_nixpkgs_input = nixpkgs_input.trim();
+        assert_eq!(
+            updated_nixpkgs_input,
+            "nixpkgs-new.url = \"https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz\";"
+        );
+
+        let wezterm_line_idx = res
+            .lines()
+            .enumerate()
+            .find_map(|(idx, line)| {
+                if line.contains("wezterm") {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        assert!(wezterm_line_idx < nixpkgs_input_idx, "when inserting at the bottom, the new nixpkgs input should have come after the wezterm input");
     }
 }
