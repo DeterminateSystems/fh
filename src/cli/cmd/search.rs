@@ -31,7 +31,8 @@ impl SearchResult {
     }
 
     fn url(&self) -> String {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).unwrap();
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
         {
             let mut segs = url
                 .path_segments_mut()
