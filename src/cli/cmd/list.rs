@@ -105,10 +105,9 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
+                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => Err(e.into()),
                 }
             }
             Orgs => {
@@ -137,10 +136,9 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
+                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => Err(e.into()),
                 }
             }
             Releases { flake } => {
@@ -165,10 +163,9 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
+                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => Err(e.into()),
                 }
             }
             Versions { flake, constraint } => {
@@ -196,14 +193,11 @@ impl CommandExecute for ListSubcommand {
                                 table.to_csv(std::io::stdout())?;
                             }
                         }
+                        Ok(ExitCode::SUCCESS)
                     }
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    }
+                    Err(e) => Err(e.into()),
                 }
             }
         }
-
-        Ok(ExitCode::SUCCESS)
     }
 }
