@@ -2,7 +2,7 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
 use serde::{Deserialize, Serialize};
-use std::process::ExitCode;
+use std::{io::IsTerminal, process::ExitCode};
 use url::Url;
 
 use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient, TABLE_FORMAT};
@@ -78,7 +78,11 @@ impl CommandExecute for SearchSubcommand {
                         ]));
                     }
 
-                    table.printstd();
+                    if std::io::stdout().is_terminal() {
+                        table.printstd();
+                    } else {
+                        table.to_csv(std::io::stdout())?;
+                    }
                 }
             }
             Err(e) => {
