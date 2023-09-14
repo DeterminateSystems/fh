@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::IsTerminal;
 use std::process::ExitCode;
 use url::Url;
@@ -19,11 +19,15 @@ pub(crate) struct ListSubcommand {
     #[command(subcommand)]
     cmd: Subcommands,
 
-    #[clap(from_global)]
+    /// Output results as JSON.
+    #[arg(long, global = true)]
+    json: bool,
+
+    #[arg(from_global)]
     api_addr: url::Url,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub(super) struct Flake {
     pub(super) org: String,
     pub(super) project: String,
@@ -49,7 +53,7 @@ impl TryFrom<String> for Flake {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(super) struct Version {
     version: String,
     simplified_version: String,
@@ -78,7 +82,7 @@ pub(super) struct Org {
     pub(super) name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(super) struct Release {
     version: String,
 }
@@ -103,6 +107,12 @@ enum Subcommands {
     },
 }
 
+fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
+    let json = serde_json::to_string(&value)?;
+    println!("{}", json);
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
@@ -120,21 +130,25 @@ impl CommandExecute for ListSubcommand {
                         if flakes.is_empty() {
                             eprintln!("No results");
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row!["Flake", "FlakeHub URL"]);
-
-                            for flake in flakes {
-                                table.add_row(Row::new(vec![
-                                    Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url()).with_style(Attr::Dim),
-                                ]));
-                            }
-
-                            if std::io::stdout().is_terminal() {
-                                table.printstd();
+                            if self.json {
+                                print_json(&flakes)?;
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                let mut table = Table::new();
+                                table.set_format(*TABLE_FORMAT);
+                                table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                                for flake in flakes {
+                                    table.add_row(Row::new(vec![
+                                        Cell::new(&flake.name()).with_style(Attr::Bold),
+                                        Cell::new(&flake.url()).with_style(Attr::Dim),
+                                    ]));
+                                }
+
+                                if std::io::stdout().is_terminal() {
+                                    table.printstd();
+                                } else {
+                                    table.to_csv(std::io::stdout())?;
+                                }
                             }
                         }
                     }
@@ -149,16 +163,18 @@ impl CommandExecute for ListSubcommand {
                     Ok(orgs) => {
                         if orgs.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&orgs)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
-                            let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                "failed to parse flakehub web root url (this should never happen)",
-                            );
-
                             for org in orgs {
+                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+                                        "failed to parse flakehub web root url (this should never happen)",
+                                    );
+
                                 {
                                     let mut segs = url.path_segments_mut().expect(
                                         "flakehub url cannot be base (this should never happen)",
@@ -192,6 +208,8 @@ impl CommandExecute for ListSubcommand {
                     Ok(releases) => {
                         if releases.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&releases)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -224,6 +242,8 @@ impl CommandExecute for ListSubcommand {
                     Ok(versions) => {
                         if versions.is_empty() {
                             eprintln!("No versions match the provided constraint");
+                        } else if self.json {
+                            print_json(&versions)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
