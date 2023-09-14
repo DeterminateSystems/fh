@@ -129,26 +129,24 @@ impl CommandExecute for ListSubcommand {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&flakes)?;
                         } else {
-                            if self.json {
-                                print_json(&flakes)?;
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                            for flake in flakes {
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&flake.name()).with_style(Attr::Bold),
+                                    Cell::new(&flake.url()).with_style(Attr::Dim),
+                                ]));
+                            }
+
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
                             } else {
-                                let mut table = Table::new();
-                                table.set_format(*TABLE_FORMAT);
-                                table.set_titles(row!["Flake", "FlakeHub URL"]);
-
-                                for flake in flakes {
-                                    table.add_row(Row::new(vec![
-                                        Cell::new(&flake.name()).with_style(Attr::Bold),
-                                        Cell::new(&flake.url()).with_style(Attr::Dim),
-                                    ]));
-                                }
-
-                                if std::io::stdout().is_terminal() {
-                                    table.printstd();
-                                } else {
-                                    table.to_csv(std::io::stdout())?;
-                                }
+                                table.to_csv(std::io::stdout())?;
                             }
                         }
                     }
