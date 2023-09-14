@@ -6,6 +6,7 @@ mod search;
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
+use serde::Serialize;
 
 use crate::cli::cmd::list::Org;
 
@@ -46,14 +47,17 @@ pub(super) struct FlakeHubClient {
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum FhError {
+    #[error("flake name parsing error: {0}")]
+    FlakeParse(String),
+
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 
+    #[error("json parsing error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
-
-    #[error("flake name parsing error: {0}")]
-    FlakeParse(String),
 }
 
 impl FlakeHubClient {
@@ -173,4 +177,10 @@ impl FlakeHubClient {
 
         Ok(versions)
     }
+}
+
+pub(super) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
+    let json = serde_json::to_string(&value)?;
+    println!("{}", json);
+    Ok(())
 }

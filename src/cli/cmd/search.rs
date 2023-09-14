@@ -1,10 +1,11 @@
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
-use std::process::ExitCode;
+use serde::{Deserialize, Serialize};
+use std::{io::IsTerminal, process::ExitCode};
 use url::Url;
 
-use super::{list::FLAKEHUB_WEB_ROOT, CommandExecute, FlakeHubClient, TABLE_FORMAT};
+use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient, TABLE_FORMAT};
 
 /// Searches FlakeHub for flakes that match your query.
 #[derive(Debug, Parser)]
@@ -12,14 +13,19 @@ pub(crate) struct SearchSubcommand {
     /// The search query.
     query: String,
 
+    /// The maximum number of search results to return.
     #[clap(short, long, default_value = "10")]
     max_results: usize,
+
+    /// Output results as JSON.
+    #[clap(long)]
+    json: bool,
 
     #[clap(from_global)]
     api_addr: url::Url,
 }
 
-#[derive(serde_derive::Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct SearchResult {
     org: String,
     project: String,
@@ -55,6 +61,8 @@ impl CommandExecute for SearchSubcommand {
             Ok(results) => {
                 if results.is_empty() {
                     eprintln!("No results");
+                } else if self.json {
+                    print_json(&results)?;
                 } else {
                     let mut table = Table::new();
                     table.set_format(*TABLE_FORMAT);
@@ -70,7 +78,11 @@ impl CommandExecute for SearchSubcommand {
                         ]));
                     }
 
-                    table.printstd();
+                    if std::io::stdout().is_terminal() {
+                        table.printstd();
+                    } else {
+                        table.to_csv(std::io::stdout())?;
+                    }
                 }
             }
             Err(e) => {

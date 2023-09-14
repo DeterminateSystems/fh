@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use prettytable::{row, Attr, Cell, Row, Table};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::IsTerminal;
 use std::process::ExitCode;
 use url::Url;
 
-use super::{FhError, TABLE_FORMAT};
+use super::{print_json, FhError, TABLE_FORMAT};
 use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
@@ -19,11 +19,15 @@ pub(crate) struct ListSubcommand {
     #[command(subcommand)]
     cmd: Subcommands,
 
-    #[clap(from_global)]
+    /// Output results as JSON.
+    #[arg(long, global = true)]
+    json: bool,
+
+    #[arg(from_global)]
     api_addr: url::Url,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub(super) struct Flake {
     pub(super) org: String,
     pub(super) project: String,
@@ -49,7 +53,7 @@ impl TryFrom<String> for Flake {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(super) struct Version {
     version: String,
     simplified_version: String,
@@ -78,7 +82,7 @@ pub(super) struct Org {
     pub(super) name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(super) struct Release {
     version: String,
 }
@@ -119,6 +123,8 @@ impl CommandExecute for ListSubcommand {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&flakes)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -149,16 +155,18 @@ impl CommandExecute for ListSubcommand {
                     Ok(orgs) => {
                         if orgs.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&orgs)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
                             table.set_titles(row!["Organization", "FlakeHub URL"]);
 
-                            let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                "failed to parse flakehub web root url (this should never happen)",
-                            );
-
                             for org in orgs {
+                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+                                        "failed to parse flakehub web root url (this should never happen)",
+                                    );
+
                                 {
                                     let mut segs = url.path_segments_mut().expect(
                                         "flakehub url cannot be base (this should never happen)",
@@ -192,6 +200,8 @@ impl CommandExecute for ListSubcommand {
                     Ok(releases) => {
                         if releases.is_empty() {
                             eprintln!("No results");
+                        } else if self.json {
+                            print_json(&releases)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
@@ -224,6 +234,8 @@ impl CommandExecute for ListSubcommand {
                     Ok(versions) => {
                         if versions.is_empty() {
                             eprintln!("No versions match the provided constraint");
+                        } else if self.json {
+                            print_json(&versions)?;
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
