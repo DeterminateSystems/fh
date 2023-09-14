@@ -6,7 +6,7 @@ use std::io::IsTerminal;
 use std::process::ExitCode;
 use url::Url;
 
-use super::{FhError, TABLE_FORMAT};
+use super::{print_json, FhError, TABLE_FORMAT};
 use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
@@ -105,12 +105,6 @@ enum Subcommands {
         /// The version constraint as a string.
         constraint: String,
     },
-}
-
-fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
-    let json = serde_json::to_string(&value)?;
-    println!("{}", json);
-    Ok(())
 }
 
 #[async_trait::async_trait]

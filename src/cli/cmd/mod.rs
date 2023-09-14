@@ -6,6 +6,7 @@ mod search;
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
+use serde::Serialize;
 
 use crate::cli::cmd::list::Org;
 
@@ -176,4 +177,10 @@ impl FlakeHubClient {
 
         Ok(versions)
     }
+}
+
+pub(super) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
+    let json = serde_json::to_string(&value)?;
+    println!("{}", json);
+    Ok(())
 }
