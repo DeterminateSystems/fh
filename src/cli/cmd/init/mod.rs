@@ -320,7 +320,7 @@ impl CommandExecute for InitSubcommand {
 
         write_file(self.output, flake_string)?;
 
-        if !project.uses_direnv() && Prompt::bool("Are you a direnv user? Select yes if you'd like to add a .envrc file to this project")? {
+        if !project.uses_direnv() && Prompt::bool("Would you like to add a .envrc file for use with direnv?")? {
             write_file(PathBuf::from(".envrc"), String::from("use flake"))?;
         } else {
             println!(
