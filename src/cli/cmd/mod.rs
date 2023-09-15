@@ -71,6 +71,9 @@ pub(super) enum FhError {
     #[error("template error: {0}")]
     Template(#[from] Box<handlebars::TemplateError>),
 
+    #[error("a presumably unreachable point was reached: {0}")]
+    Unreachable(String),
+
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
 }

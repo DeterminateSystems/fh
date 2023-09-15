@@ -28,6 +28,11 @@ use super::{CommandExecute, FhError};
 
 const COMMON_TOOLS: &[&str] = &["curl", "git", "jq", "wget"];
 
+// Nixpkgs references
+const NIXPKGS_23_05: &str = "0.2305.*";
+const NIXPKGS_LATEST: &str = "*";
+const NIXPKGS_UNSTABLE: &str = "0.1.*";
+
 /// Create a new flake.nix using an opinionated interactive initializer.
 #[derive(Parser)]
 pub(crate) struct InitSubcommand {
@@ -77,13 +82,14 @@ impl CommandExecute for InitSubcommand {
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                "23.05" => String::from("0.2305.*"),
-                "latest" => String::from("*"),
-                "unstable" => String::from("0.1.*"),
+                "23.05" => String::from(NIXPKGS_23_05),
+                "latest" => String::from(NIXPKGS_LATEST),
+                "unstable" => String::from(NIXPKGS_UNSTABLE),
                 "select a specific release (not recommended in most cases)" => {
                     select_nixpkgs(&self.api_addr).await?
                 }
-                _ => String::from("*"), // Unreachable
+                // Just in case
+                _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
             };
 
             flake.inputs.insert(
