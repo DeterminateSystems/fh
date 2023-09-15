@@ -120,7 +120,9 @@ fh list releases nixos/nixpkgs
 
 ### Listing organizations, flakes, and versions
 
-[`fh list flakes`](#list-flakes), [`fh list orgs`](#list-flakes), and [`fh list versions`](#list-versions) enumerate [organizations][orgs], [flakes], and [flake versions][semver] on FlakeHub, respectively.
+[`fh list flakes`](#list-flakes), [`fh list orgs`](#list-flakes), and [`fh list versions`](#list-versions) enumerate [flakes], [organizations][orgs], and [flake versions][semver] on FlakeHub, respectively.
+
+For each, you can apply the `--json` flag to produce JSON output.
 
 #### List flakes
 
