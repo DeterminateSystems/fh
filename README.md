@@ -1,13 +1,12 @@
-
 # `fh`, the official FlakeHub CLI
 
-`fh` is a scrappy CLI to search FlakeHub and add new inputs to your [Nix flake](https://zero-to-nix.com/concepts/flakes).
+`fh` is a scrappy CLI for searching [FlakeHub] and adding new [inputs] to your [Nix flakes][nix-flakes].
 
 ## Usage
 
 Using `fh` from FlakeHub:
 
-```console
+```shell
 nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
@@ -18,7 +17,7 @@ nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 
 ### NixOS
 
-To make the `fh` CLI readily available on a NixOS system:
+To make the `fh` CLI readily available on a [NixOS] system:
 
 ```nix
 {
@@ -47,23 +46,32 @@ To make the `fh` CLI readily available on a NixOS system:
 ### Add a flake published to FlakeHub to your `flake.nix`
 
 `fh add` adds the most current release of the specified flake to your `flake.nix` and updates the `outputs` function to accept it.
+This would add the current release of [Nixpkgs] to your flake:
 
-```console
-$ fh add nixos/nixpkgs
+```shell
+fh add nixos/nixpkgs
+cat flake.nix
+```
 
-$ cat flake.nix
+```nix
 {
   description = "My new flake.";
 
   inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2305.490449.tar.gz";
 
-  outputs = { nixpkgs, ... } @ inputs: {};
+  outputs = { nixpkgs, ... } @ inputs: {
+    # Fill in your outputs here
+  };
 }
 ```
 
 ### Searching published flakes
-```console
-$ fh search rust
+
+```shell
+fh search rust
+```
+
+```log
 +---------------------------------------------------------------------------------+
 | Flake                      FlakeHub URL                                         |
 +---------------------------------------------------------------------------------+
@@ -82,10 +90,13 @@ $ fh search rust
 
 ### Listing releases
 
-`fh list releases` provides a list of a project's releases.
+`fh list releases` provides a list of a flake's [releases][semver].
 
-```console
-$ fh list releases nixos/nixpkgs
+```shell
+fh list releases nixos/nixpkgs
+```
+
+```log
 +------------------------------------------------------------+
 | Version                                                    |
 +------------------------------------------------------------+
@@ -97,22 +108,17 @@ $ fh list releases nixos/nixpkgs
 ...
 ```
 
-### Listing organizations and flakes
+### Listing organizations, flakes, and versions
 
-`fh list orgs` and `fh list flakes` enumerates orgs and flakes on FlakeHub:
+[`fh list flakes`](#list-flakes), [`fh list orgs`](#list-flakes), and [`fh list versions`](#list-versions) enumerate [organizations][orgs], [flakes], and flake versions on FlakeHub, respectively.
 
-```console
-$ fh list orgs
-+-------------------------------------------------------------------------+
-| Organization            FlakeHub URL                                    |
-+-------------------------------------------------------------------------+
-| ajaxbits                https://flakehub.com/org/ajaxbits               |
-| astro                   https://flakehub.com/org/astro                  |
-...
+#### List flakes
+
+```shell
+fh list flakes
 ```
 
-```console
-$ fh list flakes
+```log
 +---------------------------------------------------------------------------------------------------------------+
 | Flake                                     FlakeHub URL                                                        |
 +---------------------------------------------------------------------------------------------------------------+
@@ -122,15 +128,62 @@ $ fh list flakes
 ...
 ```
 
+
+#### List orgs
+
+```shell
+fh list orgs
+```
+
+```log
++-------------------------------------------------------------------------+
+| Organization            FlakeHub URL                                    |
++-------------------------------------------------------------------------+
+| ajaxbits                https://flakehub.com/org/ajaxbits               |
+| astro                   https://flakehub.com/org/astro                  |
+...
+```
+
+#### List versions
+
+Your can list [versions][semver] of a flake by passing the flake name and a version requirement to `fh list versions`:
+
+```shell
+fh list versions <flake> <version_req>
+```
+
+Here's an example:
+
+```shell
+fh list versions hyprwm/Hyprland "0.1.*"
+```
+
+```log
++------------------------------------------------------------------------------------------------------------------------------+
+| Simplified version  FlakeHub URL                                        Full version                                         |
++------------------------------------------------------------------------------------------------------------------------------+
+| 0.1.546             https://flakehub.com/flake/hyprwm/Hyprland/0.1.546  0.1.546+rev-d8c5e53c0803eb118080657734160bf3ab5127d2 |
++------------------------------------------------------------------------------------------------------------------------------+
+```
+
 ## A note on automation
 
-Piping `fh list` commands to another program emits a CSV instead of the stylizide table.
+Piping `fh list` commands to another program emits [CSV] instead of the stylized table.
 
 ## License
 
 [Apache 2.0](https://choosealicense.com/licenses/apache-2.0/)
 
-
 ## Support
 
 For support, email support@flakehub.com or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
+
+[csv]: https://en.wikipedia.org/wiki/Comma-separated_values
+[flakehub]: https://flakehub.com
+[flakes]: https://flakehub.com/flakes
+[inputs]: https://zero-to-nix.com/concepts/flakes#inputs
+[nix-flakes]: https://zero-to-nix.com/concepts/flakes
+[nixos]: https://zero-to-nix.com/concepts/nixos
+[nixpkgs]: https://zero-to-nix.com/concepts/nixpkgs
+[orgs]: https://flakehub.com/orgs
+[semver]: https://flakehub.com/docs#semver
