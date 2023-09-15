@@ -2,25 +2,26 @@ use std::fmt::Display;
 
 use inquire::{Confirm, MultiSelect, Select, Text};
 
-use crate::cli::cmd::FhError;
-
 pub(super) struct Prompt;
 
 impl Prompt {
-    pub(super) fn bool(msg: &str) -> Result<bool, FhError> {
-        Confirm::new(msg).prompt().map_err(FhError::Interactive)
+    pub(super) fn bool(msg: &str) -> bool {
+        Confirm::new(msg).prompt().expect("TODO")
     }
 
-    pub(super) fn select(msg: &str, options: &[&str]) -> Result<String, FhError> {
-        Ok(Select::new(msg, options.to_vec()).prompt()?.to_string())
+    pub(super) fn select(msg: &str, options: &[&str]) -> String {
+        Select::new(msg, options.to_vec())
+            .prompt()
+            .expect("TODO")
+            .to_string()
     }
 
     pub(super) fn guided_multi_select(
         msg: &str,
         thing: &str,
         options: Vec<MultiSelectOption>,
-    ) -> Result<Vec<String>, FhError> {
-        let selected: Vec<String> = MultiSelect::new(msg, options)
+    ) -> Vec<String> {
+        MultiSelect::new(msg, options)
             .with_formatter(&|opts| {
                 format!(
                     "You selected {} {}{}: {}",
@@ -33,26 +34,28 @@ impl Prompt {
                         .join(", ")
                 )
             })
-            .prompt()?
+            .prompt()
+            .expect("TODO")
             .iter()
             .map(|s| s.0.to_owned())
-            .collect();
-
-        Ok(selected)
+            .collect()
     }
 
-    pub(super) fn multi_select(msg: &str, options: &[&str]) -> Result<Vec<String>, FhError> {
-        Ok(MultiSelect::new(msg, options.to_vec())
-            .prompt()?
+    pub(super) fn multi_select(msg: &str, options: &[&str]) -> Vec<String> {
+        MultiSelect::new(msg, options.to_vec())
+            .prompt()
+            .expect("TODO")
             .iter()
             .map(|s| String::from(*s))
-            .collect())
+            .collect()
     }
 
-    pub(super) fn maybe_string(msg: &str) -> Result<Option<String>, FhError> {
-        match Text::new(msg).prompt() {
-            Ok(text) => Ok(if text.is_empty() { None } else { Some(text) }),
-            Err(e) => Err(FhError::Interactive(e)),
+    pub(super) fn maybe_string(msg: &str) -> Option<String> {
+        let result = Text::new(msg).prompt().expect("TODO");
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
         }
     }
 }
