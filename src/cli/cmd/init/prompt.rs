@@ -8,7 +8,7 @@ impl Prompt {
     pub(super) fn bool(msg: &str) -> bool {
         match Confirm::new(msg).prompt() {
             Ok(b) => b,
-            Err(_) => exit(0),
+            Err(_) => exit(1),
         }
     }
 
@@ -17,7 +17,7 @@ impl Prompt {
 
         match result {
             Ok(s) => s.to_string(),
-            Err(_) => exit(0),
+            Err(_) => exit(1),
         }
     }
 
@@ -43,7 +43,7 @@ impl Prompt {
 
         match result {
             Ok(s) => s.iter().map(|s| s.0.to_owned()).collect(),
-            Err(_) => exit(0),
+            Err(_) => exit(1),
         }
     }
 
@@ -52,7 +52,7 @@ impl Prompt {
 
         match result {
             Ok(s) => s.iter().map(|s| String::from(*s)).collect(),
-            Err(_) => exit(0),
+            Err(_) => exit(1),
         }
     }
 
@@ -67,7 +67,7 @@ impl Prompt {
                     Some(s)
                 }
             }
-            Err(_) => exit(0),
+            Err(_) => exit(1),
         }
     }
 }

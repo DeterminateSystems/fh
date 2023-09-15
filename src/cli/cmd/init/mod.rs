@@ -51,7 +51,7 @@ impl CommandExecute for InitSubcommand {
     async fn execute(self) -> Result<ExitCode> {
         if !std::io::stdout().is_terminal() {
             println!("fh init can only be used in a terminal; exiting");
-            exit(0);
+            exit(1);
         } else {
             let mut flake = Flake::default();
 
