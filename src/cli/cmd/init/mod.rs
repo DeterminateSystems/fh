@@ -1,13 +1,13 @@
+mod dev_shell;
 mod project;
 mod prompt;
+mod template;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
 use handlebars::Handlebars;
 use project::Project;
 use prompt::Prompt;
-use serde::Serialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -17,7 +17,7 @@ use url::Url;
 
 use super::FlakeHubClient;
 
-use self::prompt::MultiSelectOption;
+use self::{dev_shell::DevShell, prompt::MultiSelectOption, template::TemplateData};
 
 use super::{CommandExecute, FhError};
 
@@ -352,39 +352,4 @@ async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
     let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
     let release = Prompt::select("Choose one of the following Nixpkgs releases", &releases)?;
     Ok(release)
-}
-
-#[derive(Debug, Serialize)]
-struct TemplateData {
-    description: Option<String>,
-    inputs: HashMap<String, String>,
-    systems: Vec<String>,
-    dev_shells: HashMap<String, DevShell>,
-    overlay_refs: Vec<String>,
-    overlay_attrs: HashMap<String, String>,
-    // This is tricky to determine inside the template because we need to check that
-    // either overlay_refs or overlay_attrs is non-empty, so we calculate that in Rust
-    // and set a Boolean here instead
-    has_overlays: bool,
-    doc_comments: bool,
-}
-
-impl TemplateData {
-    fn as_json(&self) -> Result<Value, serde_json::Error> {
-        serde_json::to_value(self)
-    }
-
-    fn validate(&self) -> Result<(), FhError> {
-        if self.inputs.is_empty() {
-            return Err(FhError::NoInputs);
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Serialize)]
-struct DevShell {
-    packages: Vec<String>,
-    env_vars: HashMap<String, String>,
 }
