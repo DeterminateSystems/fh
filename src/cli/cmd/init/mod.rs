@@ -26,7 +26,7 @@ const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.09"];
 const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
 const RUBY_VERSIONS: &[&str] = &["3.2", "3.1"];
 const GO_VERSIONS: &[&str] = &["20", "19", "18", "17"];
-const COMMON_TOOLS: &[&str] = &["curl", "Git", "jq", "wget"];
+const COMMON_TOOLS: &[&str] = &["curl", "git", "jq", "wget"];
 const SYSTEMS: &[MultiSelectOption] = &[
     MultiSelectOption(
         "x86_64-linux",
