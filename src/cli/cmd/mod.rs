@@ -7,9 +7,11 @@ mod search;
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
+use serde::Serialize;
 
 use self::{
-    list::{Flake, Org, Release},
+    list::Flake,
+    list::{Org, Release, Version},
     search::SearchResult,
 };
 
@@ -45,14 +47,20 @@ pub(super) struct FlakeHubClient {
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum FhError {
+    #[error("file error: {0}")]
+    Filesystem(#[from] std::io::Error),
+
+    #[error("flake name parsing error: {0}")]
+    FlakeParse(String),
+
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 
     #[error("interactive initializer error: {0}")]
     Interactive(#[from] inquire::InquireError),
 
-    #[error("file error: {0}")]
-    Filesystem(#[from] std::io::Error),
+    #[error("json parsing error: {0}")]
+    Json(#[from] serde_json::Error),
 
     #[error("the flake has no inputs")]
     NoInputs,
@@ -111,12 +119,18 @@ impl FlakeHubClient {
         Ok(flakes)
     }
 
-    async fn releases(&self, flake: String) -> Result<Vec<Release>, FhError> {
-        let endpoint = self.api_addr.join(&format!("f/{}/releases", flake))?;
+    async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("f").push(org).push(project).push("releases");
+        }
 
         let flakes = self
             .client
-            .get(endpoint)
+            .get(&endpoint.to_string())
             .send()
             .await?
             .json::<Vec<Release>>()
@@ -141,4 +155,41 @@ impl FlakeHubClient {
 
         Ok(orgs)
     }
+
+    async fn versions(
+        &self,
+        org: &str,
+        project: &str,
+        constraint: &str,
+    ) -> Result<Vec<Version>, FhError> {
+        let version = urlencoding::encode(constraint);
+
+        let mut endpoint = self.api_addr.clone();
+        {
+            let mut segs = endpoint
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+            segs.push("version")
+                .push("resolve")
+                .push(org)
+                .push(project)
+                .push(&version);
+        }
+
+        let versions = self
+            .client
+            .get(endpoint)
+            .send()
+            .await?
+            .json::<Vec<Version>>()
+            .await?;
+
+        Ok(versions)
+    }
+}
+
+pub(super) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
+    let json = serde_json::to_string(&value)?;
+    println!("{}", json);
+    Ok(())
 }

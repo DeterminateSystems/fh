@@ -340,7 +340,7 @@ fn write_file(path: PathBuf, content: String) -> Result<(), FhError> {
 
 async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
     let client = &FlakeHubClient::new(api_addr)?;
-    let releases = client.releases(String::from("NixOS/nixpkgs")).await?;
+    let releases = client.releases("NixOS", "nixpkgs").await?;
     let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
     let release = Prompt::select("Choose one of the following Nixpkgs releases", &releases)?;
     Ok(release)
