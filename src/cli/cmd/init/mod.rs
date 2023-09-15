@@ -237,11 +237,11 @@ impl CommandExecute for InitSubcommand {
                 dev_shell_packages.push(format!("cargo-{tool}"));
             }
 
-            if Prompt::bool("Do you want to add Rust Analyzer to the environment?")? {
+            if Prompt::bool("Would you like to add Rust Analyzer to the environment?")? {
                 dev_shell_packages.push(String::from("rust-analyzer"));
             }
 
-            if Prompt::bool("Do you want to enable Rust backtrace in the environment?")? {
+            if Prompt::bool("Would you like to enable Rust backtrace in the environment?")? {
                 env_vars.insert(String::from("RUST_BACKTRACE"), String::from("1"));
             }
         }
@@ -262,7 +262,7 @@ impl CommandExecute for InitSubcommand {
 
         // Nix formatter
         if Prompt::bool(
-            "Do you want to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
+            "Would you like to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
         )? {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
@@ -291,7 +291,7 @@ impl CommandExecute for InitSubcommand {
 
         // If the dev shell will be empty, prompt users to ensure that they still want a flake
         if dev_shell_packages.is_empty() {
-            if !Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Do you still want to create a flake?")? {
+            if !Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Would you still like to create a flake?")? {
                 println!("See you next time!");
             }
             return Ok(ExitCode::SUCCESS);
