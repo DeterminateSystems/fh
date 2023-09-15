@@ -218,7 +218,7 @@ impl CommandExecute for InitSubcommand {
                 "prev.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
             } else {
                 // TODO: make this more granular
-                "prev.rust-bin.latest.default"
+                "prev.rust-bin.stable.latest.default"
             });
 
             overlay_attrs.insert(String::from("rustToolchain"), rust_toolchain_func);
