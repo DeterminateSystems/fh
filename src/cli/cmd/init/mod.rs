@@ -7,11 +7,9 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use project::Project;
 use prompt::Prompt;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::{collections::HashMap, fs::write};
 use url::Url;
 
 use super::FlakeHubClient;
@@ -126,7 +124,7 @@ impl CommandExecute for InitSubcommand {
 
         inputs.insert(
             String::from("nixpkgs"),
-            format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs}.tar.gz"),
+            format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs_version}.tar.gz"),
         );
 
         // Go projects
@@ -318,10 +316,12 @@ impl CommandExecute for InitSubcommand {
 
         let flake_string = data.render()?;
 
-        write_file(self.output, flake_string)?;
+        write(self.output, flake_string)?;
 
-        if !project.uses_direnv() && Prompt::bool("Would you like to add a .envrc file for use with direnv?")? {
-            write_file(PathBuf::from(".envrc"), String::from("use flake"))?;
+        if !project.uses_direnv()
+            && Prompt::bool("Would you like to add a .envrc file for use with direnv?")?
+        {
+            write(PathBuf::from(".envrc"), String::from("use flake"))?;
         } else {
             println!(
                 "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
@@ -330,12 +330,6 @@ impl CommandExecute for InitSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-fn write_file(path: PathBuf, content: String) -> Result<(), FhError> {
-    let mut file = File::create(path)?;
-    file.write_all(content.as_bytes())?;
-    Ok(())
 }
 
 async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
