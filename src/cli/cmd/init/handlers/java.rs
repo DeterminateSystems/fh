@@ -16,7 +16,7 @@ impl Handler for Java {
                 flake.dev_shell_packages.push(String::from("maven"));
             }
 
-            if project.has_file("build.gradle") && prompt_for_tool("Gradle")) {
+            if project.has_file("build.gradle") && prompt_for_tool("Gradle") {
                 flake.dev_shell_packages.push(String::from("gradle"));
             }
         }

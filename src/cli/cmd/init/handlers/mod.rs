@@ -15,7 +15,6 @@ pub(crate) use go::Go;
 pub(crate) use java::Java;
 pub(crate) use javascript::JavaScript;
 pub(crate) use php::Php;
-use prettytable::format;
 pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;

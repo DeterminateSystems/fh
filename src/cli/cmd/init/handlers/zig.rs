@@ -1,4 +1,4 @@
-use crate::cli::cmd::init::{project::Project, prompt::Prompt};
+use crate::cli::cmd::init::project::Project;
 
 use super::{prompt_for_language, Flake, Handler};
 
