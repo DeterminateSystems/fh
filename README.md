@@ -67,6 +67,9 @@ cat flake.nix
 
 ### Searching published flakes
 
+You can search publicly listed flakes using the `fh search` command and passing in a search query.
+Here's an example:
+
 ```shell
 fh search rust
 ```
@@ -86,6 +89,13 @@ fh search rust
 | nix-community/patsh        https://flakehub.com/flake/nix-community/patsh       |
 | ryanccn/nyoom              https://flakehub.com/flake/ryanccn/nyoom             |
 +---------------------------------------------------------------------------------+
+```
+
+`fh search` supports arbitrary search strings.
+An example:
+
+```shell
+fh search "rust nixos"
 ```
 
 ### Listing releases
@@ -118,7 +128,7 @@ fh list releases nixos/nixpkgs
 fh list flakes
 ```
 
-```log
+```console
 +---------------------------------------------------------------------------------------------------------------+
 | Flake                                     FlakeHub URL                                                        |
 +---------------------------------------------------------------------------------------------------------------+
