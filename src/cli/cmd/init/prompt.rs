@@ -1,19 +1,33 @@
 use std::{fmt::Display, process::exit};
 
-use inquire::{Confirm, MultiSelect, Select, Text};
+use inquire::{
+    ui::{Color, RenderConfig, Styled},
+    Confirm, MultiSelect, Select, Text,
+};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub(super) static ref PROMPT_CONFIG: RenderConfig =
+        RenderConfig::default().with_prompt_prefix(Styled::new("> ").with_fg(Color::LightBlue));
+}
 
 pub(super) struct Prompt;
 
 impl Prompt {
     pub(super) fn bool(msg: &str) -> bool {
-        match Confirm::new(msg).prompt() {
+        match Confirm::new(msg)
+            .with_render_config(*PROMPT_CONFIG)
+            .prompt()
+        {
             Ok(b) => b,
             Err(_) => exit(1),
         }
     }
 
     pub(super) fn select(msg: &str, options: &[&str]) -> String {
-        let result = Select::new(msg, options.to_vec()).prompt();
+        let result = Select::new(msg, options.to_vec())
+            .with_render_config(*PROMPT_CONFIG)
+            .prompt();
 
         match result {
             Ok(s) => s.to_string(),
@@ -27,6 +41,7 @@ impl Prompt {
         options: Vec<MultiSelectOption>,
     ) -> Vec<String> {
         let result = MultiSelect::new(msg, options)
+            .with_render_config(*PROMPT_CONFIG)
             .with_formatter(&|opts| {
                 format!(
                     "You selected {} {}{}: {}",
@@ -48,7 +63,9 @@ impl Prompt {
     }
 
     pub(super) fn multi_select(msg: &str, options: &[&str]) -> Vec<String> {
-        let result = MultiSelect::new(msg, options.to_vec()).prompt();
+        let result = MultiSelect::new(msg, options.to_vec())
+            .with_render_config(*PROMPT_CONFIG)
+            .prompt();
 
         match result {
             Ok(s) => s.iter().map(|s| String::from(*s)).collect(),
@@ -57,7 +74,7 @@ impl Prompt {
     }
 
     pub(super) fn maybe_string(msg: &str) -> Option<String> {
-        let result = Text::new(msg).prompt();
+        let result = Text::new(msg).with_render_config(*PROMPT_CONFIG).prompt();
 
         match result {
             Ok(s) => {
