@@ -22,6 +22,10 @@ impl Project {
         self.has_file("package.json")
     }
 
+    pub(super) fn maybe_bun(&self) -> bool {
+        self.has_file("bunfig.toml")
+    }
+
     pub(super) fn maybe_php(&self) -> bool {
         self.has_one_of(&["composer.json", "php.ini"])
     }

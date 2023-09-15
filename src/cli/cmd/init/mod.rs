@@ -160,9 +160,15 @@ impl CommandExecute for InitSubcommand {
 
         // JavaScript projects
         if project.maybe_javascript() && Prompt::bool("This seems to be a JavaScript project. Would you like to initialize your flake with built-in JavaScript dependencies?")? {
-            let version =
-                Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
-            dev_shell_packages.push(format!("nodejs-{version}_x"));
+            if project.maybe_bun() && Prompt::bool("This seems to be a Bun project. Would you like to add it to your environment?")? {
+                dev_shell_packages.push(String::from("bun"));
+            }
+
+            if Prompt::bool("Is this a Node.js project?")? {
+                let version =
+                    Prompt::select("Select a version of Node.js", NODE_VERSIONS)?;
+                dev_shell_packages.push(format!("nodejs-{version}_x"));
+            }
 
             if project.maybe_pnpm() && Prompt::bool("This seems to be a pnpm project. Would you like to add it to your environment?")? {
                 dev_shell_packages.push(String::from("nodePackages.pnpm"));
@@ -177,7 +183,7 @@ impl CommandExecute for InitSubcommand {
         if project.maybe_php() && Prompt::bool("This seems to be a PHP project. Would you like to initialize your flake with built-in PHO dependencies?")? {
             inputs.insert(String::from("loophp"), String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"));
             overlay_refs.push(String::from("loophp.overlays.default"));
-            let php_version = Prompt::select("Select a version of Ruby", PHP_VERSIONS)?;
+            let php_version = Prompt::select("Select a version of PHP", PHP_VERSIONS)?;
             let php_version_attr = version_as_attr(&php_version);
             dev_shell_packages.push(format!("php{php_version_attr}"));
         }
