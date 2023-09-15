@@ -19,7 +19,7 @@
       {{#if @root.has_overlays}}
       {{#if @root.doc_comments}}# Nixpkgs overlays{{/if}}
       overlays = [
-        {{#with @root.overlays_refs as |refs|}}
+        {{#with @root.overlay_refs as |refs|}}
         {{#each refs}}
         {{this}}
         {{/each}}
