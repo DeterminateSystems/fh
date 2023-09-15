@@ -1,59 +1,73 @@
 {
-  {{#if description}}
+  {{#with @root.description as |description|}}
+  {{#if @root.doc_comments}}# A helpful description of your flake{{/if}}
   description = "{{ description }}";
-  {{/if}}
+  {{/with}}
 
+  {{#if @root.doc_comments}}# Flake inputs{{/if}}
   inputs = {
-    {{#each inputs}}
+    {{! There's guaranteed to be at least one input (Nixpkgs), hence no `with` block }}
+    {{#each @root.inputs}}
     {{@key}}.url = "{{this}}";
     {{/each}}
   };
 
-  outputs = { self{{#each inputs}}, {{@key}}{{/each}} }:
+  {{#if @root.doc_comments}}# Flake outputs that other flakes can use{{/if}}
+  outputs = { self{{#each @root.inputs}}, {{@key}}{{/each}} }:
     let
-      {{#if has_overlays}}
+      {{#if @root.has_overlays}}
+      {{#if @root.doc_comments}}# Nixpkgs overlays{{/if}}
       overlays = [
-        {{#each overlay_refs}}
+        {{#with @root.overlays_refs as |refs|}}
+        {{#each refs}}
         {{this}}
         {{/each}}
-        {{#if overlay_attrs}}
+        {{/with}}
+        {{#with @root.overlay_attrs as |attrs|}}
         (final: prev: {
-          {{#each overlay_attrs}}
+          {{#each attrs}}
           {{@key}} = {{this}};
           {{/each}}
         })
-        {{/if}}
+        {{/with}}
       ];
+
       {{/if}}
+      {{#if @root.doc_comments}}# Helpers for producing system-specific outputs{{/if}}
       supportedSystems = [ {{#each systems}}"{{ this }}"{{#unless @last}} {{/unless}}{{/each}} ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
         pkgs = import nixpkgs { inherit {{#if has_overlays }}overlays {{/if}}system; };
       });
     in {
-      {{#if dev_shells}}
+      {{#with dev_shells as |dev_shells|}}
+      {{#if @root.doc_comments}}# Development environments{{/if}}
       devShells = forEachSupportedSystem ({ pkgs }: {
         {{#each dev_shells}}
         {{@key}} = pkgs.mkShell {
+          {{#if @root.doc_comments}}# Pinned packages available in the environment{{/if}}
+          {{#with this.packages as |packages|}}
           packages = with pkgs; [
-            {{#if this.packages}}
-            {{#each this.packages}}
+            {{#each packages}}
             {{this}}
             {{/each}}
-            # Add any other desired packages here
-            {{else}}
-            # Add any desired packages here
-            {{/if}}
           ];
-          {{#if this.env_vars}}
+          {{else}}
+          packages = with pkgs; [
+            # Add any desired packages here
+          ];
+          {{/with}}
+          {{#with this.env_vars as |env_vars|}}
 
-          # Environment variables
-          {{#each this.env_vars}}
-          {{@key}} = "{{this}}";
-          {{/each}}
-          {{/if}}
+          {{#if @root.doc_comments}}# Environment variables{{/if}}
+          env = {
+            {{#each env_vars}}
+            {{@key}} = "{{this}}";
+            {{/each}}
+          };
+          {{/with}}
         };
         {{/each}}
       });
-      {{/if}}
+      {{/with}}
     };
 }

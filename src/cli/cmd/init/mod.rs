@@ -262,6 +262,9 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
+        let doc_comments =
+            Prompt::bool("Would you like to add helpful doc comments to your flake?")?;
+
         if Prompt::bool("Would you like to add any environment variables?")? {
             loop {
                 let name = Prompt::maybe_string("Variable name")?;
@@ -283,9 +286,7 @@ impl CommandExecute for InitSubcommand {
 
         // If the dev shell will be empty, prompt users to ensure that they still want a flake
         if dev_shell_packages.is_empty() {
-            if Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Do you still want to create a flake?")? {
-                println!("Run `fh init` again to get started");
-            } else {
+            if !Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Do you still want to create a flake?")? {
                 println!("See you next time!");
             }
             return Ok(ExitCode::SUCCESS);
@@ -307,6 +308,7 @@ impl CommandExecute for InitSubcommand {
             overlay_refs: overlay_refs.clone(),
             overlay_attrs: overlay_attrs.clone(),
             has_overlays: overlay_refs.len() + overlay_attrs.keys().len() > 0,
+            doc_comments,
         };
 
         data.validate()?;
@@ -354,7 +356,11 @@ struct TemplateData {
     dev_shells: HashMap<String, DevShell>,
     overlay_refs: Vec<String>,
     overlay_attrs: HashMap<String, String>,
+    // This is tricky to determine inside the template because we need to check that
+    // either overlay_refs or overlay_attrs is non-empty, so we calculate that in Rust
+    // and set a Boolean here instead
     has_overlays: bool,
+    doc_comments: bool,
 }
 
 impl TemplateData {
