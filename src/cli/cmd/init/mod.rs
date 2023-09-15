@@ -63,7 +63,7 @@ impl CommandExecute for InitSubcommand {
             println!("Let's build a Nix flake!");
 
             let project = Project::new(self.root);
-            flake.description = Prompt::maybe_string("An optional description for your flake");
+            flake.description = Prompt::maybe_string("An optional description for your flake:");
 
             // Supported systems
             System::handle(&project, &mut flake);
@@ -120,9 +120,9 @@ impl CommandExecute for InitSubcommand {
 
             if Prompt::bool("Would you like to add any environment variables?") {
                 loop {
-                    let name = Prompt::maybe_string("Variable name");
+                    let name = Prompt::maybe_string("Variable name:");
                     if let Some(name) = name {
-                        let value = Prompt::maybe_string("Variable value");
+                        let value = Prompt::maybe_string("Variable value:");
                         if let Some(value) = value {
                             flake.env_vars.insert(name, value);
                             if !Prompt::bool("Enter another variable?") {
@@ -187,6 +187,6 @@ async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
     let client = &FlakeHubClient::new(api_addr)?;
     let releases = client.releases("NixOS", "nixpkgs").await?;
     let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
-    let release = Prompt::select("Choose one of the following Nixpkgs releases", &releases);
+    let release = Prompt::select("Choose one of the following Nixpkgs releases:", &releases);
     Ok(release)
 }

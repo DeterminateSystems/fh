@@ -15,6 +15,7 @@ pub(crate) use go::Go;
 pub(crate) use java::Java;
 pub(crate) use javascript::JavaScript;
 pub(crate) use php::Php;
+use prettytable::format;
 pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;
@@ -22,7 +23,7 @@ pub(crate) use system::System;
 pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;
 
-use super::{dev_shell::DevShell, project::Project};
+use super::{dev_shell::DevShell, project::Project, prompt::Prompt};
 
 #[derive(Default)]
 pub(crate) struct Flake {
@@ -43,4 +44,14 @@ pub(crate) trait Handler {
 // Helper functions
 fn version_as_attr(v: &str) -> String {
     v.replace('.', "")
+}
+
+fn prompt_for_language(lang: &str) -> bool {
+    Prompt::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with built-in {lang} dependencies?"))
+}
+
+fn prompt_for_tool(tool: &str) -> bool {
+    Prompt::bool(&format!(
+        "This seems to be a {tool} project. Would you like to add it to your environment?"
+    ))
 }

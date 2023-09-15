@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::prompt::Prompt;
 
-use super::{Flake, Handler, Project};
+use super::{prompt_for_language, Flake, Handler, Project};
 
 const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
@@ -10,7 +10,7 @@ pub(crate) struct Rust;
 
 impl Handler for Rust {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file("Cargo.toml") && Prompt::bool("This seems to be a Rust project. Would you like to initialize your flake with built-in Rust dependencies?") {
+        if project.has_file("Cargo.toml") && prompt_for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
                 String::from("github:oxalica/rust-overlay"),
@@ -29,7 +29,9 @@ impl Handler for Rust {
                 "prev.rust-bin.stable.latest.default"
             });
 
-            flake.overlay_attrs.insert(String::from("rustToolchain"), rust_toolchain_func);
+            flake
+                .overlay_attrs
+                .insert(String::from("rustToolchain"), rust_toolchain_func);
             flake.dev_shell_packages.push(String::from("rustToolchain"));
 
             // Add cargo-* tools
@@ -45,7 +47,9 @@ impl Handler for Rust {
             }
 
             if Prompt::bool("Would you like to enable Rust backtrace in the environment?") {
-                flake.env_vars.insert(String::from("RUST_BACKTRACE"), String::from("1"));
+                flake
+                    .env_vars
+                    .insert(String::from("RUST_BACKTRACE"), String::from("1"));
             }
         }
     }
