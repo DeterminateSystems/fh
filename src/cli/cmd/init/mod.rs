@@ -262,7 +262,7 @@ impl CommandExecute for InitSubcommand {
 
         // Nix formatter
         if Prompt::bool(
-            "Would you like to add the most commonly used Nix formatter (nixpkgs-fmt) to your environment?",
+            "Would you like to add our recommended Nix formatter (nixpkgs-fmt) to your environment?",
         )? {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
