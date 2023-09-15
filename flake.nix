@@ -83,7 +83,7 @@
             ]);
 
             postInstall = ''
-              installShellCompletion --cmd am \
+              installShellCompletion --cmd fh \
                 --bash <("$out/bin/fh" completion bash) \
                 --zsh <("$out/bin/fh" completion zsh) \
                 --fish <("$out/bin/fh" completion fish)
