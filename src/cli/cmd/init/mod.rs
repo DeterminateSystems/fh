@@ -103,7 +103,7 @@ impl CommandExecute for InitSubcommand {
         // We could conceivably create a version of `fh init` Nixpkgs included only if certain other choices
         // are made. But for the time being so much relies on it that we don't have a great opt-out story,
         // so best to just include it in all flakes.
-        let nixpkgs = match Prompt::select(
+        let nixpkgs_version = match Prompt::select(
             "Which Nixpkgs version would you like to include?",
             &[
                 "23.05",
