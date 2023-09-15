@@ -65,6 +65,12 @@ pub(super) enum FhError {
     #[error("the flake has no inputs")]
     NoInputs,
 
+    #[error("template error: {0}")]
+    Render(#[from] handlebars::RenderError),
+
+    #[error("template error: {0}")]
+    Template(#[from] Box<handlebars::TemplateError>),
+
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
 }

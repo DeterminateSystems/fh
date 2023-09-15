@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use handlebars::Handlebars;
 use serde_derive::Serialize;
 use serde_json::Value;
 
@@ -33,5 +34,18 @@ impl TemplateData {
         }
 
         Ok(())
+    }
+
+    pub(super) fn render(&self) -> Result<String, FhError> {
+        self.validate()?;
+
+        let mut handlebars = Handlebars::new();
+        handlebars
+            .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
+            .map_err(|err| FhError::Template(Box::new(err)))?;
+
+        handlebars
+            .render("flake", &self.as_json()?)
+            .map_err(FhError::Render)
     }
 }

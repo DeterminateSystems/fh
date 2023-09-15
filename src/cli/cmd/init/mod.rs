@@ -5,7 +5,6 @@ mod template;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
-use handlebars::Handlebars;
 use project::Project;
 use prompt::Prompt;
 use std::collections::HashMap;
@@ -317,14 +316,7 @@ impl CommandExecute for InitSubcommand {
             doc_comments,
         };
 
-        data.validate()?;
-
-        let mut handlebars = Handlebars::new();
-        handlebars
-            .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
-            .map_err(Box::new)?;
-
-        let flake_string = handlebars.render("flake", &data.as_json()?)?;
+        let flake_string = data.render()?;
 
         write_file(self.output, flake_string)?;
 
