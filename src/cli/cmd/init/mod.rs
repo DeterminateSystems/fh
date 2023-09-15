@@ -265,8 +265,7 @@ impl CommandExecute for InitSubcommand {
             dev_shell_packages.push(String::from("nixpkgs-fmt"));
         }
 
-        let doc_comments =
-            Prompt::bool("Would you like to add helpful doc comments to your flake?")?;
+        let doc_comments = Prompt::bool("Would you like to add doc comments to your flake that explain the meaning of different aspects of the flake?")?;
 
         if Prompt::bool("Would you like to add any environment variables?")? {
             loop {
