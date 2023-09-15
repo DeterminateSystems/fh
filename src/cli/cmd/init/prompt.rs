@@ -6,13 +6,13 @@ pub(super) struct Prompt;
 
 impl Prompt {
     pub(super) fn bool(msg: &str) -> bool {
-        Confirm::new(msg).prompt().expect("TODO")
+        Confirm::new(msg).prompt().unwrap()
     }
 
     pub(super) fn select(msg: &str, options: &[&str]) -> String {
         Select::new(msg, options.to_vec())
             .prompt()
-            .expect("TODO")
+            .unwrap()
             .to_string()
     }
 
@@ -35,7 +35,7 @@ impl Prompt {
                 )
             })
             .prompt()
-            .expect("TODO")
+            .unwrap()
             .iter()
             .map(|s| s.0.to_owned())
             .collect()
@@ -44,14 +44,14 @@ impl Prompt {
     pub(super) fn multi_select(msg: &str, options: &[&str]) -> Vec<String> {
         MultiSelect::new(msg, options.to_vec())
             .prompt()
-            .expect("TODO")
+            .unwrap()
             .iter()
             .map(|s| String::from(*s))
             .collect()
     }
 
     pub(super) fn maybe_string(msg: &str) -> Option<String> {
-        let result = Text::new(msg).prompt().expect("TODO");
+        let result = Text::new(msg).prompt().unwrap();
         if result.is_empty() {
             None
         } else {
