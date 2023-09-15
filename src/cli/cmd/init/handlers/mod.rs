@@ -8,6 +8,7 @@ mod python;
 mod ruby;
 mod rust;
 mod system;
+mod tools;
 mod zig;
 
 pub(crate) use go::Go;
@@ -18,6 +19,7 @@ pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;
 pub(crate) use system::System;
+pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;
 
 use super::{dev_shell::DevShell, project::Project};

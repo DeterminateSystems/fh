@@ -19,19 +19,19 @@ use super::FlakeHubClient;
 
 use self::{
     dev_shell::DevShell,
-    handlers::{Flake, Go, Handler, Java, JavaScript, Php, Python, Ruby, Rust, System, Zig},
+    handlers::{Flake, Go, Handler, Java, JavaScript, Php, Python, Ruby, Rust, System, Tools, Zig},
     project::Project,
     template::TemplateData,
 };
 
 use super::{CommandExecute, FhError};
 
-const COMMON_TOOLS: &[&str] = &["curl", "git", "jq", "wget"];
-
 // Nixpkgs references
-const NIXPKGS_23_05: &str = "0.2305.*";
-const NIXPKGS_LATEST: &str = "*";
-const NIXPKGS_UNSTABLE: &str = "0.1.*";
+
+const NIXPKGS_23_05: &str = "23.05";
+const NIXPKGS_LATEST: &str = "latest";
+const NIXPKGS_UNSTABLE: &str = "unstable";
+const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
 /// Create a new flake.nix using an opinionated interactive initializer.
 #[derive(Parser)]
@@ -65,29 +65,28 @@ impl CommandExecute for InitSubcommand {
             let project = Project::new(self.root);
             flake.description = Prompt::maybe_string("An optional description for your flake");
 
+            // Supported systems
             System::handle(&project, &mut flake);
 
-            // We could conceivably create a version of `fh init` Nixpkgs included only if certain other choices
-            // are made. But for the time being so much relies on it that we don't have a great opt-out story,
+            // We could conceivably create a version of `fh init` with Nixpkgs included only if certain other
+            // choices are made. But for the time being so much relies on it that we don't have a great opt-out story,
             // so best to just include it in all flakes.
             let nixpkgs_version = match Prompt::select(
                 "Which Nixpkgs version would you like to include?",
                 &[
-                    "23.05",
-                    "latest",
-                    "unstable",
-                    "select a specific release (not recommended in most cases)",
+                    NIXPKGS_23_05,
+                    NIXPKGS_LATEST,
+                    NIXPKGS_UNSTABLE,
+                    NIXPKGS_SPECIFIC,
                 ],
             )
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                "23.05" => String::from(NIXPKGS_23_05),
-                "latest" => String::from(NIXPKGS_LATEST),
-                "unstable" => String::from(NIXPKGS_UNSTABLE),
-                "select a specific release (not recommended in most cases)" => {
-                    select_nixpkgs(&self.api_addr).await?
-                }
+                NIXPKGS_23_05 => String::from("0.2305.*"),
+                NIXPKGS_LATEST => String::from("*"),
+                NIXPKGS_UNSTABLE => String::from("0.1.*"),
+                NIXPKGS_SPECIFIC => select_nixpkgs(&self.api_addr).await?,
                 // Just in case
                 _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
             };
@@ -108,13 +107,7 @@ impl CommandExecute for InitSubcommand {
             Zig::handle(&project, &mut flake);
 
             // Other tools
-            for tool in Prompt::multi_select(
-                "Add any of these standard utilities to your environment if you wish",
-                COMMON_TOOLS,
-            ) {
-                let attr = tool.to_lowercase();
-                flake.dev_shell_packages.push(attr);
-            }
+            Tools::handle(&project, &mut flake);
 
             // Nix formatter
             if Prompt::bool(
