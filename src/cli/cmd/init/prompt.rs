@@ -1,14 +1,19 @@
 use std::{fmt::Display, process::exit};
 
 use inquire::{
-    ui::{Color, RenderConfig, Styled},
+    ui::{Color, RenderConfig, StyleSheet, Styled},
     Confirm, MultiSelect, Select, Text,
 };
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub(super) static ref PROMPT_CONFIG: RenderConfig =
-        RenderConfig::default().with_prompt_prefix(Styled::new("> ").with_fg(Color::LightBlue));
+    static ref MAGENTA_TEXT: StyleSheet = StyleSheet::default().with_fg(Color::DarkMagenta);
+    static ref GREY_TEXT: StyleSheet = StyleSheet::default().with_fg(Color::Grey);
+    static ref PROMPT_CONFIG: RenderConfig = RenderConfig::default()
+        .with_prompt_prefix(Styled::new(">").with_fg(Color::LightBlue))
+        .with_selected_option(Some(*MAGENTA_TEXT))
+        .with_answer(*GREY_TEXT)
+        .with_help_message(*GREY_TEXT);
 }
 
 pub(super) struct Prompt;
