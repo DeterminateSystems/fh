@@ -120,8 +120,6 @@ fh list releases nixos/nixpkgs
 
 [`fh list flakes`](#list-flakes), [`fh list orgs`](#list-flakes), and [`fh list versions`](#list-versions) enumerate [flakes], [organizations][orgs], and [flake versions][semver] on FlakeHub, respectively.
 
-For each, you can apply the `--json` flag to produce JSON output.
-
 #### List flakes
 
 ```shell
@@ -179,6 +177,8 @@ fh list versions hyprwm/Hyprland "0.1.*"
 ## A note on automation
 
 Piping `fh list` commands to another program emits [CSV] instead of the stylized table.
+
+You can apply the `--json` flag to each list command to produce JSON output.
 
 ## License
 
