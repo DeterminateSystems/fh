@@ -116,7 +116,7 @@ fh list releases nixos/nixpkgs
 ...
 ```
 
-### Listing organizations, flakes, and versions
+### Listing flakes, organizations, and versions
 
 [`fh list flakes`](#list-flakes), [`fh list orgs`](#list-flakes), and [`fh list versions`](#list-versions) enumerate [flakes], [organizations][orgs], and [flake versions][semver] on FlakeHub, respectively.
 
