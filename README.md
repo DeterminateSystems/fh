@@ -48,10 +48,12 @@ To make the `fh` CLI readily available on a [NixOS] system:
 `fh add` adds the most current release of the specified flake to your `flake.nix` and updates the `outputs` function to accept it.
 This would add the current release of [Nixpkgs] to your flake:
 
-```console
+```shell
 fh add nixos/nixpkgs
 cat flake.nix
+```
 
+```nix
 {
   description = "My new flake.";
 
