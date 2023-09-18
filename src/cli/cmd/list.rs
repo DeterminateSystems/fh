@@ -71,6 +71,7 @@ impl Flake {
             let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("flake").push(&self.org).push(&self.project);
         }
         url.to_string()
@@ -84,7 +85,7 @@ pub(super) struct Org {
 
 #[derive(Deserialize, Serialize)]
 pub(super) struct Release {
-    version: String,
+    pub(crate) version: String,
 }
 
 #[derive(Subcommand)]
@@ -164,13 +165,14 @@ impl CommandExecute for ListSubcommand {
 
                             for org in orgs {
                                 let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                        "failed to parse flakehub web root url (this should never happen)",
-                                    );
+                                    "failed to parse flakehub web root url (this should never happen)",
+                                );
 
                                 {
                                     let mut segs = url.path_segments_mut().expect(
                                         "flakehub url cannot be base (this should never happen)",
                                     );
+
                                     segs.push("org").push(&org);
                                 }
 

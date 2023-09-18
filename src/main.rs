@@ -26,6 +26,7 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
 
     match cli.subcommand {
         Add(add) => add.execute().await,
+        Init(init) => init.execute().await,
         List(list) => list.execute().await,
         Search(search) => search.execute().await,
         Completion(completion) => completion.execute().await,
