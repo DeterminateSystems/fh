@@ -24,12 +24,12 @@ impl Handler for Rust {
                 .push(String::from("rust-overlay.overlays.default"));
 
             let rust_toolchain_func = String::from(if project.has_file("rust-toolchain") {
-                "prev.rust-bin.fromRustupToolchainFile ./rust-toolchain"
+                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain"
             } else if project.has_file("rust-toolchain.toml") {
-                "prev.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
+                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
             } else {
                 // TODO: make this more granular
-                "prev.rust-bin.stable.latest.default"
+                "final.rust-bin.stable.latest.default"
             });
 
             flake
