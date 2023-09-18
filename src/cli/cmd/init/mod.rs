@@ -15,6 +15,8 @@ use std::{
 };
 use url::Url;
 
+use crate::cli::cmd::list::FLAKEHUB_WEB_ROOT;
+
 use super::FlakeHubClient;
 
 use self::{
@@ -28,8 +30,23 @@ use self::{
 
 use super::{CommandExecute, FhError};
 
-// Nixpkgs references
+pub(crate) struct FlakeHubUrl;
 
+impl FlakeHubUrl {
+    fn version(org: &str, project: &str, version: &str) -> String {
+        format!("{FLAKEHUB_WEB_ROOT}/f/{org}/{project}/{version}.tar.gz")
+    }
+
+    fn latest(org: &str, project: &str) -> String {
+        Self::version(org, project, "*")
+    }
+
+    fn unstable(org: &str, project: &str) -> String {
+        Self::version(org, project, "0.1.*")
+    }
+}
+
+// Nixpkgs references
 const NIXPKGS_23_05: &str = "23.05";
 const NIXPKGS_LATEST: &str = "latest";
 const NIXPKGS_UNSTABLE: &str = "unstable";
@@ -85,9 +102,9 @@ impl CommandExecute for InitSubcommand {
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                NIXPKGS_23_05 => String::from("0.2305.*"),
-                NIXPKGS_LATEST => String::from("*"),
-                NIXPKGS_UNSTABLE => String::from("0.1.*"),
+                NIXPKGS_23_05 => FlakeHubUrl::version("NixOS", "nixpkgs", "0.2305.*"),
+                NIXPKGS_LATEST => FlakeHubUrl::latest("NixOS", "nixpkgs"),
+                NIXPKGS_UNSTABLE => FlakeHubUrl::unstable("NixOS", "nixpkgs"),
                 NIXPKGS_SPECIFIC => select_nixpkgs(&self.api_addr).await?,
                 // Just in case
                 _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
@@ -96,9 +113,7 @@ impl CommandExecute for InitSubcommand {
             flake.inputs.insert(
                 String::from("nixpkgs"),
                 Input {
-                    reference: format!(
-                        "https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs_version}.tar.gz"
-                    ),
+                    reference: nixpkgs_version,
                     follows: None,
                 },
             );
@@ -195,5 +210,5 @@ async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {
     let releases = client.releases("NixOS", "nixpkgs").await?;
     let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
     let release = Prompt::select("Choose one of the following Nixpkgs releases:", &releases);
-    Ok(release)
+    Ok(FlakeHubUrl::version("NixOS", "nixpkgs", &release))
 }

@@ -1,6 +1,6 @@
-use crate::cli::cmd::init::prompt::Prompt;
+use crate::cli::cmd::init::{prompt::Prompt, FlakeHubUrl};
 
-use super::{prompt_for_language, Flake, Handler, Project};
+use super::{prompt_for_language, Flake, Handler, Input, Project};
 
 const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
@@ -13,8 +13,8 @@ impl Handler for Rust {
         if project.has_file("Cargo.toml") && prompt_for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
-                super::Input {
-                    reference: String::from("github:oxalica/rust-overlay"),
+                Input {
+                    reference: FlakeHubUrl::latest("oxalica", "rust-overlay"),
                     follows: Some(String::from("nixpkgs")),
                 },
             );
@@ -35,6 +35,7 @@ impl Handler for Rust {
             flake
                 .overlay_attrs
                 .insert(String::from("rustToolchain"), rust_toolchain_func);
+
             flake.dev_shell_packages.push(String::from("rustToolchain"));
 
             // Add cargo-* tools
