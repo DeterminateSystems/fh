@@ -17,6 +17,7 @@ pub(super) struct TemplateData {
     pub(super) overlay_refs: Vec<String>,
     pub(super) overlay_attrs: HashMap<String, String>,
     pub(super) shell_hook: Option<String>,
+    pub(super) fh_version: String,
     // This is tricky to determine inside the template because we need to check that
     // either overlay_refs or overlay_attrs is non-empty, so we calculate that in Rust
     // and set a Boolean here instead

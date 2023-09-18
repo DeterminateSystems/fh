@@ -188,6 +188,7 @@ impl CommandExecute for InitSubcommand {
                 overlay_refs: flake.overlay_refs.clone(),
                 overlay_attrs: flake.overlay_attrs.clone(),
                 has_overlays: flake.overlay_refs.len() + flake.overlay_attrs.keys().len() > 0,
+                fh_version: env!("CARGO_PKG_VERSION").to_string(),
                 doc_comments: flake.doc_comments,
                 shell_hook: flake.shell_hook,
             };
