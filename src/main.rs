@@ -14,6 +14,10 @@ static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_P
 #[tokio::main]
 async fn main() -> color_eyre::Result<std::process::ExitCode> {
     color_eyre::config::HookBuilder::default()
+        .issue_url(concat!(env!("CARGO_PKG_REPOSITORY"), "/issues/new"))
+        .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
+        .add_issue_metadata("os", std::env::consts::OS)
+        .add_issue_metadata("arch", std::env::consts::ARCH)
         .theme(if !std::io::stderr().is_terminal() {
             color_eyre::config::Theme::new()
         } else {

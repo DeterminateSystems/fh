@@ -4,6 +4,7 @@ version = "0.1.4"
 authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
 license = "Apache 2.0"
+repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
 async-trait = "0.1.73"
@@ -16,7 +17,9 @@ clap = { version = "4.3.2", default-features = false, features = [
   "error-context",
 ] }
 clap_complete = "4.4.0"
-color-eyre = "0.6.2"
+color-eyre = { version = "0.6.2", default-features = false, features = [
+  "issue-url",
+] }
 indicatif = { version = "0.17.6", default-features = false }
 lazy_static = "1.4.0"
 nixel = "5.2.0"
