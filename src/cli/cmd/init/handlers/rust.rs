@@ -50,7 +50,9 @@ impl Handler for Rust {
                 flake.dev_shell_packages.push(String::from("rust-analyzer"));
             }
 
-            if Prompt::bool("Would you like to enable Rust backtrace in the environment?") {
+            if Prompt::bool(
+                "Would you like to enable Rust backtrace in the environment (RUST_BACKTRACE = \"1\")?",
+            ) {
                 flake
                     .env_vars
                     .insert(String::from("RUST_BACKTRACE"), String::from("1"));

@@ -139,7 +139,7 @@ impl CommandExecute for InitSubcommand {
                 flake.dev_shell_packages.push(String::from("nixpkgs-fmt"));
             }
 
-            let doc_comments = Prompt::bool("Would you like to add doc comments to your flake that explain the meaning of different aspects of the flake?");
+            flake.doc_comments = Prompt::bool("Would you like to add doc comments to your flake that explain the meaning of different aspects of the flake?");
 
             if Prompt::bool("Would you like to add any environment variables?") {
                 loop {
@@ -159,6 +159,10 @@ impl CommandExecute for InitSubcommand {
                     }
                 }
             }
+
+            flake.shell_hook = Prompt::maybe_string(
+                "If you'd like to add a shell hook that gets run every time you enter your Nix development environment, enter it here:",
+            );
 
             // If the dev shell will be empty, prompt users to ensure that they still want a flake
             if flake.dev_shell_packages.is_empty() {
@@ -184,7 +188,8 @@ impl CommandExecute for InitSubcommand {
                 overlay_refs: flake.overlay_refs.clone(),
                 overlay_attrs: flake.overlay_attrs.clone(),
                 has_overlays: flake.overlay_refs.len() + flake.overlay_attrs.keys().len() > 0,
-                doc_comments,
+                doc_comments: flake.doc_comments,
+                shell_hook: flake.shell_hook,
             };
 
             let flake_string = data.render()?;

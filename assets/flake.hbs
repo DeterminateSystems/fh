@@ -76,6 +76,13 @@
             {{/each}}
           };
           {{/with}}
+          {{#with @root.shell_hook as |hook|}}
+
+          {{#if @root.doc_comments}}# A hook run every time you enter the environment{{/if}}
+          shellHook = ''
+            {{{hook}}}
+          '';
+          {{/with}}
         };
         {{/each}}
       });

@@ -41,6 +41,8 @@ pub(crate) struct Flake {
     pub(crate) overlay_attrs: HashMap<String, String>,
     pub(crate) dev_shell_packages: Vec<String>,
     pub(crate) env_vars: HashMap<String, String>,
+    pub(crate) shell_hook: Option<String>,
+    pub(crate) doc_comments: bool,
 }
 
 pub(crate) trait Handler {
