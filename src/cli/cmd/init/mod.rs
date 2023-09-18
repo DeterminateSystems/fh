@@ -19,7 +19,9 @@ use super::FlakeHubClient;
 
 use self::{
     dev_shell::DevShell,
-    handlers::{Flake, Go, Handler, Java, JavaScript, Php, Python, Ruby, Rust, System, Tools, Zig},
+    handlers::{
+        Flake, Go, Handler, Input, Java, JavaScript, Php, Python, Ruby, Rust, System, Tools, Zig,
+    },
     project::Project,
     template::TemplateData,
 };
@@ -93,7 +95,12 @@ impl CommandExecute for InitSubcommand {
 
             flake.inputs.insert(
                 String::from("nixpkgs"),
-                format!("https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs_version}.tar.gz"),
+                Input {
+                    reference: format!(
+                        "https://flakehub.com/f/NixOS/nixpkgs/{nixpkgs_version}.tar.gz"
+                    ),
+                    follows: None,
+                },
             );
 
             // Languages

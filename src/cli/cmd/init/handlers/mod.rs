@@ -18,18 +18,25 @@ pub(crate) use php::Php;
 pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;
+use serde_derive::Serialize;
 pub(crate) use system::System;
 pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;
 
 use super::{dev_shell::DevShell, project::Project, prompt::Prompt};
 
+#[derive(Debug, Serialize)]
+pub(crate) struct Input {
+    pub(crate) reference: String,
+    pub(crate) follows: Option<String>,
+}
+
 #[derive(Default)]
 pub(crate) struct Flake {
     pub(crate) description: Option<String>,
     pub(crate) systems: Vec<String>,
     pub(crate) dev_shells: HashMap<String, DevShell>,
-    pub(crate) inputs: HashMap<String, String>,
+    pub(crate) inputs: HashMap<String, Input>,
     pub(crate) overlay_refs: Vec<String>,
     pub(crate) overlay_attrs: HashMap<String, String>,
     pub(crate) dev_shell_packages: Vec<String>,

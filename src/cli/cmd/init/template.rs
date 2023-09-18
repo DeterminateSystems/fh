@@ -6,12 +6,12 @@ use serde_json::Value;
 
 use crate::cli::cmd::FhError;
 
-use super::dev_shell::DevShell;
+use super::{dev_shell::DevShell, handlers::Input};
 
 #[derive(Debug, Serialize)]
 pub(super) struct TemplateData {
     pub(super) description: Option<String>,
-    pub(super) inputs: HashMap<String, String>,
+    pub(super) inputs: HashMap<String, Input>,
     pub(super) systems: Vec<String>,
     pub(super) dev_shells: HashMap<String, DevShell>,
     pub(super) overlay_refs: Vec<String>,

@@ -9,7 +9,17 @@
   inputs = {
     {{! There's guaranteed to be at least one input (Nixpkgs), hence no `with` block }}
     {{#each @root.inputs}}
-    {{@key}}.url = "{{this}}";
+    {{#if this.follows}}
+    {{@key}} = {
+      url = "{{this.reference}}";
+      inputs.{{this.follows}}.follows = "{{this.follows}}";
+    };
+    {{else}}
+    {{@key}}.url = "{{this.reference}}";
+    {{/if}}
+    {{#unless @last}}
+
+    {{/unless}}
     {{/each}}
   };
 
