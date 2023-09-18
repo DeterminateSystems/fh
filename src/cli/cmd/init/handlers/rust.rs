@@ -1,4 +1,4 @@
-use crate::cli::cmd::init::{prompt::Prompt, FlakeHubUrl};
+use crate::cli::cmd::init::prompt::Prompt;
 
 use super::{prompt_for_language, Flake, Handler, Input, Project};
 
@@ -14,7 +14,7 @@ impl Handler for Rust {
             flake.inputs.insert(
                 String::from("rust-overlay"),
                 Input {
-                    reference: FlakeHubUrl::latest("oxalica", "rust-overlay"),
+                    reference: String::from("github:oxalica/rust-overlay"),
                     follows: Some(String::from("nixpkgs")),
                 },
             );

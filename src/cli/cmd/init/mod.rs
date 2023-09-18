@@ -30,6 +30,7 @@ use self::{
 
 use super::{CommandExecute, FhError};
 
+// A helper struct for creating FlakeHub URLs
 pub(crate) struct FlakeHubUrl;
 
 impl FlakeHubUrl {
