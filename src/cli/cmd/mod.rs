@@ -129,17 +129,18 @@ impl FlakeHubClient {
     }
 
     async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
-        let mut endpoint = self.api_addr.clone();
+        let mut url = self.api_addr.clone();
         {
-            let mut segs = endpoint
+            let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("f").push(org).push(project).push("releases");
         }
 
         let flakes = self
             .client
-            .get(&endpoint.to_string())
+            .get(&url.to_string())
             .send()
             .await?
             .json::<Vec<Release>>()
@@ -173,11 +174,12 @@ impl FlakeHubClient {
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
 
-        let mut endpoint = self.api_addr.clone();
+        let mut url = self.api_addr.clone();
         {
-            let mut segs = endpoint
+            let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("version")
                 .push("resolve")
                 .push(org)
@@ -187,7 +189,7 @@ impl FlakeHubClient {
 
         let versions = self
             .client
-            .get(endpoint)
+            .get(url)
             .send()
             .await?
             .json::<Vec<Version>>()
