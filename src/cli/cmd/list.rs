@@ -164,8 +164,8 @@ impl CommandExecute for ListSubcommand {
 
                             for org in orgs {
                                 let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                        "failed to parse flakehub web root url (this should never happen)",
-                                    );
+                                    "failed to parse flakehub web root url (this should never happen)",
+                                );
 
                                 {
                                     let mut segs = url.path_segments_mut().expect(

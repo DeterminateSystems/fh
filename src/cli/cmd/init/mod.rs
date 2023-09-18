@@ -35,7 +35,20 @@ pub(crate) struct FlakeHubUrl;
 
 impl FlakeHubUrl {
     fn version(org: &str, project: &str, version: &str) -> String {
-        format!("{FLAKEHUB_WEB_ROOT}/f/{org}/{project}/{version}.tar.gz")
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
+
+        let version = format!("{version}.tar.gz");
+
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+
+            segs.push("f").push(org).push(project).push(&version);
+        }
+
+        url.to_string()
     }
 
     fn latest(org: &str, project: &str) -> String {

@@ -134,25 +134,25 @@ async fn infer_flake_input_name_url(
         }
         // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2305`
         Err(url::ParseError::RelativeUrlWithoutBase) => {
-            let (org, repo, version) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
+            let (org, project, version) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
                 // `nixos/nixpkgs/0.2305`
-                [org, repo, version] => {
+                [org, project, version] => {
                     let version = version.strip_suffix(".tar.gz").unwrap_or(version);
                     let version = version.strip_prefix('v').unwrap_or(version);
 
-                    (org, repo, Some(version))
+                    (org, project, Some(version))
                 }
                 // `nixos/nixpkgs`
-                [org, repo] => {
-                    (org, repo, None)
+                [org, project] => {
+                    (org, project, None)
                 }
                 _ => Err(color_eyre::eyre::eyre!(
-                    "flakehub input did not match the expected format of `org/repo` or `org/repo/version`"
+                    "flakehub input did not match the expected format of `org/project` or `org/project/version`"
                 ))?,
             };
 
             let (flakehub_input, url) =
-                get_flakehub_repo_and_url(api_addr, org, repo, version).await?;
+                get_flakehub_project_and_url(api_addr, org, project, version).await?;
 
             if let Some(input_name) = input_name {
                 Ok((input_name, url))
@@ -175,10 +175,10 @@ async fn infer_flake_input_name_url(
 }
 
 #[tracing::instrument(skip_all)]
-async fn get_flakehub_repo_and_url(
+async fn get_flakehub_project_and_url(
     api_addr: url::Url,
     org: &str,
-    repo: &str,
+    project: &str,
     version: Option<&str>,
 ) -> color_eyre::Result<(String, url::Url)> {
     let mut headers = reqwest::header::HeaderMap::new();
@@ -203,11 +203,11 @@ async fn get_flakehub_repo_and_url(
                 path_segments_mut
                     .push("version")
                     .push(org)
-                    .push(repo)
+                    .push(project)
                     .push(version);
             }
             None => {
-                path_segments_mut.push("f").push(org).push(repo);
+                path_segments_mut.push("f").push(org).push(project);
             }
         }
     }
