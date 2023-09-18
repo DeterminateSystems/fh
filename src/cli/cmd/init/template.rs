@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use handlebars::Handlebars;
-use serde_derive::Serialize;
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::cli::cmd::FhError;

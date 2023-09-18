@@ -18,7 +18,7 @@ pub(crate) use php::Php;
 pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;
-use serde_derive::Serialize;
+use serde::Serialize;
 pub(crate) use system::System;
 pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;

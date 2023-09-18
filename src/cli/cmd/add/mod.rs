@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
+use serde::Deserialize;
 
 use self::flake::InputsInsertionLocation;
 
@@ -211,7 +212,7 @@ async fn get_flakehub_repo_and_url(
         }
     }
 
-    #[derive(Debug, serde_derive::Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct ProjectCanonicalNames {
         project: String,
         // FIXME: detect Nix version and strip .tar.gz if it supports it
