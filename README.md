@@ -43,6 +43,30 @@ To make the `fh` CLI readily available on a [NixOS] system:
 
 ## Demo
 
+### Initialize a new `flake.nix` from scratch
+
+`fh init` generates a new [`flake.nix`][flakes] file for you using a combination of:
+
+1. Your responses to interactive questions
+1. The contents of the repository in which you run the command.
+
+To create a `flake.nix`, navigate to the directory where you want to create it and run `fh init` (or specify a different directory using the `--root` option).
+Respond to the prompts it provides you and at the end `fh` will write a `flake.nix` to disk.
+
+`fh init` has built-in support for the following languages:
+
+* [Go]
+* [Java]
+* [JavaScript]
+* [PHP]
+* [Python]
+* [Ruby]
+* [Rust]
+* [Zig]
+
+> **Note**: `fh init` operates on a best-guess basis and is opinionated in its suggestions.
+> It's intended less as a comprehensive flake creation solution and more as a helpful kickstarter.
+
 ### Add a flake published to FlakeHub to your `flake.nix`
 
 `fh add` adds the most current release of the specified flake to your `flake.nix` and updates the `outputs` function to accept it.
@@ -194,9 +218,17 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
 [flakehub]: https://flakehub.com
 [flakes]: https://flakehub.com/flakes
+[go]: https://golang.org
 [inputs]: https://zero-to-nix.com/concepts/flakes#inputs
+[java]: https://java.com
+[javascript]: https://javascript.info
 [nix-flakes]: https://zero-to-nix.com/concepts/flakes
 [nixos]: https://zero-to-nix.com/concepts/nixos
 [nixpkgs]: https://zero-to-nix.com/concepts/nixpkgs
 [orgs]: https://flakehub.com/orgs
+[php]: https://php.net
+[python]: https://python.org
+[ruby]: https://ruby-lang.org
+[rust]: https://rust-lang.org
 [semver]: https://flakehub.com/docs#semver
+[zig]: https://ziglang.org
