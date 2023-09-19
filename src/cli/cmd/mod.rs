@@ -1,5 +1,6 @@
 mod add;
 mod completion;
+mod init;
 mod list;
 mod search;
 
@@ -8,11 +9,9 @@ use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableForma
 use reqwest::Client as HttpClient;
 use serde::Serialize;
 
-use crate::cli::cmd::list::Org;
-
 use self::{
     list::Flake,
-    list::{Release, Version},
+    list::{Org, Release, Version},
     search::SearchResult,
 };
 
@@ -35,9 +34,10 @@ pub trait CommandExecute {
 #[derive(clap::Subcommand)]
 pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
-    Search(search::SearchSubcommand),
-    List(list::ListSubcommand),
     Completion(completion::CompletionSubcommand),
+    Init(init::InitSubcommand),
+    List(list::ListSubcommand),
+    Search(search::SearchSubcommand),
 }
 
 pub(super) struct FlakeHubClient {
@@ -47,14 +47,32 @@ pub(super) struct FlakeHubClient {
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum FhError {
+    #[error("file error: {0}")]
+    Filesystem(#[from] std::io::Error),
+
     #[error("flake name parsing error: {0}")]
     FlakeParse(String),
 
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 
+    #[error("interactive initializer error: {0}")]
+    Interactive(#[from] inquire::InquireError),
+
     #[error("json parsing error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("the flake has no inputs")]
+    NoInputs,
+
+    #[error("template error: {0}")]
+    Render(#[from] handlebars::RenderError),
+
+    #[error("template error: {0}")]
+    Template(#[from] Box<handlebars::TemplateError>),
+
+    #[error("a presumably unreachable point was reached: {0}")]
+    Unreachable(String),
 
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
@@ -111,17 +129,18 @@ impl FlakeHubClient {
     }
 
     async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
-        let mut endpoint = self.api_addr.clone();
+        let mut url = self.api_addr.clone();
         {
-            let mut segs = endpoint
+            let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("f").push(org).push(project).push("releases");
         }
 
         let flakes = self
             .client
-            .get(&endpoint.to_string())
+            .get(&url.to_string())
             .send()
             .await?
             .json::<Vec<Release>>()
@@ -155,11 +174,12 @@ impl FlakeHubClient {
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
 
-        let mut endpoint = self.api_addr.clone();
+        let mut url = self.api_addr.clone();
         {
-            let mut segs = endpoint
+            let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("version")
                 .push("resolve")
                 .push(org)
@@ -169,7 +189,7 @@ impl FlakeHubClient {
 
         let versions = self
             .client
-            .get(endpoint)
+            .get(url)
             .send()
             .await?
             .json::<Vec<Version>>()

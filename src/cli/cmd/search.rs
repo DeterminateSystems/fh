@@ -43,6 +43,7 @@ impl SearchResult {
             let mut segs = url
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
+
             segs.push("flake").push(&self.org).push(&self.project);
         }
         url.to_string()
