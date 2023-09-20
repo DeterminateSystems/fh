@@ -5,29 +5,55 @@ use crate::cli::cmd::init::{
 
 use super::{Flake, Handler};
 
-#[cfg(target_os = "linux")]
-const IS_LINUX: bool = true;
-#[cfg(not(target_os = "linux"))]
-const IS_LINUX: bool = false;
-
-#[cfg(target_os = "macos")]
-const IS_MACOS: bool = true;
-#[cfg(not(target_os = "macos"))]
-const IS_MACOS: bool = false;
-
 const SYSTEMS: &[MultiSelectOption] = &[
     MultiSelectOption(
         "x86_64-linux",
         "Linux on a 64-bit x86 processor, like Intel or AMD",
-        IS_LINUX,
+        #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+        {
+            true
+        },
+        #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
+        {
+            false
+        },
     ),
     MultiSelectOption(
         "aarch64-darwin",
         "macOS on Apple Silicon, like the M1 or M2 chips",
-        IS_MACOS,
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        {
+            true
+        },
+        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+        {
+            false
+        },
     ),
-    MultiSelectOption("x86_64-darwin", "macOS on Intel CPUs", false),
-    MultiSelectOption("aarch64-linux", "Linux on a 64-bit Arm processor", false),
+    MultiSelectOption(
+        "x86_64-darwin",
+        "macOS on Intel CPUs",
+        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+        {
+            true
+        },
+        #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
+        {
+            false
+        },
+    ),
+    MultiSelectOption(
+        "aarch64-linux",
+        "Linux on a 64-bit Arm processor",
+        #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+        {
+            true
+        },
+        #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+        {
+            false
+        },
+    ),
 ];
 
 pub(crate) struct System;
