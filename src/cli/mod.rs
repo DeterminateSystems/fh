@@ -3,6 +3,7 @@ mod instrumentation;
 
 /// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
+#[command(version)]
 pub(crate) struct Cli {
     /// The FlakeHub address to communicate with.
     ///
