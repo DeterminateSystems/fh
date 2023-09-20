@@ -116,8 +116,8 @@ impl CommandExecute for InitSubcommand {
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                NIXPKGS_23_05 => FlakeHubUrl::version("NixOS", "nixpkgs", "0.2305.*"),
                 NIXPKGS_LATEST => FlakeHubUrl::latest("NixOS", "nixpkgs"),
+                NIXPKGS_23_05 => FlakeHubUrl::version("NixOS", "nixpkgs", "0.2305.*"),
                 NIXPKGS_UNSTABLE => FlakeHubUrl::unstable("NixOS", "nixpkgs"),
                 NIXPKGS_SPECIFIC => select_nixpkgs(&self.api_addr).await?,
                 // Just in case
