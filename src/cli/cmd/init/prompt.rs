@@ -45,7 +45,15 @@ impl Prompt {
         thing: &str,
         options: Vec<MultiSelectOption>,
     ) -> Vec<String> {
+        let defaults = options
+            .iter()
+            .enumerate()
+            .filter(|(_idx, option)| option.default_selection())
+            .map(|(idx, _)| idx)
+            .collect::<Vec<usize>>();
+
         let result = MultiSelect::new(msg, options)
+            .with_default(&defaults)
             .with_render_config(*PROMPT_CONFIG)
             .with_formatter(&|opts| {
                 format!(
@@ -95,7 +103,17 @@ impl Prompt {
 }
 
 #[derive(Clone)]
-pub(super) struct MultiSelectOption(pub(super) &'static str, pub(super) &'static str);
+pub(super) struct MultiSelectOption(
+    pub(super) &'static str,
+    pub(super) &'static str,
+    pub(super) bool,
+);
+
+impl MultiSelectOption {
+    pub fn default_selection(&self) -> bool {
+        self.2
+    }
+}
 
 impl Display for MultiSelectOption {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
