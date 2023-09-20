@@ -48,7 +48,7 @@ impl Prompt {
         let defaults = options
             .iter()
             .enumerate()
-            .filter(|(_idx, option)| option.default_selection())
+            .filter(|(_idx, option)| option.is_default_selection())
             .map(|(idx, _)| idx)
             .collect::<Vec<usize>>();
 
@@ -110,7 +110,7 @@ pub(super) struct MultiSelectOption(
 );
 
 impl MultiSelectOption {
-    pub fn default_selection(&self) -> bool {
+    pub fn is_default_selection(&self) -> bool {
         self.2
     }
 }
