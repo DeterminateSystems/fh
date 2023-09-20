@@ -61,8 +61,8 @@ impl FlakeHubUrl {
 }
 
 // Nixpkgs references
+const NIXPKGS_LATEST: &str = "latest stable (currently 23.05)";
 const NIXPKGS_23_05: &str = "23.05";
-const NIXPKGS_LATEST: &str = "latest";
 const NIXPKGS_UNSTABLE: &str = "unstable";
 const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
@@ -107,8 +107,8 @@ impl CommandExecute for InitSubcommand {
             let nixpkgs_version = match Prompt::select(
                 "Which Nixpkgs version would you like to include?",
                 &[
-                    NIXPKGS_23_05,
                     NIXPKGS_LATEST,
+                    NIXPKGS_23_05,
                     NIXPKGS_UNSTABLE,
                     NIXPKGS_SPECIFIC,
                 ],
@@ -116,8 +116,8 @@ impl CommandExecute for InitSubcommand {
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                NIXPKGS_23_05 => FlakeHubUrl::version("NixOS", "nixpkgs", "0.2305.*"),
                 NIXPKGS_LATEST => FlakeHubUrl::latest("NixOS", "nixpkgs"),
+                NIXPKGS_23_05 => FlakeHubUrl::version("NixOS", "nixpkgs", "0.2305.*"),
                 NIXPKGS_UNSTABLE => FlakeHubUrl::unstable("NixOS", "nixpkgs"),
                 NIXPKGS_SPECIFIC => select_nixpkgs(&self.api_addr).await?,
                 // Just in case
