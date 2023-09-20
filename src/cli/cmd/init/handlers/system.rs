@@ -10,12 +10,12 @@ const SYSTEMS: &[MultiSelectOption] = &[
         "x86_64-linux",
         "Linux on a 64-bit x86 processor, like Intel or AMD",
     ),
-    MultiSelectOption("aarch64-linux", "Linux on a 64-bit Arm processor"),
-    MultiSelectOption("x86_64-darwin", "macOS on Intel CPUs"),
     MultiSelectOption(
         "aarch64-darwin",
         "macOS on Apple Silicon, like the M1 or M2 chips",
     ),
+    MultiSelectOption("x86_64-darwin", "macOS on Intel CPUs"),
+    MultiSelectOption("aarch64-linux", "Linux on a 64-bit Arm processor"),
 ];
 
 pub(crate) struct System;
