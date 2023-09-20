@@ -8,7 +8,7 @@ pub(crate) struct JavaScript;
 
 impl Handler for JavaScript {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file("package.jspn") && prompt_for_language("JavaScript") {
+        if project.has_file("package.json") && prompt_for_language("JavaScript") {
             if project.has_file("bunfig.toml")
                 && Prompt::bool(
                     "This seems to be a Bun project. Would you like to add it to your environment?",
