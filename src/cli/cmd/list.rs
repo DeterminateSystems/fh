@@ -155,6 +155,8 @@ impl CommandExecute for ListSubcommand {
                     return Err(FhError::LabelParse(String::from("whitespace not allowed")).into());
                 }
 
+                let label = label.to_lowercase();
+
                 match client.flakes_by_label(&label).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
