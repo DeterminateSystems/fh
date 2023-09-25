@@ -137,7 +137,7 @@ impl FlakeHubClient {
                 .path_segments_mut()
                 .expect("flakehub url cannot be base (this should never happen)");
 
-            segs.push("tag").push(label); // TODO: update the backend URL
+            segs.push("label").push(label);
         }
 
         let flakes = self
