@@ -92,6 +92,8 @@ pub(super) struct Release {
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes,
+    /// Lists all public flakes with the provided label.
+    Label { label: String },
     /// Lists all currently public organizations on FlakeHub.
     Orgs,
     /// List all releases for a specific flake on FlakeHub.
@@ -129,6 +131,40 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             let mut table = Table::new();
                             table.set_format(*TABLE_FORMAT);
+                            table.set_titles(row!["Flake", "FlakeHub URL"]);
+
+                            for flake in flakes {
+                                table.add_row(Row::new(vec![
+                                    Cell::new(&flake.name()).with_style(Attr::Bold),
+                                    Cell::new(&flake.url()).with_style(Attr::Dim),
+                                ]));
+                            }
+
+                            if std::io::stdout().is_terminal() {
+                                table.printstd();
+                            } else {
+                                table.to_csv(std::io::stdout())?;
+                            }
+                        }
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            Label { label } => {
+                if string_has_whitespace(label.clone()) {
+                    return Err(FhError::LabelParse(String::from("whitespace not allowed")).into());
+                }
+
+                match client.flakes_by_label(&label).await {
+                    Ok(flakes) => {
+                        if flakes.is_empty() {
+                            eprintln!("No results");
+                        } else if self.json {
+                            print_json(&flakes)?;
+                        } else {
+                            let mut table = Table::new();
+                            table.set_format(*TABLE_FORMAT);
+
                             table.set_titles(row!["Flake", "FlakeHub URL"]);
 
                             for flake in flakes {
@@ -285,4 +321,8 @@ impl CommandExecute for ListSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+fn string_has_whitespace(s: String) -> bool {
+    s.chars().any(char::is_whitespace)
 }
