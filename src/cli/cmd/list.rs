@@ -151,7 +151,7 @@ impl CommandExecute for ListSubcommand {
                 }
             }
             Label { label } => {
-                if string_has_whitespace(label.clone()) {
+                if string_has_whitespace(&label) {
                     return Err(FhError::LabelParse(String::from("whitespace not allowed")).into());
                 }
 
@@ -325,6 +325,6 @@ impl CommandExecute for ListSubcommand {
     }
 }
 
-fn string_has_whitespace(s: String) -> bool {
+fn string_has_whitespace(s: &str) -> bool {
     s.chars().any(char::is_whitespace)
 }
