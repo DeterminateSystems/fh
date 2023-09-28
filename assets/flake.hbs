@@ -50,6 +50,9 @@
         pkgs = import nixpkgs { inherit {{#if has_overlays }}overlays {{/if}}system; };
       });
     in {
+      {{#if @root.doc_comments}}# Schemas tell Nix about the structure of your flake's outputs{{/if}}
+      schemas = flake-schemas.schemas;
+
       {{#with dev_shells as |dev_shells|}}
       {{#if @root.doc_comments}}# Development environments{{/if}}
       devShells = forEachSupportedSystem ({ pkgs }: {
