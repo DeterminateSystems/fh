@@ -132,6 +132,11 @@ impl CommandExecute for InitSubcommand {
                 },
             );
 
+            flake.inputs.insert(
+                String::from("flake-schemas"),
+                FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
+            );
+
             // Languages
             Go::handle(&project, &mut flake);
             Java::handle(&project, &mut flake);
