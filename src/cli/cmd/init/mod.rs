@@ -134,7 +134,10 @@ impl CommandExecute for InitSubcommand {
 
             flake.inputs.insert(
                 String::from("flake-schemas"),
-                FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
+                Input {
+                    reference: FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
+                    follows: None,
+                },
             );
 
             // Languages
