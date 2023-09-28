@@ -10,8 +10,7 @@ use reqwest::Client as HttpClient;
 use serde::Serialize;
 
 use self::{
-    list::Flake,
-    list::{Org, Release, Version},
+    list::{Flake, Org, Release, Version},
     search::SearchResult,
 };
 
@@ -61,6 +60,9 @@ pub(super) enum FhError {
 
     #[error("json parsing error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("label parsing error: {0}")]
+    LabelParse(String),
 
     #[error("the flake has no inputs")]
     NoInputs,
@@ -120,6 +122,27 @@ impl FlakeHubClient {
         let flakes = self
             .client
             .get(endpoint)
+            .send()
+            .await?
+            .json::<Vec<Flake>>()
+            .await?;
+
+        Ok(flakes)
+    }
+
+    async fn flakes_by_label(&self, label: &str) -> Result<Vec<Flake>, FhError> {
+        let mut url = self.api_addr.clone();
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+
+            segs.push("label").push(label);
+        }
+
+        let flakes = self
+            .client
+            .get(&url.to_string())
             .send()
             .await?
             .json::<Vec<Flake>>()
