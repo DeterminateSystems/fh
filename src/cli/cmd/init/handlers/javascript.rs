@@ -8,6 +8,10 @@ pub(crate) struct JavaScript;
 
 impl Handler for JavaScript {
     fn handle(project: &Project, flake: &mut Flake) {
+        if project.has_one_of(&["deno.json", "deno.jsonc"]) && prompt_for_tool("Deno") {
+            flake.dev_shell_packages.push(String::from("deno"))
+        }
+
         if project.has_file("package.json") && prompt_for_language("JavaScript") {
             if project.has_file("bunfig.toml")
                 && Prompt::bool(
