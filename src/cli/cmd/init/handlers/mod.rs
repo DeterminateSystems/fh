@@ -1,5 +1,7 @@
+use serde::Serialize;
 use std::collections::HashMap;
 
+mod elm;
 mod go;
 mod java;
 mod javascript;
@@ -11,6 +13,7 @@ mod system;
 mod tools;
 mod zig;
 
+pub(crate) use elm::Elm;
 pub(crate) use go::Go;
 pub(crate) use java::Java;
 pub(crate) use javascript::JavaScript;
@@ -18,7 +21,6 @@ pub(crate) use php::Php;
 pub(crate) use python::Python;
 pub(crate) use ruby::Ruby;
 pub(crate) use rust::Rust;
-use serde::Serialize;
 pub(crate) use system::System;
 pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;
