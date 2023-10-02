@@ -15,7 +15,7 @@ use std::{
 };
 use url::Url;
 
-use crate::cli::cmd::list::FLAKEHUB_WEB_ROOT;
+use crate::cli::cmd::{init::handlers::Elm, list::FLAKEHUB_WEB_ROOT};
 
 use super::FlakeHubClient;
 
@@ -141,6 +141,7 @@ impl CommandExecute for InitSubcommand {
             );
 
             // Languages
+            Elm::handle(&project, &mut flake);
             Go::handle(&project, &mut flake);
             Java::handle(&project, &mut flake);
             JavaScript::handle(&project, &mut flake);
