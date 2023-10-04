@@ -446,6 +446,7 @@ dependencies = [
  "inquire",
  "lazy_static",
  "nixel",
+ "once_cell",
  "prettytable-rs",
  "regex",
  "reqwest",

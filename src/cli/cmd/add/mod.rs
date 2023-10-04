@@ -1,4 +1,5 @@
-mod flake;
+// FIXME: extract to somewhere else so it's more convenient
+pub(crate) mod flake;
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -61,7 +62,7 @@ impl CommandExecute for AddSubcommand {
         .into();
 
         let new_flake_contents = flake::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             flake_input_name,
             flake_input_url,
             flake_contents,
@@ -80,7 +81,10 @@ impl CommandExecute for AddSubcommand {
 }
 
 #[tracing::instrument(skip_all)]
-async fn load_flake(flake_path: &PathBuf) -> color_eyre::Result<(String, nixel::Parsed)> {
+// FIXME: make a nix or nix_util module or something
+pub(crate) async fn load_flake(
+    flake_path: &PathBuf,
+) -> color_eyre::Result<(String, nixel::Parsed)> {
     let mut contents = tokio::fs::read_to_string(&flake_path)
         .await
         .or_else(|e| {
@@ -152,7 +156,7 @@ async fn infer_flake_input_name_url(
             };
 
             let (flakehub_input, url) =
-                get_flakehub_project_and_url(api_addr, org, project, version).await?;
+                get_flakehub_project_and_url(&api_addr, org, project, version).await?;
 
             if let Some(input_name) = input_name {
                 Ok((input_name, url))
@@ -175,8 +179,8 @@ async fn infer_flake_input_name_url(
 }
 
 #[tracing::instrument(skip_all)]
-async fn get_flakehub_project_and_url(
-    api_addr: url::Url,
+pub(crate) async fn get_flakehub_project_and_url(
+    api_addr: &url::Url,
     org: &str,
     project: &str,
     version: Option<&str>,

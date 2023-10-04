@@ -45,6 +45,11 @@
       url = "git+https://github.com/wez/wezterm.git?submodules=1";
       flake = false;
     };
+
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
   outputs = inputs: { };
