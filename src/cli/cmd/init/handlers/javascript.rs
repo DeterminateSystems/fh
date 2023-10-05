@@ -12,10 +12,8 @@ impl Handler for JavaScript {
             flake.dev_shell_packages.push(String::from("deno"));
         }
 
-        if project.has_file_or_directory("package.json")
-            && Prompt::for_language("JavaScript/TypeScript")
-        {
-            if project.has_file_or_directory("bunfig.toml")
+        if project.has_file("package.json") && Prompt::for_language("JavaScript/TypeScript") {
+            if project.has_file("bunfig.toml")
                 && Prompt::bool(
                     "This seems to be a Bun project. Would you like to add it to your environment?",
                 )
@@ -28,13 +26,13 @@ impl Handler for JavaScript {
                 flake.dev_shell_packages.push(format!("nodejs-{version}_x"));
             }
 
-            if project.has_file_or_directory("pnpm-lock.yaml") && Prompt::for_tool("pnpm") {
+            if project.has_file("pnpm-lock.yaml") && Prompt::for_tool("pnpm") {
                 flake
                     .dev_shell_packages
                     .push(String::from("nodePackages.pnpm"));
             }
 
-            if project.has_file_or_directory("yarn.lock") && Prompt::for_tool("Yarn") {
+            if project.has_file("yarn.lock") && Prompt::for_tool("Yarn") {
                 flake
                     .dev_shell_packages
                     .push(String::from("nodePackages.yarn"));

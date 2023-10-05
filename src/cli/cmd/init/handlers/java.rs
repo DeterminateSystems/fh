@@ -12,11 +12,11 @@ impl Handler for Java {
             let java_version = Prompt::select("Which JDK version?", JAVA_VERSIONS);
             flake.dev_shell_packages.push(format!("jdk{java_version}"));
 
-            if project.has_file_or_directory("pom.xml") && Prompt::for_tool("Maven") {
+            if project.has_file("pom.xml") && Prompt::for_tool("Maven") {
                 flake.dev_shell_packages.push(String::from("maven"));
             }
 
-            if project.has_file_or_directory("build.gradle") && Prompt::for_tool("Gradle") {
+            if project.has_file("build.gradle") && Prompt::for_tool("Gradle") {
                 flake.dev_shell_packages.push(String::from("gradle"));
             }
         }

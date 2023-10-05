@@ -10,7 +10,7 @@ pub(crate) struct Rust;
 
 impl Handler for Rust {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file_or_directory("Cargo.toml") && Prompt::for_language("Rust") {
+        if project.has_file("Cargo.toml") && Prompt::for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
                 Input {
@@ -23,15 +23,14 @@ impl Handler for Rust {
                 .overlay_refs
                 .push(String::from("rust-overlay.overlays.default"));
 
-            let rust_toolchain_func =
-                String::from(if project.has_file_or_directory("rust-toolchain") {
-                    "final.rust-bin.fromRustupToolchainFile ./rust-toolchain"
-                } else if project.has_file_or_directory("rust-toolchain.toml") {
-                    "final.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
-                } else {
-                    // TODO: make this more granular
-                    "final.rust-bin.stable.latest.default"
-                });
+            let rust_toolchain_func = String::from(if project.has_file("rust-toolchain") {
+                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain"
+            } else if project.has_file("rust-toolchain.toml") {
+                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
+            } else {
+                // TODO: make this more granular
+                "final.rust-bin.stable.latest.default"
+            });
 
             flake
                 .overlay_attrs

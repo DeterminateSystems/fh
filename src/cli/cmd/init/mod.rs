@@ -9,7 +9,7 @@ use color_eyre::eyre::Result;
 use prompt::Prompt;
 use std::{
     fs::write,
-    io::{ErrorKind, IsTerminal},
+    io::IsTerminal,
     path::PathBuf,
     process::{exit, Command, ExitCode},
 };
@@ -232,14 +232,14 @@ impl CommandExecute for InitSubcommand {
 
             write(self.output, flake_string)?;
 
-            if project.has_file_or_directory(".git")
-                && Prompt::bool("Would you like to add your flake.nix to Git?")
+            if project.has_directory(".git")
                 && command_exists("git")
+                && Prompt::bool("Would you like to add your flake.nix to Git?")
             {
                 Command::new("git").args(["add", "flake.nix"]).output()?;
             }
 
-            if !project.has_file_or_directory(".envrc")
+            if !project.has_file(".envrc")
                 && Prompt::bool("Would you like to add a .envrc file so that you can use direnv in this project?")
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
