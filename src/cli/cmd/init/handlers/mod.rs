@@ -25,7 +25,7 @@ pub(crate) use system::System;
 pub(crate) use tools::Tools;
 pub(crate) use zig::Zig;
 
-use super::{dev_shell::DevShell, project::Project, prompt::Prompt};
+use super::{dev_shell::DevShell, project::Project};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct Input {
@@ -54,14 +54,4 @@ pub(crate) trait Handler {
 // Helper functions
 fn version_as_attr(v: &str) -> String {
     v.replace('.', "")
-}
-
-fn prompt_for_language(lang: &str) -> bool {
-    Prompt::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with built-in {lang} dependencies?"))
-}
-
-fn prompt_for_tool(tool: &str) -> bool {
-    Prompt::bool(&format!(
-        "This seems to be a {tool} project. Would you like to add it to your environment?"
-    ))
 }

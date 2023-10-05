@@ -100,6 +100,16 @@ impl Prompt {
             Err(_) => exit(1),
         }
     }
+
+    pub(super) fn for_language(lang: &str) -> bool {
+        Self::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with built-in {lang} dependencies?"))
+    }
+
+    pub(super) fn for_tool(tool: &str) -> bool {
+        Self::bool(&format!(
+            "This seems to be a {tool} project. Would you like to add it to your environment?"
+        ))
+    }
 }
 
 #[derive(Clone)]

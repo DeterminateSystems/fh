@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::prompt::Prompt;
 
-use super::{prompt_for_language, Flake, Handler, Input, Project};
+use super::{Flake, Handler, Input, Project};
 
 const CARGO_TOOLS: &[&str] = &[
     "audit", "bloat", "cross", "edit", "outdated", "udeps", "watch",
@@ -10,7 +10,7 @@ pub(crate) struct Rust;
 
 impl Handler for Rust {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file("Cargo.toml") && prompt_for_language("Rust") {
+        if project.has_file("Cargo.toml") && Prompt::for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
                 Input {
