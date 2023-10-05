@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{prompt_for_language, version_as_attr, Flake, Handler};
+use super::{version_as_attr, Flake, Handler};
 
 const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.09"];
 const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
@@ -9,7 +9,7 @@ pub(crate) struct Python;
 
 impl Handler for Python {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_one_of(&["setup.py", "requirements.txt"]) && prompt_for_language("Python") {
+        if project.has_one_of(&["setup.py", "requirements.txt"]) && Prompt::for_language("Python") {
             let python_version = Prompt::select("Select a version of Python", PYTHON_VERSIONS);
             let python_version_attr = version_as_attr(&python_version);
             flake

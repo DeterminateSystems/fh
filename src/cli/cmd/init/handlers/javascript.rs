@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{prompt_for_language, prompt_for_tool, Flake, Handler};
+use super::{Flake, Handler};
 
 const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
 
@@ -8,11 +8,11 @@ pub(crate) struct JavaScript;
 
 impl Handler for JavaScript {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_one_of(&["deno.json", "deno.jsonc"]) && prompt_for_tool("Deno") {
-            flake.dev_shell_packages.push(String::from("deno"))
+        if project.has_one_of(&["deno.json", "deno.jsonc"]) && Prompt::for_tool("Deno") {
+            flake.dev_shell_packages.push(String::from("deno"));
         }
 
-        if project.has_file("package.json") && prompt_for_language("JavaScript") {
+        if project.has_file("package.json") && Prompt::for_language("JavaScript") {
             if project.has_file("bunfig.toml")
                 && Prompt::bool(
                     "This seems to be a Bun project. Would you like to add it to your environment?",
@@ -26,13 +26,13 @@ impl Handler for JavaScript {
                 flake.dev_shell_packages.push(format!("nodejs-{version}_x"));
             }
 
-            if project.has_file("pnpm-lock.yaml") && prompt_for_tool("pnpm") {
+            if project.has_file("pnpm-lock.yaml") && Prompt::for_tool("pnpm") {
                 flake
                     .dev_shell_packages
                     .push(String::from("nodePackages.pnpm"));
             }
 
-            if project.has_file("yarn.lock") && prompt_for_tool("Yarn") {
+            if project.has_file("yarn.lock") && Prompt::for_tool("Yarn") {
                 flake
                     .dev_shell_packages
                     .push(String::from("nodePackages.yarn"));
