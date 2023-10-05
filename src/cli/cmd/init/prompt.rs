@@ -102,7 +102,7 @@ impl Prompt {
     }
 
     pub(super) fn for_language(lang: &str) -> bool {
-        Self::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with built-in {lang} dependencies?"))
+        Self::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with some standard dependencies for {lang}?"))
     }
 
     pub(super) fn for_tool(tool: &str) -> bool {

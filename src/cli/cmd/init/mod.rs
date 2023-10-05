@@ -169,9 +169,11 @@ impl CommandExecute for InitSubcommand {
                     if let Some(name) = name {
                         let value = Prompt::maybe_string("Variable value:");
                         if let Some(value) = value {
-                            flake.env_vars.insert(name, value);
-                            if !Prompt::bool("Enter another variable?") {
-                                break;
+                            if !value.is_empty() {
+                                flake.env_vars.insert(name, value);
+                                if !Prompt::bool("Enter another variable?") {
+                                    break;
+                                }
                             }
                         } else {
                             break;
@@ -182,9 +184,22 @@ impl CommandExecute for InitSubcommand {
                 }
             }
 
-            flake.shell_hook = Prompt::maybe_string(
-                "If you'd like to add a shell hook that gets run every time you enter your Nix development environment, enter it here:",
-            );
+            if Prompt::bool("Would you like to add a shell hook that runs every time you enter your Nix development environment?") {
+                loop {
+                    let hook = Prompt::maybe_string(
+                        "Enter the hook here:",
+                    );
+
+                    if let Some(hook) = hook {
+                        flake.shell_hook = Some(hook);
+                        break;
+                    } else {
+                        if !Prompt::bool("You didn't enter a hook. Would you like to try again?") {
+                            break;
+                        }
+                    }
+                }
+            }
 
             // If the dev shell will be empty, prompt users to ensure that they still want a flake
             if flake.dev_shell_packages.is_empty() {
