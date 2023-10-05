@@ -242,7 +242,7 @@ impl CommandExecute for InitSubcommand {
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
 
-                if Prompt::bool("You'll need to run `direnv allow` to active direnv in this project. Would you like to do that now?") {
+                if Prompt::bool("You'll need to run `direnv allow` to activate direnv in this project. Would you like to do that now?") {
                     if command_exists("direnv") {
                         Command::new("direnv").arg("allow").output()?;
                     } else {
