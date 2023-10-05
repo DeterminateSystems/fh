@@ -143,7 +143,8 @@ fh list releases nixos/nixpkgs
 | 0.1.429304+rev-27ccd29078f974ddbdd7edc8e38c8c8ae003c877    |
 | 0.1.429553+rev-5dc7114b7b256d217fe7752f1614be2514e61bb8    |
 | 0.1.429868+rev-a115bb9bd56831941be3776c8a94005867f316a7    |
-...
+| ...                                                        |
++------------------------------------------------------------+
 ```
 
 ### Listing flakes, organizations, and versions
@@ -163,7 +164,8 @@ fh list flakes
 | ajaxbits/audiobookshelf                   https://flakehub.com/flake/ajaxbits/audiobookshelf                  |
 | ajaxbits/tone                             https://flakehub.com/flake/ajaxbits/tone                            |
 | astro/deadnix                             https://flakehub.com/flake/astro/deadnix                            |
-...
+| ...                                       ...                                                                 |
++---------------------------------------------------------------------------------------------------------------+
 ```
 
 #### List orgs
@@ -178,7 +180,8 @@ fh list orgs
 +-------------------------------------------------------------------------+
 | ajaxbits                https://flakehub.com/org/ajaxbits               |
 | astro                   https://flakehub.com/org/astro                  |
-...
+| ...                     ...                                             |
++-------------------------------------------------------------------------+
 ```
 
 #### List versions
@@ -192,15 +195,18 @@ fh list versions <flake> <version_req>
 Here's an example:
 
 ```shell
-fh list versions hyprwm/Hyprland "0.1.*"
+fh list versions DeterminateSystems/flake-checker "0.1.*"
 ```
 
 ```console
-+------------------------------------------------------------------------------------------------------------------------------+
-| Simplified version  FlakeHub URL                                        Full version                                         |
-+------------------------------------------------------------------------------------------------------------------------------+
-| 0.1.546             https://flakehub.com/flake/hyprwm/Hyprland/0.1.546  0.1.546+rev-d8c5e53c0803eb118080657734160bf3ab5127d2 |
-+------------------------------------------------------------------------------------------------------------------------------+
++------------------------------------------------------------------------------------------------------+
+| Simplified version  FlakeHub URL                                                        Full version |
++------------------------------------------------------------------------------------------------------+
+| 0.1.0               https://flakehub.com/flake/DeterminateSystems/flake-checker/0.1.0   0.1.0        |
+| 0.1.1               https://flakehub.com/flake/DeterminateSystems/flake-checker/0.1.1   0.1.1        |
+| 0.1.2               https://flakehub.com/flake/DeterminateSystems/flake-checker/0.1.2   0.1.2        |
+| ...                 ...                                                                 ...          |
++------------------------------------------------------------------------------------------------------+
 ```
 
 ### List by label
@@ -214,15 +220,15 @@ fh list label <label>
 Here's an example:
 
 ```shell
-fh list label wayland
+fh list label python
 ```
 
 ```console
-+-------------------------------------------------------------+
-| Flake            FlakeHub URL                               |
-+-------------------------------------------------------------+
-| hyprwm/Hyprland  https://flakehub.com/flake/hyprwm/Hyprland |
-+-------------------------------------------------------------+
++-------------------------------------------------------------------------------+
+| Flake                     FlakeHub URL                                        |
++-------------------------------------------------------------------------------+
+| nix-community/poetry2nix  https://flakehub.com/flake/nix-community/poetry2nix |
++-------------------------------------------------------------------------------+
 ```
 
 ## Shell completion
