@@ -11,7 +11,7 @@ use std::{
     fs::write,
     io::IsTerminal,
     path::PathBuf,
-    process::{exit, ExitCode},
+    process::{exit, Command, ExitCode},
 };
 use url::Url;
 
@@ -182,9 +182,20 @@ impl CommandExecute for InitSubcommand {
                 }
             }
 
-            flake.shell_hook = Prompt::maybe_string(
-                "If you'd like to add a shell hook that gets run every time you enter your Nix development environment, enter it here:",
-            );
+            if Prompt::bool("Would you like to add a shell hook that runs every time you enter your Nix development environment?") {
+                loop {
+                    let hook = Prompt::maybe_string(
+                        "Enter the hook here:",
+                    );
+
+                    if let Some(hook) = hook {
+                        flake.shell_hook = Some(hook);
+                        break;
+                    } else if !Prompt::bool("You didn't enter a hook. Would you like to try again?") {
+                        break;
+                    }
+                }
+            }
 
             // If the dev shell will be empty, prompt users to ensure that they still want a flake
             if flake.dev_shell_packages.is_empty() {
@@ -219,19 +230,40 @@ impl CommandExecute for InitSubcommand {
 
             write(self.output, flake_string)?;
 
+            if project.has_directory(".git")
+                && command_exists("git")
+                && Prompt::bool("Would you like to add your flake.nix file to Git?")
+            {
+                Command::new("git")
+                    .args(["add", "--intent-to-add", "flake.nix"])
+                    .output()?;
+            }
+
             if !project.has_file(".envrc")
-                && Prompt::bool("Would you like to add a .envrc file for use with direnv?")
+                && Prompt::bool("Would you like to add a .envrc file so that you can use direnv in this project?")
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
-            } else {
-                println!(
-                    "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
-                );
+
+                if Prompt::bool("You'll need to run `direnv allow` to activate direnv in this project. Would you like to do that now?") {
+                    if command_exists("direnv") {
+                        Command::new("direnv").arg("allow").output()?;
+                    } else {
+                        println!("It looks like direnv isn't installed.");
+                    }
+                }
             }
+
+            println!(
+                "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
+            );
 
             Ok(ExitCode::SUCCESS)
         }
     }
+}
+
+fn command_exists(cmd: &str) -> bool {
+    Command::new(cmd).output().is_ok()
 }
 
 async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {

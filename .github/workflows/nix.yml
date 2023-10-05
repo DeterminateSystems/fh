@@ -21,4 +21,4 @@ jobs:
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
       - name: "Nix Flake Check"
-        run: nix flake check --print-build-logs
+        run: nix flake check --print-build-logs --all-systems

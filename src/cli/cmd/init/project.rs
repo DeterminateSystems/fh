@@ -11,7 +11,11 @@ impl Project {
 
     // Helpers
     pub(super) fn has_file(&self, file: &str) -> bool {
-        self.root.join(file).exists()
+        self.root.join(file).exists() && PathBuf::from(file).is_file()
+    }
+
+    pub(super) fn has_directory(&self, dir: &str) -> bool {
+        self.root.join(dir).exists() && PathBuf::from(dir).is_dir()
     }
 
     pub(super) fn has_one_of(&self, files: &[&str]) -> bool {

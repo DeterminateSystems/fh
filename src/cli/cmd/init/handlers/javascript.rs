@@ -12,7 +12,7 @@ impl Handler for JavaScript {
             flake.dev_shell_packages.push(String::from("deno"));
         }
 
-        if project.has_file("package.json") && Prompt::for_language("JavaScript") {
+        if project.has_file("package.json") && Prompt::for_language("JavaScript/TypeScript") {
             if project.has_file("bunfig.toml")
                 && Prompt::bool(
                     "This seems to be a Bun project. Would you like to add it to your environment?",
