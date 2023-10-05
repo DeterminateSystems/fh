@@ -9,9 +9,9 @@ use color_eyre::eyre::Result;
 use prompt::Prompt;
 use std::{
     fs::write,
-    io::IsTerminal,
+    io::{ErrorKind, IsTerminal},
     path::PathBuf,
-    process::{exit, ExitCode},
+    process::{exit, Command, ExitCode},
 };
 use url::Url;
 
@@ -193,10 +193,8 @@ impl CommandExecute for InitSubcommand {
                     if let Some(hook) = hook {
                         flake.shell_hook = Some(hook);
                         break;
-                    } else {
-                        if !Prompt::bool("You didn't enter a hook. Would you like to try again?") {
-                            break;
-                        }
+                    } else if !Prompt::bool("You didn't enter a hook. Would you like to try again?") {
+                        break;
                     }
                 }
             }
@@ -238,11 +236,28 @@ impl CommandExecute for InitSubcommand {
                 && Prompt::bool("Would you like to add a .envrc file for use with direnv?")
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
-            } else {
-                println!(
-                    "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
-                );
+
+                if Prompt::bool("To get started with direnv, you'll need to run `git add .envrc` and `direnv allow`. Would you like to run those now?") {
+                    Command::new("git").args(["add", ".envrc"]).output()?;
+
+                    match Command::new("direnv").output() {
+                        Ok(_) => {
+                            Command::new("direnv").arg("allow").output()?;
+                        }
+                        Err(e) => {
+                            if let ErrorKind::NotFound = e.kind() {
+                                println!("It looks like direnv isn't installed.");
+                            } else {
+                                println!("Hmmm, something went wrong. Skipping this for now.");
+                            }
+                        }
+                    }
+                }
             }
+
+            println!(
+                "Your flake is ready to go! Run `nix flake show` to see which outputs it provides."
+            );
 
             Ok(ExitCode::SUCCESS)
         }
