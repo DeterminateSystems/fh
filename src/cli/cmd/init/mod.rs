@@ -169,11 +169,9 @@ impl CommandExecute for InitSubcommand {
                     if let Some(name) = name {
                         let value = Prompt::maybe_string("Variable value:");
                         if let Some(value) = value {
-                            if !value.is_empty() {
-                                flake.env_vars.insert(name, value);
-                                if !Prompt::bool("Enter another variable?") {
-                                    break;
-                                }
+                            flake.env_vars.insert(name, value);
+                            if !Prompt::bool("Enter another variable?") {
+                                break;
                             }
                         } else {
                             break;
