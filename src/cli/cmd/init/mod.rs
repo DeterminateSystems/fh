@@ -234,6 +234,7 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_file_or_directory(".git")
                 && Prompt::bool("Would you like to add your flake.nix to Git?")
+                && command_exists("git")
             {
                 Command::new("git").args(["add", "flake.nix"]).output()?;
             }
@@ -244,17 +245,10 @@ impl CommandExecute for InitSubcommand {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
 
                 if Prompt::bool("To get started with direnv, you'll need to run `direnv allow`. Would you like to run those now?") {
-                    match Command::new("direnv").output() {
-                        Ok(_) => {
-                            Command::new("direnv").arg("allow").output()?;
-                        }
-                        Err(e) => {
-                            if let ErrorKind::NotFound = e.kind() {
-                                println!("It looks like direnv isn't installed.");
-                            } else {
-                                println!("Hmmm, something went wrong. Skipping this for now.");
-                            }
-                        }
+                    if command_exists("direnv") {
+                        Command::new("direnv").arg("allow").output()?;
+                    } else {
+                        println!("It looks like direnv isn't installed.");
                     }
                 }
             }
@@ -266,6 +260,10 @@ impl CommandExecute for InitSubcommand {
             Ok(ExitCode::SUCCESS)
         }
     }
+}
+
+fn command_exists(cmd: &str) -> bool {
+    Command::new(cmd).output().is_ok()
 }
 
 async fn select_nixpkgs(api_addr: &Url) -> Result<String, FhError> {

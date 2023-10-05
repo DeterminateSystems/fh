@@ -10,8 +10,8 @@ impl Project {
     }
 
     // Helpers
-    pub(super) fn has_file_or_directory(&self, file: &str) -> bool {
-        self.root.join(file).exists()
+    pub(super) fn has_file_or_directory(&self, path: &str) -> bool {
+        self.root.join(path).exists()
     }
 
     pub(super) fn has_one_of(&self, files: &[&str]) -> bool {
