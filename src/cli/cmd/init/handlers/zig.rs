@@ -6,7 +6,7 @@ pub(crate) struct Zig;
 
 impl Handler for Zig {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file("build.zig") && Prompt::for_language("Zig") {
+        if project.has_file_or_directory("build.zig") && Prompt::for_language("Zig") {
             flake.dev_shell_packages.push(String::from("zig"));
         }
     }

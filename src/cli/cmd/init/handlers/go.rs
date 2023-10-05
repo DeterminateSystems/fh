@@ -8,7 +8,7 @@ pub(crate) struct Go;
 
 impl Handler for Go {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_file("go.mod") && Prompt::for_language("Go") {
+        if project.has_file_or_directory("go.mod") && Prompt::for_language("Go") {
             let go_version = Prompt::select("Select a version of Go", GO_VERSIONS);
             flake.dev_shell_packages.push(format!("go_1_{go_version}"));
         }

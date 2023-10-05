@@ -232,14 +232,18 @@ impl CommandExecute for InitSubcommand {
 
             write(self.output, flake_string)?;
 
-            if !project.has_file(".envrc")
-                && Prompt::bool("Would you like to add a .envrc file for use with direnv?")
+            if project.has_file_or_directory(".git")
+                && Prompt::bool("Would you like to add your flake.nix to Git?")
+            {
+                Command::new("git").args(["add", "flake.nix"]).output()?;
+            }
+
+            if !project.has_file_or_directory(".envrc")
+                && Prompt::bool("Would you like to add a .envrc file so that you can use direnv in this project?")
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
 
-                if Prompt::bool("To get started with direnv, you'll need to run `git add .envrc` and `direnv allow`. Would you like to run those now?") {
-                    Command::new("git").args(["add", ".envrc"]).output()?;
-
+                if Prompt::bool("To get started with direnv, you'll need to run `direnv allow`. Would you like to run those now?") {
                     match Command::new("direnv").output() {
                         Ok(_) => {
                             Command::new("direnv").arg("allow").output()?;
