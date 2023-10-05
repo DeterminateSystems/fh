@@ -234,7 +234,9 @@ impl CommandExecute for InitSubcommand {
                 && command_exists("git")
                 && Prompt::bool("Would you like to add your flake.nix file to Git?")
             {
-                Command::new("git").args(["add", "flake.nix"]).output()?;
+                Command::new("git")
+                    .args(["add", "--intent-to-add", "flake.nix"])
+                    .output()?;
             }
 
             if !project.has_file(".envrc")
