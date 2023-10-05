@@ -232,7 +232,7 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_directory(".git")
                 && command_exists("git")
-                && Prompt::bool("Would you like to add your flake.nix to Git?")
+                && Prompt::bool("Would you like to add your flake.nix file to Git?")
             {
                 Command::new("git").args(["add", "flake.nix"]).output()?;
             }
@@ -242,7 +242,7 @@ impl CommandExecute for InitSubcommand {
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
 
-                if Prompt::bool("To get started with direnv, you'll need to run `direnv allow`. Would you like to run those now?") {
+                if Prompt::bool("To get started with direnv, you'll need to run `direnv allow`. Would you like to run it now?") {
                     if command_exists("direnv") {
                         Command::new("direnv").arg("allow").output()?;
                     } else {
