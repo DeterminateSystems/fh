@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::process::ExitCode;
+use std::process::{ExitCode, Stdio};
 
 use clap::Parser;
 use once_cell::sync::Lazy;
@@ -11,6 +11,21 @@ use super::CommandExecute;
 const RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(nixos|nixpkgs)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})").unwrap()
 });
+
+const SHELL_NIX: &str = "shell.nix";
+const DEFAULT_NIX: &str = "default.nix";
+const FLAKE_COMPAT_MARKER: &str = "https://github.com/edolstra/flake-compat/archive";
+
+const FLAKE_COMPAT_CONTENTS_PREFIX: &str = r#"(import
+  (
+    let lock = builtins.fromJSON (builtins.readFile ./flake.lock); in
+    fetchTarball {
+      url = lock.nodes.flake-compat.locked.url or "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+      sha256 = lock.nodes.flake-compat.locked.narHash;
+    }
+  )
+  { src = ./.; }
+)"#;
 
 /// Convert flake inputs to FlakeHub when possible.
 #[derive(Debug, Parser)]
@@ -46,8 +61,19 @@ impl CommandExecute for ConvertSubcommand {
             .make_implicit_nixpkgs_explicit(&parsed.expression, &new_flake_contents)
             .await?;
         let new_flake_contents = if let Some(flake_compat_input_name) = flake_compat_input_name {
-            self.fixup_flake_compat_input(&new_flake_contents, flake_compat_input_name)
-                .await?
+            let new_flake_contents = self
+                .fixup_flake_compat_input(&new_flake_contents, flake_compat_input_name)
+                .await?;
+
+            if !self.dry_run {
+                self.fixup_flake_compat_nix_files().await?;
+            } else {
+                tracing::info!(
+                    "would have tried to update any flake-compat shell.nix and default.nix files"
+                );
+            }
+
+            new_flake_contents
         } else {
             new_flake_contents
         };
@@ -258,6 +284,74 @@ impl ConvertSubcommand {
 
         Ok(new_flake_contents)
     }
+
+    async fn fixup_flake_compat_nix_files(&self) -> color_eyre::Result<()> {
+        let shell_nix_path = PathBuf::from(SHELL_NIX);
+        let default_nix_path = PathBuf::from(DEFAULT_NIX);
+        let mut shell_nix_clean = true;
+        let mut default_nix_clean = true;
+
+        let git_toplevel = tokio::process::Command::new("git")
+            .args(&["rev-parse", "--show-toplevel"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
+            .status()
+            .await?;
+        let is_a_git_repo = git_toplevel.success();
+
+        if is_a_git_repo {
+            let files = tokio::process::Command::new("git")
+                .args(&["ls-files ", "--modified ", "--full-name"])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .stdin(Stdio::null())
+                .output()
+                .await?;
+            let output = std::str::from_utf8(&files.stdout)?;
+
+            for line in output.lines() {
+                if line.contains("shell.nix") {
+                    shell_nix_clean = false;
+                }
+                if line.contains("default.nix") {
+                    default_nix_clean = false;
+                }
+            }
+        }
+
+        if shell_nix_path.exists() {
+            let existing_contents = tokio::fs::read_to_string(&shell_nix_path).await?;
+            if existing_contents.contains(FLAKE_COMPAT_MARKER) {
+                let contents = format!("{FLAKE_COMPAT_CONTENTS_PREFIX}.shellNix");
+
+                if !shell_nix_clean || !is_a_git_repo {
+                    tracing::info!(
+                        "We recommend you update the contents of your {SHELL_NIX} to use the flake-compat pinned in your flake:\n{contents}"
+                    );
+                } else {
+                    tokio::fs::write(shell_nix_path, contents).await?;
+                }
+            }
+        }
+
+        if default_nix_path.exists() {
+            let existing_contents = tokio::fs::read_to_string(&default_nix_path).await?;
+            if existing_contents.contains(FLAKE_COMPAT_MARKER) {
+                let contents = format!("{FLAKE_COMPAT_CONTENTS_PREFIX}.defaultNix");
+
+                if !default_nix_clean || !is_a_git_repo {
+                    tracing::info!(
+                        "We recommend you update the contents of your {DEFAULT_NIX} to use the flake-compat pinned in your flake:\n{contents}"
+                    );
+                } else {
+                    tokio::fs::write(default_nix_path, contents).await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // FIXME: only supports strings for now
@@ -376,11 +470,10 @@ async fn convert_input_to_flakehub(
         // A URL like `https://github.com/...`
         Some(_host) => match parsed_url.scheme() {
             "https" => {
-                tracing::error!("not yet implemented");
-                // dbg!("any other type of url", &parsed_url);
+                tracing::debug!("https://... urls are not yet implented");
             }
             scheme => {
-                tracing::warn!("unimplemented url scheme {scheme}");
+                tracing::debug!("unimplemented url scheme {scheme}");
             }
         },
         // A URL like `github:nixos/nixpkgs`
@@ -389,7 +482,7 @@ async fn convert_input_to_flakehub(
                 url = convert_github_input_to_flakehub(parsed_url, api_addr).await?;
             }
             scheme => {
-                tracing::warn!("unimplemented flake input scheme {scheme}");
+                tracing::debug!("unimplemented flake input scheme {scheme}");
             }
         },
     }
