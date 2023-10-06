@@ -126,13 +126,25 @@ impl ConvertSubcommand {
 
             let url = find_input_value_by_path(&input.to, ["url".into()].into())?;
 
-            if let Some(ref url) = url {
-                if url == "github:edolstra/flake-compat" {
-                    // Save the flake-compat input name for later (so we can find it again)
-                    flake_compat_input_name = Some(input_name.clone());
-                    continue;
+            let url = match url {
+                Some(url) => {
+                    if url == "github:edolstra/flake-compat" {
+                        // Save the flake-compat input name for later (so we can find it again)
+                        flake_compat_input_name = Some(input_name.clone());
+                        continue;
+                    }
+
+                    // Bare-minimum Nixpkgs-from-flake-registry handling
+                    if url == "nixpkgs" || url.starts_with("nixpkgs/") {
+                        let mut url = url;
+                        url.insert_str(0, "github:NixOS/");
+                        Some(url)
+                    } else {
+                        Some(url)
+                    }
                 }
-            }
+                None => None,
+            };
 
             let maybe_parsed_url = url.and_then(|u| u.parse::<url::Url>().ok());
 
@@ -723,5 +735,39 @@ mod test {
             .collect();
         let num_nixpkgs_url_lines = nixpkgs_url_lines.len();
         assert_eq!(num_nixpkgs_url_lines, 1);
+    }
+
+    #[tokio::test]
+    async fn test_nixpkgs_from_registry() {
+        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
+        let server_addr = test_server.server_address();
+        let server_url = server_addr.parse().unwrap();
+
+        let convert = super::ConvertSubcommand {
+            flake_path: "".into(),
+            dry_run: true,
+            api_addr: server_url,
+        };
+        let flake_contents = r#"
+{
+  description = "cole-h's NixOS configuration";
+
+  inputs = {
+    nixpkgs.url = "nixpkgs";
+  };
+
+  outputs = { self, ... } @ tes: { };
+}
+"#;
+        let flake_contents = flake_contents.to_string();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let (new_flake_contents, _) = convert
+            .convert_inputs_to_flakehub(&parsed.expression, &flake_contents)
+            .await
+            .unwrap();
+
+        assert!(new_flake_contents
+            .contains(r#"nixpkgs.url = "http://flakehub-localhost/f/NixOS/nixpkgs/*.tar.gz";"#));
     }
 }
