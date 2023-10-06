@@ -8,7 +8,7 @@ use once_cell::sync::Lazy;
 use super::CommandExecute;
 
 // match {nixos,nixpkgs}-YY.MM branches
-const RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
+static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(nixos|nixpkgs)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})").unwrap()
 });
 
@@ -84,7 +84,7 @@ impl CommandExecute for ConvertSubcommand {
         } else {
             tokio::fs::write(self.flake_path, new_flake_contents).await?;
             tokio::process::Command::new("nix")
-                .args(&["--extra-experimental-features", "nix-command flakes"])
+                .args(["--extra-experimental-features", "nix-command flakes"])
                 .arg("flake")
                 .arg("lock")
                 .status()
@@ -105,14 +105,14 @@ impl ConvertSubcommand {
         let mut new_flake_contents = flake_contents.to_string();
 
         let all_toplevel_inputs = crate::cli::cmd::add::flake::find_all_attrsets_by_path(
-            &expr,
+            expr,
             Some(["inputs".into()].into()),
         )?;
         let all_inputs = crate::cli::cmd::add::flake::collect_all_inputs(all_toplevel_inputs)?;
         let mut flake_compat_input_name = None;
 
         for input in all_inputs.iter() {
-            let Some(input_name) = input.from.into_iter().find_map(|part| match part {
+            let Some(input_name) = input.from.iter().find_map(|part| match part {
                 nixel::Part::Raw(raw) => {
                     let content = raw.content.trim().to_string();
 
@@ -138,7 +138,7 @@ impl ConvertSubcommand {
                 }
             }
 
-            let maybe_parsed_url = url.map(|u| u.parse::<url::Url>().ok()).flatten();
+            let maybe_parsed_url = url.and_then(|u| u.parse::<url::Url>().ok());
 
             let new_input_url = match maybe_parsed_url {
                 Some(parsed_url) => convert_input_to_flakehub(&self.api_addr, parsed_url).await?,
@@ -149,7 +149,7 @@ impl ConvertSubcommand {
                 let input_attr_path: VecDeque<String> =
                     ["inputs".into(), input_name.clone(), "url".into()].into();
                 let Some(attr) = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-                    &expr,
+                    expr,
                     Some(input_attr_path),
                 )?
                 else {
@@ -179,12 +179,12 @@ impl ConvertSubcommand {
         let mut new_flake_contents = flake_contents.to_string();
         let input_name = String::from(NIXPKGS_IMPLICIT_INPUT_NAME);
         let outputs_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-            &expr,
+            expr,
             Some(["outputs".into()].into()),
         )?;
 
         let nixpkgs_input_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-            &expr,
+            expr,
             Some(["inputs".into(), input_name.clone()].into()),
         )?;
 
@@ -203,7 +203,7 @@ impl ConvertSubcommand {
                         if head
                             .arguments
                             .iter()
-                            .any(|arg| &*arg.identifier == input_name) =>
+                            .any(|arg| *arg.identifier == input_name) =>
                     {
                         let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
                             &self.api_addr,
@@ -214,7 +214,7 @@ impl ConvertSubcommand {
                         .await?;
 
                         new_flake_contents = crate::cli::cmd::add::flake::insert_flake_input(
-                            &expr,
+                            expr,
                             input_name.clone(),
                             flakehub_url.clone(),
                             new_flake_contents,
@@ -245,7 +245,7 @@ impl ConvertSubcommand {
             Some(input_attr_path),
         )?
         // This expect is safe because we already know there
-        .expect(&format!("inputs.{input_name} disappeared from flake.nix"));
+        .unwrap_or_else(|| panic!("inputs.{input_name} disappeared from flake.nix"));
 
         let (_, flake_input_value) = crate::cli::cmd::add::get_flakehub_project_and_url(
             &self.api_addr,
@@ -309,7 +309,7 @@ impl ConvertSubcommand {
         let mut default_nix_clean = true;
 
         let git_toplevel = tokio::process::Command::new("git")
-            .args(&["rev-parse", "--show-toplevel"])
+            .args(["rev-parse", "--show-toplevel"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .stdin(Stdio::null())
@@ -319,7 +319,7 @@ impl ConvertSubcommand {
 
         if is_a_git_repo {
             let files = tokio::process::Command::new("git")
-                .args(&["ls-files ", "--modified ", "--full-name"])
+                .args(["ls-files ", "--modified ", "--full-name"])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .stdin(Stdio::null())
@@ -453,14 +453,10 @@ fn find_input_value_by_path(
             }
         }
         nixel::Expression::String(s) => {
-            found_value = s
-                .parts
-                .first()
-                .map(|part| match part {
-                    nixel::Part::Raw(raw) => Some(raw.content.trim().to_string()),
-                    _ => None,
-                })
-                .flatten();
+            found_value = s.parts.first().and_then(|part| match part {
+                nixel::Part::Raw(raw) => Some(raw.content.trim().to_string()),
+                _ => None,
+            });
         }
         t => {
             let start = t.start();
@@ -533,11 +529,11 @@ async fn convert_github_input_to_flakehub(
             // github:{org}/{repo}/{something} if {something} parses as a semver tag -> flakehub.com/{org}/{repo}/{something}.tar.gz
             if let Ok(version) = semver::Version::parse(
                 version_or_branch
-                    .strip_prefix("v")
+                    .strip_prefix('v')
                     .unwrap_or(version_or_branch),
             ) {
                 let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
-                    &api_addr,
+                    api_addr,
                     org,
                     project,
                     Some(&version.to_string()),
@@ -560,7 +556,7 @@ async fn convert_github_input_to_flakehub(
                     //   - nixpkgs-unstable and nixos-unstable -> flakehub.com/f/nixos/nixpkgs/0.1.0.tar.gz
                     "nixpkgs-unstable" | "nixos-unstable" => {
                         let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
-                            &api_addr,
+                            api_addr,
                             org,
                             project,
                             Some("0.1.0"),
@@ -584,7 +580,7 @@ async fn convert_github_input_to_flakehub(
                                 // FIXME: (maybe) -- this returns the latest despite specifying version .0 (requirements say to use .0)
                                 let (_, flakehub_url) =
                                     crate::cli::cmd::add::get_flakehub_project_and_url(
-                                        &api_addr,
+                                        api_addr,
                                         org,
                                         project,
                                         Some(&version),
@@ -607,7 +603,7 @@ async fn convert_github_input_to_flakehub(
         None => {
             // github:{org}/{repo} -> flakehub.com/f/{org}/{repo}/x.y.z.tar.gz (where x.y.z is the currently-latest version)
             if let Ok((_, flakehub_url)) =
-                crate::cli::cmd::add::get_flakehub_project_and_url(&api_addr, org, project, None)
+                crate::cli::cmd::add::get_flakehub_project_and_url(api_addr, org, project, None)
                     .await
             {
                 url = Some(flakehub_url);
@@ -643,14 +639,12 @@ mod test {
     }
 
     fn test_router() -> axum::Router {
-        let app = axum::Router::new()
+        axum::Router::new()
             .route(
                 "/version/:org/:project/:version",
                 axum::routing::get(version),
             )
-            .route("/f/:org/:project", axum::routing::get(no_version));
-
-        app
+            .route("/f/:org/:project", axum::routing::get(no_version))
     }
 
     #[tokio::test]
@@ -725,7 +719,7 @@ mod test {
                 line.contains("nixpkgs.url") && line.contains("f/nixos/nixpkgs/0.2305.0.tar.gz")
             })
             .collect();
-        let num_nixpkgs_url_lines = nixpkgs_url_lines.iter().count();
+        let num_nixpkgs_url_lines = nixpkgs_url_lines.len();
         assert_eq!(num_nixpkgs_url_lines, 1);
     }
 }

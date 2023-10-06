@@ -11,7 +11,7 @@ pub(crate) fn upsert_flake_input(
     input_attr_path: VecDeque<String>,
     inputs_insertion_location: InputsInsertionLocation,
 ) -> color_eyre::Result<String> {
-    match find_first_attrset_by_path(&expr, Some(input_attr_path))? {
+    match find_first_attrset_by_path(expr, Some(input_attr_path))? {
         Some(attr) => update_flake_input(attr, flake_input_name, flake_input_value, flake_contents),
         None => insert_flake_input(
             expr,
@@ -53,15 +53,15 @@ pub(crate) fn insert_flake_input(
     let outputs_attr_path: VecDeque<String> = [String::from("outputs")].into();
 
     let inputs_attr = match inputs_insertion_location {
-        InputsInsertionLocation::Top => find_first_attrset_by_path(&expr, Some(inputs_attr_path))?,
+        InputsInsertionLocation::Top => find_first_attrset_by_path(expr, Some(inputs_attr_path))?,
         InputsInsertionLocation::Bottom => {
-            let all_toplevel_inputs = find_all_attrsets_by_path(&expr, Some(inputs_attr_path))?;
+            let all_toplevel_inputs = find_all_attrsets_by_path(expr, Some(inputs_attr_path))?;
             let all_inputs = collect_all_inputs(all_toplevel_inputs)?;
             all_inputs.into_iter().last()
         }
     };
 
-    let outputs_attr = find_first_attrset_by_path(&expr, Some(outputs_attr_path))?;
+    let outputs_attr = find_first_attrset_by_path(expr, Some(outputs_attr_path))?;
 
     upsert_into_inputs_and_outputs(
         flake_input_name,
