@@ -83,7 +83,12 @@ impl CommandExecute for ConvertSubcommand {
             println!("{new_flake_contents}");
         } else {
             tokio::fs::write(self.flake_path, new_flake_contents).await?;
-            // TODO: nix flake lock?
+            tokio::process::Command::new("nix")
+                .args(&["--extra-experimental-features", "nix-command flakes"])
+                .arg("flake")
+                .arg("lock")
+                .status()
+                .await?;
         }
 
         Ok(ExitCode::SUCCESS)
