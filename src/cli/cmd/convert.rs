@@ -68,10 +68,6 @@ impl CommandExecute for ConvertSubcommand {
 
             if !self.dry_run {
                 self.fixup_flake_compat_nix_files().await?;
-            } else {
-                tracing::info!(
-                    "would have tried to update any flake-compat shell.nix and default.nix files"
-                );
             }
 
             new_flake_contents
@@ -124,7 +120,7 @@ impl ConvertSubcommand {
                 }
                 _ => None,
             }) else {
-                tracing::warn!("couldn't get input name from attrpath, skipping");
+                tracing::debug!("couldn't get input name from attrpath, skipping");
                 continue;
             };
 
@@ -532,14 +528,16 @@ async fn convert_github_input_to_flakehub(
                     .strip_prefix('v')
                     .unwrap_or(version_or_branch),
             ) {
-                let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
+                if let Ok((_, flakehub_url)) = crate::cli::cmd::add::get_flakehub_project_and_url(
                     api_addr,
                     org,
                     project,
                     Some(&version.to_string()),
                 )
-                .await?;
-                url = Some(flakehub_url);
+                .await
+                {
+                    url = Some(flakehub_url);
+                }
             // - has nixpkgs:
             } else if (org.to_lowercase().as_ref(), project.to_lowercase().as_ref())
                 == ("nixos", "nixpkgs")
@@ -555,14 +553,17 @@ async fn convert_github_input_to_flakehub(
                 match branch {
                     //   - nixpkgs-unstable and nixos-unstable -> flakehub.com/f/nixos/nixpkgs/0.1.0.tar.gz
                     "nixpkgs-unstable" | "nixos-unstable" => {
-                        let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
-                            api_addr,
-                            org,
-                            project,
-                            Some("0.1.0"),
-                        )
-                        .await?;
-                        url = Some(flakehub_url);
+                        if let Ok((_, flakehub_url)) =
+                            crate::cli::cmd::add::get_flakehub_project_and_url(
+                                api_addr,
+                                org,
+                                project,
+                                Some("0.1.0"),
+                            )
+                            .await
+                        {
+                            url = Some(flakehub_url);
+                        }
                     }
                     _ => {
                         //   - nixos-{yy}.{mm} -> flakehub.com/f/nixos/nixpkgs/0.{yymm}.0.tar.gz IFF {yymm} >= 2003
@@ -577,19 +578,20 @@ async fn convert_github_input_to_flakehub(
                             // NixOS 20.03 and later have a flake.nix
                             if year >= 20 && month >= 3 {
                                 let version = format!("0.{year_str}{month_str}.0");
-                                // FIXME: (maybe) -- this returns the latest despite specifying version .0 (requirements say to use .0)
-                                let (_, flakehub_url) =
+                                if let Ok((_, flakehub_url)) =
                                     crate::cli::cmd::add::get_flakehub_project_and_url(
                                         api_addr,
                                         org,
                                         project,
                                         Some(&version),
                                     )
-                                    .await?;
-                                url = Some(flakehub_url);
+                                    .await
+                                {
+                                    url = Some(flakehub_url);
+                                }
                             }
                         } else {
-                            tracing::warn!(
+                            tracing::debug!(
                                 "nixpkgs input was not an unstable or nixos-YY.MM release branch, was '{branch}'"
                             );
                         }
@@ -597,7 +599,7 @@ async fn convert_github_input_to_flakehub(
                 }
             } else {
                 // github:{org}/{repo}/{something} fallthrough -> warn and do nothing
-                tracing::warn!("input was not of the form [org]/[project]/[semver], skipping");
+                tracing::debug!("input was not of the form [org]/[project]/[semver], skipping");
             }
         }
         None => {
@@ -608,7 +610,7 @@ async fn convert_github_input_to_flakehub(
             {
                 url = Some(flakehub_url);
             } else {
-                tracing::warn!("didn't have {org}/{project} uploaded");
+                tracing::debug!("didn't have {org}/{project} uploaded");
             }
         }
     }
