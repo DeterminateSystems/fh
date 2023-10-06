@@ -363,7 +363,7 @@ impl ConvertSubcommand {
         if default_nix_path.exists() {
             let existing_contents = tokio::fs::read_to_string(&default_nix_path).await?;
             if existing_contents.contains(FLAKE_COMPAT_MARKER) {
-                let contents = format!("{FLAKE_COMPAT_CONTENTS_PREFIX}.defaultNix");
+                let contents = format!("{FLAKE_COMPAT_CONTENTS_PREFIX}.defaultNix\n");
 
                 if !default_nix_clean || !is_a_git_repo {
                     tracing::info!(
