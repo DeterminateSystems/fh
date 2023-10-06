@@ -12,6 +12,7 @@ const RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(nixos|nixpkgs)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})").unwrap()
 });
 
+const NIXPKGS_IMPLICIT_INPUT_NAME: &str = "nixpkgs";
 const SHELL_NIX: &str = "shell.nix";
 const DEFAULT_NIX: &str = "default.nix";
 const FLAKE_COMPAT_MARKER: &str = "https://github.com/edolstra/flake-compat/archive";
@@ -171,15 +172,26 @@ impl ConvertSubcommand {
         flake_contents: &str,
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
+        let input_name = String::from(NIXPKGS_IMPLICIT_INPUT_NAME);
         let outputs_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
             &expr,
             Some(["outputs".into()].into()),
         )?;
 
+        let nixpkgs_input_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
+            &expr,
+            Some(["inputs".into(), input_name.clone()].into()),
+        )?;
+
+        // If there's already an input that matches the nixpkgs implicit input name, we don't need
+        // to insert another input for it.
+        if nixpkgs_input_attr.is_some() {
+            return Ok(new_flake_contents);
+        }
+
         // - has no nixpkgs in inputs but does have it in flake.lock, add it to flakehub.com/f/nixos/nixpkgs/0.1.0.tar.gz
         if let Some(outputs_attr) = outputs_attr {
             if let nixel::Expression::Function(f) = &*outputs_attr.to {
-                let input_name = String::from("nixpkgs");
                 match &f.head {
                     // outputs = { nixpkgs, ... } @ inputs: { }
                     nixel::FunctionHead::Destructured(head)
