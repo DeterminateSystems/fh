@@ -39,33 +39,59 @@ impl CommandExecute for ConvertSubcommand {
         }
 
         let (flake_contents, parsed) = crate::cli::cmd::add::load_flake(&self.flake_path).await?;
-        let mut new_flake_contents = flake_contents.clone();
+        let (new_flake_contents, flake_compat_input_name) = self
+            .convert_inputs_to_flakehub(&parsed.expression, &flake_contents)
+            .await?;
+        let new_flake_contents = self
+            .make_implicit_nixpkgs_explicit(&parsed.expression, &new_flake_contents)
+            .await?;
+        let new_flake_contents = if let Some(flake_compat_input_name) = flake_compat_input_name {
+            self.fixup_flake_compat_input(&new_flake_contents, flake_compat_input_name)
+                .await?
+        } else {
+            new_flake_contents
+        };
+
+        if self.dry_run {
+            println!("{new_flake_contents}");
+        } else {
+            tokio::fs::write(self.flake_path, new_flake_contents).await?;
+            // TODO: nix flake lock?
+        }
+
+        Ok(ExitCode::SUCCESS)
+    }
+}
+
+impl ConvertSubcommand {
+    #[tracing::instrument(skip_all)]
+    async fn convert_inputs_to_flakehub(
+        &self,
+        expr: &nixel::Expression,
+        flake_contents: &str,
+    ) -> color_eyre::Result<(String, Option<String>)> {
+        let mut new_flake_contents = flake_contents.to_string();
 
         let all_toplevel_inputs = crate::cli::cmd::add::flake::find_all_attrsets_by_path(
-            &parsed.expression,
+            &expr,
             Some(["inputs".into()].into()),
         )?;
         let all_inputs = crate::cli::cmd::add::flake::collect_all_inputs(all_toplevel_inputs)?;
         let mut flake_compat_input_name = None;
 
         for input in all_inputs.iter() {
-            let Some(input_name) = input
-                .from
-                .into_iter()
-                .filter_map(|part| match part {
-                    nixel::Part::Raw(raw) => {
-                        let content = raw.content.trim().to_string();
+            let Some(input_name) = input.from.into_iter().find_map(|part| match part {
+                nixel::Part::Raw(raw) => {
+                    let content = raw.content.trim().to_string();
 
-                        if ["inputs", "url"].contains(&content.as_ref()) {
-                            None
-                        } else {
-                            Some(content)
-                        }
+                    if ["inputs", "url"].contains(&content.as_ref()) {
+                        None
+                    } else {
+                        Some(content)
                     }
-                    _ => None,
-                })
-                .next()
-            else {
+                }
+                _ => None,
+            }) else {
                 tracing::warn!("couldn't get input name from attrpath, skipping");
                 continue;
             };
@@ -91,7 +117,7 @@ impl CommandExecute for ConvertSubcommand {
                 let input_attr_path: VecDeque<String> =
                     ["inputs".into(), input_name.clone(), "url".into()].into();
                 let Some(attr) = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-                    &parsed.expression,
+                    &expr,
                     Some(input_attr_path),
                 )?
                 else {
@@ -109,8 +135,18 @@ impl CommandExecute for ConvertSubcommand {
             }
         }
 
+        Ok((new_flake_contents, flake_compat_input_name))
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn make_implicit_nixpkgs_explicit(
+        &self,
+        expr: &nixel::Expression,
+        flake_contents: &str,
+    ) -> color_eyre::Result<String> {
+        let mut new_flake_contents = flake_contents.to_string();
         let outputs_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-            &parsed.expression,
+            &expr,
             Some(["outputs".into()].into()),
         )?;
 
@@ -135,7 +171,7 @@ impl CommandExecute for ConvertSubcommand {
                         .await?;
 
                         new_flake_contents = crate::cli::cmd::add::flake::insert_flake_input(
-                            &parsed.expression,
+                            &expr,
                             input_name.clone(),
                             flakehub_url.clone(),
                             new_flake_contents,
@@ -147,83 +183,80 @@ impl CommandExecute for ConvertSubcommand {
             }
         }
 
-        if let Some(input_name) = flake_compat_input_name {
-            // Re-parse the contents since we might have added an input, and that will screw up offset calculations.
-            let parsed = nixel::parse(new_flake_contents.clone());
-            let input_attr_path: VecDeque<String> = ["inputs".into(), input_name.clone()].into();
-            let input = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-                &parsed.expression,
-                Some(input_attr_path),
-            )?
-            // This expect is safe because we already know there
-            .expect(&format!("inputs.{input_name} disappeared from flake.nix"));
+        Ok(new_flake_contents)
+    }
 
-            let (_, flake_input_value) = crate::cli::cmd::add::get_flakehub_project_and_url(
-                &self.api_addr,
-                "edolstra",
-                "flake-compat",
-                None,
-            )
-            .await?;
+    #[tracing::instrument(skip_all)]
+    async fn fixup_flake_compat_input(
+        &self,
+        flake_contents: &str,
+        input_name: String,
+    ) -> color_eyre::Result<String> {
+        let mut new_flake_contents = flake_contents.to_string();
 
-            let (from_span, to_span) = crate::cli::cmd::add::flake::kv_to_span(&input);
+        // Re-parse the contents since we might have added an input, and that will screw up offset calculations.
+        let parsed = nixel::parse(new_flake_contents.clone());
+        let input_attr_path: VecDeque<String> = ["inputs".into(), input_name.clone()].into();
+        let input = crate::cli::cmd::add::flake::find_first_attrset_by_path(
+            &parsed.expression,
+            Some(input_attr_path),
+        )?
+        // This expect is safe because we already know there
+        .expect(&format!("inputs.{input_name} disappeared from flake.nix"));
 
-            let indentation = crate::cli::cmd::add::flake::indentation_from_from_span(
-                &new_flake_contents,
-                &from_span,
-            )?;
-            let insertion_pos = nixel::Position {
-                line: from_span.start.line,
-                column: indentation.len() + 1, // since the indentation is already there
-            };
-            let offset = crate::cli::cmd::add::flake::position_to_offset(
-                &new_flake_contents,
-                &insertion_pos,
-            )?;
+        let (_, flake_input_value) = crate::cli::cmd::add::get_flakehub_project_and_url(
+            &self.api_addr,
+            "edolstra",
+            "flake-compat",
+            None,
+        )
+        .await?;
 
-            let start = crate::cli::cmd::add::flake::position_to_offset(
-                &new_flake_contents,
-                &from_span.start,
-            )?;
-            let end =
-                crate::cli::cmd::add::flake::position_to_offset(&new_flake_contents, &to_span.end)?;
-            new_flake_contents.replace_range(start..=end, "");
+        let (from_span, to_span) = crate::cli::cmd::add::flake::kv_to_span(&input);
 
-            let inputs_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
-                &parsed.expression,
-                Some(["inputs".into()].into()),
-            )?
-            .expect("inputs disappeared from flake.nix");
+        let indentation = crate::cli::cmd::add::flake::indentation_from_from_span(
+            &new_flake_contents,
+            &from_span,
+        )?;
+        let insertion_pos = nixel::Position {
+            line: from_span.start.line,
+            column: indentation.len() + 1, // since the indentation is already there
+        };
+        let offset =
+            crate::cli::cmd::add::flake::position_to_offset(&new_flake_contents, &insertion_pos)?;
 
-            match inputs_attr.from.len() {
-                // inputs = { nixpkgs.url = ""; };
-                1 => {
-                    let flake_input = format!(r#"{input_name}.url = "{flake_input_value}";"#);
-                    new_flake_contents.insert_str(offset, &flake_input);
-                }
+        let start =
+            crate::cli::cmd::add::flake::position_to_offset(&new_flake_contents, &from_span.start)?;
+        let end =
+            crate::cli::cmd::add::flake::position_to_offset(&new_flake_contents, &to_span.end)?;
+        new_flake_contents.replace_range(start..=end, "");
 
-                // inputs.nixpkgs = { url = ""; inputs.something.follows = ""; };
-                // OR
-                // inputs.nixpkgs.url = "";
-                // OR
-                // inputs.nixpkgs.inputs.something.follows = "";
-                // etc...
-                _len => {
-                    let flake_input =
-                        format!(r#"inputs.{input_name}.url = "{flake_input_value}";"#);
-                    new_flake_contents.insert_str(offset, &flake_input);
-                }
+        let inputs_attr = crate::cli::cmd::add::flake::find_first_attrset_by_path(
+            &parsed.expression,
+            Some(["inputs".into()].into()),
+        )?
+        .expect("inputs disappeared from flake.nix");
+
+        match inputs_attr.from.len() {
+            // inputs = { nixpkgs.url = ""; };
+            1 => {
+                let flake_input = format!(r#"{input_name}.url = "{flake_input_value}";"#);
+                new_flake_contents.insert_str(offset, &flake_input);
+            }
+
+            // inputs.nixpkgs = { url = ""; inputs.something.follows = ""; };
+            // OR
+            // inputs.nixpkgs.url = "";
+            // OR
+            // inputs.nixpkgs.inputs.something.follows = "";
+            // etc...
+            _len => {
+                let flake_input = format!(r#"inputs.{input_name}.url = "{flake_input_value}";"#);
+                new_flake_contents.insert_str(offset, &flake_input);
             }
         }
 
-        if self.dry_run {
-            println!("{new_flake_contents}");
-        } else {
-            tokio::fs::write(self.flake_path, new_flake_contents).await?;
-            // TODO: nix flake lock?
-        }
-
-        Ok(ExitCode::SUCCESS)
+        Ok(new_flake_contents)
     }
 }
 
