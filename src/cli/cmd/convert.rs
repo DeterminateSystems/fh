@@ -489,14 +489,22 @@ async fn convert_input_to_flakehub(
 
     match parsed_url.host() {
         // A URL like `https://github.com/...`
-        Some(_host) => match parsed_url.scheme() {
-            "https" => {
-                tracing::debug!("https://... urls are not yet implented");
+        Some(host) => {
+            if host == url::Host::Domain("api.flakehub.com") {
+                let mut mod_url = parsed_url.clone();
+                mod_url.set_host(Some("flakehub.com"))?;
+                url = Some(mod_url);
+            } else {
+                match parsed_url.scheme() {
+                    "https" => {
+                        tracing::debug!("https://... urls are not yet implented");
+                    }
+                    scheme => {
+                        tracing::debug!("unimplemented url scheme {scheme}");
+                    }
+                }
             }
-            scheme => {
-                tracing::debug!("unimplemented url scheme {scheme}");
-            }
-        },
+        }
         // A URL like `github:nixos/nixpkgs`
         None => match parsed_url.scheme() {
             "github" => {
@@ -769,5 +777,28 @@ mod test {
 
         assert!(new_flake_contents
             .contains(r#"nixpkgs.url = "http://flakehub-localhost/f/NixOS/nixpkgs/*.tar.gz";"#));
+    }
+
+    #[tokio::test]
+    async fn old_flakehub_to_new_flakehub() {
+        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
+        let server_addr = test_server.server_address();
+        let server_url = server_addr.parse().unwrap();
+
+        let input_url =
+            url::Url::parse("https://api.flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz").unwrap();
+        let tarball_url = super::convert_input_to_flakehub(&server_url, input_url)
+            .await
+            .ok()
+            .flatten()
+            .unwrap();
+        assert_eq!(
+            tarball_url.host().unwrap(),
+            url::Host::Domain("flakehub.com")
+        );
+        assert_ne!(
+            tarball_url.host().unwrap(),
+            url::Host::Domain("api.flakehub.com")
+        );
     }
 }
