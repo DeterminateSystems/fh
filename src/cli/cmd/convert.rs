@@ -614,3 +614,113 @@ async fn convert_github_input_to_flakehub(
 
     Ok(url)
 }
+
+#[cfg(test)]
+mod test {
+    use axum::{extract::Path, response::IntoResponse};
+
+    async fn version(
+        Path((org, project, version)): Path<(String, String, String)>,
+    ) -> axum::response::Response {
+        axum::Json(serde_json::json!({
+            "project": project,
+            "pretty_download_url": format!("http://flakehub-localhost/f/{org}/{project}/{version}.tar.gz"),
+        }))
+        .into_response()
+    }
+
+    async fn no_version(Path((org, project)): Path<(String, String)>) -> axum::response::Response {
+        axum::Json(serde_json::json!({
+            "project": project,
+            "pretty_download_url": format!("http://flakehub-localhost/f/{org}/{project}/*.tar.gz"),
+        }))
+        .into_response()
+    }
+
+    fn test_router() -> axum::Router {
+        let app = axum::Router::new()
+            .route(
+                "/version/:org/:project/:version",
+                axum::routing::get(version),
+            )
+            .route("/f/:org/:project", axum::routing::get(no_version));
+
+        app
+    }
+
+    #[tokio::test]
+    async fn nixpkgs_to_flakehub() {
+        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
+        let server_addr = test_server.server_address();
+        let server_url = server_addr.parse().unwrap();
+
+        let input_url = url::Url::parse("github:someorg/somerepo").unwrap();
+        let tarball_url = super::convert_input_to_flakehub(&server_url, input_url)
+            .await
+            .ok()
+            .flatten()
+            .unwrap();
+        assert_eq!(tarball_url.path(), "/f/someorg/somerepo/*.tar.gz");
+    }
+
+    #[tokio::test]
+    async fn nixpkgs_release_to_flakehub() {
+        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
+        let server_addr = test_server.server_address();
+        let server_url = server_addr.parse().unwrap();
+
+        let input_url = url::Url::parse("github:nixos/nixpkgs/nixos-23.05").unwrap();
+        let tarball_url = super::convert_input_to_flakehub(&server_url, input_url)
+            .await
+            .ok()
+            .flatten()
+            .unwrap();
+        assert_eq!(tarball_url.path(), "/f/nixos/nixpkgs/0.2305.0.tar.gz");
+    }
+
+    #[tokio::test]
+    async fn test_flake1_convert() {
+        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
+        let server_addr = test_server.server_address();
+        let server_url = server_addr.parse().unwrap();
+
+        let convert = super::ConvertSubcommand {
+            flake_path: "".into(),
+            dry_run: true,
+            api_addr: server_url,
+        };
+        let flake_contents = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/samples/flake1.test.nix"
+        ));
+        let flake_contents = flake_contents.to_string();
+        let parsed = nixel::parse(flake_contents.clone());
+
+        let (new_flake_contents, flake_compat_input_name) = convert
+            .convert_inputs_to_flakehub(&parsed.expression, &flake_contents)
+            .await
+            .unwrap();
+        let new_flake_contents = convert
+            .make_implicit_nixpkgs_explicit(&parsed.expression, &new_flake_contents)
+            .await
+            .unwrap();
+        let new_flake_contents = convert
+            .fixup_flake_compat_input(&new_flake_contents, flake_compat_input_name.unwrap())
+            .await
+            .unwrap();
+
+        assert!(new_flake_contents.contains(
+            r#"flake-compat.url = "http://flakehub-localhost/f/edolstra/flake-compat/*.tar.gz";"#
+        ));
+        assert!(new_flake_contents.contains("f/nixos/nixpkgs/0.2305.0.tar.gz"));
+
+        let nixpkgs_url_lines: Vec<_> = new_flake_contents
+            .lines()
+            .filter(|line| {
+                line.contains("nixpkgs.url") && line.contains("f/nixos/nixpkgs/0.2305.0.tar.gz")
+            })
+            .collect();
+        let num_nixpkgs_url_lines = nixpkgs_url_lines.iter().count();
+        assert_eq!(num_nixpkgs_url_lines, 1);
+    }
+}
