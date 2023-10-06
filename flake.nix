@@ -77,9 +77,7 @@
               gcc.cc.lib
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
-              libiconv
               Security
-              SystemConfiguration
             ]);
 
             postInstall = ''
