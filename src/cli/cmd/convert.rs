@@ -7,9 +7,10 @@ use once_cell::sync::Lazy;
 
 use super::CommandExecute;
 
-// match {nixos,nixpkgs}-YY.MM branches
+// match {nixos,nixpkgs,releases}-YY.MM branches
 static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(r"(nixos|nixpkgs)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})").unwrap()
+    regex::Regex::new(r"(nixos|nixpkgs|release)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})")
+        .unwrap()
 });
 
 const NIXPKGS_IMPLICIT_INPUT_NAME: &str = "nixpkgs";
