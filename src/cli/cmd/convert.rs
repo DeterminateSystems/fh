@@ -466,6 +466,9 @@ fn find_input_value_by_path(
                 _ => None,
             });
         }
+        nixel::Expression::Uri(u) => {
+            found_value = Some(u.uri.trim().to_string());
+        }
         t => {
             let start = t.start();
             return Err(color_eyre::eyre::eyre!(

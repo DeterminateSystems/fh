@@ -29,17 +29,23 @@ pub(crate) fn update_flake_input(
     flake_input_value: url::Url,
     flake_contents: String,
 ) -> color_eyre::Result<String> {
-    let nixel::Expression::String(existing_input_value) = *attr.to else {
-        // OK technically it can be an IndentedString but I don't want to support that so yeah
-        return Err(color_eyre::eyre::eyre!(
-            "`inputs.{flake_input_name}.url` was not a string" // this is enforced by Nix itself
-        ))?;
-    };
-    replace_input_value(
-        &existing_input_value.parts,
-        &flake_input_value,
-        &flake_contents,
-    )
+    match *attr.to {
+        nixel::Expression::String(existing_input_value) => replace_input_value_string(
+            &existing_input_value.parts,
+            &flake_input_value,
+            &flake_contents,
+        ),
+        nixel::Expression::Uri(existing_input_value) => {
+            replace_input_value_uri(&existing_input_value, &flake_input_value, &flake_contents)
+        }
+        otherwise => {
+            // OK technically it can be an IndentedString but I don't want to support that so yeah
+            Err(color_eyre::eyre::eyre!(
+                "`inputs.{flake_input_name}.url` was not a String, Indented String, or URI. Instead: {:?}", // this is enforced by Nix itself
+                otherwise
+            ))
+        }
+    }
 }
 
 pub(crate) fn insert_flake_input(
@@ -591,7 +597,7 @@ pub(crate) fn upsert_into_inputs_and_outputs(
 }
 
 #[tracing::instrument(skip_all)]
-pub(crate) fn replace_input_value(
+pub(crate) fn replace_input_value_string(
     parts: &[nixel::Part],
     flake_input_value: &url::Url,
     flake_contents: &str,
@@ -627,6 +633,23 @@ pub(crate) fn replace_input_value(
             "Nix string had multiple parts -- please report this and include the flake.nix that triggered this!"
         ));
     }
+
+    Ok(new_flake_contents)
+}
+
+#[tracing::instrument(skip_all)]
+pub(crate) fn replace_input_value_uri(
+    uri: &nixel::Uri,
+    flake_input_value: &url::Url,
+    flake_contents: &str,
+) -> color_eyre::Result<String> {
+    let mut new_flake_contents = flake_contents.to_string();
+
+    let (start, end) = span_to_start_end_offsets(flake_contents, &uri.span)?;
+    // Replace the current contents with nothingness
+    new_flake_contents.replace_range(start..end, "");
+    // Insert the new contents
+    new_flake_contents.insert_str(start, &format!(r#""{}""#, flake_input_value.as_ref()));
 
     Ok(new_flake_contents)
 }
