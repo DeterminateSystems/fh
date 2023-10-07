@@ -35,6 +35,11 @@ pub(crate) fn update_flake_input(
             &flake_input_value,
             &flake_contents,
         ),
+        nixel::Expression::IndentedString(existing_input_value) => replace_input_value_string(
+            &existing_input_value.parts,
+            &flake_input_value,
+            &flake_contents,
+        ),
         nixel::Expression::Uri(existing_input_value) => {
             replace_input_value_uri(&existing_input_value, &flake_input_value, &flake_contents)
         }

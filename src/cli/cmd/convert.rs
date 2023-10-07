@@ -466,6 +466,12 @@ fn find_input_value_by_path(
                 _ => None,
             });
         }
+        nixel::Expression::IndentedString(s) => {
+            found_value = s.parts.first().and_then(|part| match part {
+                nixel::Part::Raw(raw) => Some(raw.content.trim().to_string()),
+                _ => None,
+            });
+        }
         nixel::Expression::Uri(u) => {
             found_value = Some(u.uri.trim().to_string());
         }
