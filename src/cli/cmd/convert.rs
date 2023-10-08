@@ -4,6 +4,7 @@ use std::process::{ExitCode, Stdio};
 
 use clap::Parser;
 use once_cell::sync::Lazy;
+use tracing::{span, Level};
 
 use super::CommandExecute;
 
@@ -105,10 +106,13 @@ impl ConvertSubcommand {
             expr,
             Some(["inputs".into()].into()),
         )?;
+        tracing::trace!("All inputs detected: {:#?}", all_toplevel_inputs);
         let all_inputs = crate::cli::cmd::add::flake::collect_all_inputs(all_toplevel_inputs)?;
+        tracing::trace!("Collected inputs: {:#?}", all_inputs);
         let mut flake_compat_input_name = None;
 
         for input in all_inputs.iter() {
+            tracing::trace!("Examining input: {:#?}", input);
             let Some(input_name) = input.from.iter().find_map(|part| match part {
                 nixel::Part::Raw(raw) => {
                     let content = raw.content.trim().to_string();
@@ -125,7 +129,11 @@ impl ConvertSubcommand {
                 continue;
             };
 
+            let span = span!(Level::DEBUG, "processing_input", %input_name);
+            let _span_guard = span.enter();
+
             let url = find_input_value_by_path(&input.to, ["url".into()].into())?;
+            tracing::debug!("Input URL as written: {:?}", url);
 
             let url = match url {
                 Some(url) => {
@@ -146,8 +154,10 @@ impl ConvertSubcommand {
                 }
                 None => None,
             };
+            tracing::debug!("Transformed URL: {:?}", url);
 
             let maybe_parsed_url = url.and_then(|u| u.parse::<url::Url>().ok());
+            tracing::trace!("Parsed URL: {:?}", maybe_parsed_url);
 
             let new_input_url = match maybe_parsed_url {
                 Some(parsed_url) => convert_input_to_flakehub(&self.api_addr, parsed_url).await?,
