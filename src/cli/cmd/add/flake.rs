@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use tracing::{span, Level};
+
 const NEWLINE: &str = "\n";
 
 #[tracing::instrument(skip_all)]
@@ -92,20 +94,51 @@ pub(crate) fn collect_all_inputs(
     let mut all_inputs = Vec::new();
 
     for v in all_toplevel_inputs {
-        let nixel::Part::Raw(raw) = &v.from[0] else {
-            continue;
+        let span = span!(Level::DEBUG, "collecting_input");
+        let _guard = span.enter();
+
+        let name_parts = v
+            .from
+            .iter()
+            // Deliberately not filter_map, because if any of the values aren't Raw, we want to skip the whole "input"
+            .map(|from| match from {
+                nixel::Part::Raw(p) => Some(&*p.content),
+                _ => None,
+            })
+            .collect::<Option<Vec<&str>>>();
+        let name_parts = match name_parts {
+            Some(n) => n,
+            None => {
+                continue;
+            }
         };
 
-        if &*raw.content == "inputs" {
-            // inputs = { ... }
-            if v.from.len() == 1 {
+        let _match_guard = span!(
+            parent: &span,
+            Level::DEBUG,
+            "examining input",
+            "{:?}",
+            name_parts
+        )
+        .entered();
+
+        match name_parts[..] {
+            [] => {
+                tracing::trace!("Surprise null case");
+            }
+            ["inputs"] => {
                 all_inputs.extend(find_all_attrsets_by_path(&v.to, None)?);
             }
-            // inputs.nixpkgs = { ... }
-            // OR
-            // inputs.nixpkgs.url = ""
-            else {
+            ["inputs", name] => {
+                tracing::trace!("Identified input.{name} = ...");
                 all_inputs.push(v);
+            }
+            ["inputs", name, "url"] => {
+                tracing::trace!("Identified input.{name}.url = ...");
+                all_inputs.push(v);
+            }
+            _ => {
+                tracing::debug!("Skipping processing: {:?}", name_parts);
             }
         }
     }
