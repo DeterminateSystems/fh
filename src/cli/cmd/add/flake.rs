@@ -46,7 +46,7 @@ pub(crate) fn update_flake_input(
             replace_input_value_uri(&existing_input_value, &flake_input_value, &flake_contents)
         }
         otherwise => {
-            // OK technically it can be an IndentedString but I don't want to support that so yeah
+            // Unclear what this case could be
             Err(color_eyre::eyre::eyre!(
                 "`inputs.{flake_input_name}.url` was not a String, Indented String, or URI. Instead: {:?}", // this is enforced by Nix itself
                 otherwise
