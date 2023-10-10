@@ -4,12 +4,14 @@ use std::process::{ExitCode, Stdio};
 
 use clap::Parser;
 use once_cell::sync::Lazy;
+use tracing::{span, Level};
 
 use super::CommandExecute;
 
-// match {nixos,nixpkgs}-YY.MM branches
+// match {nixos,nixpkgs,release}-YY.MM branches
 static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(r"(nixos|nixpkgs)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})").unwrap()
+    regex::Regex::new(r"(nixos|nixpkgs|release)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})")
+        .unwrap()
 });
 
 const NIXPKGS_IMPLICIT_INPUT_NAME: &str = "nixpkgs";
@@ -104,10 +106,13 @@ impl ConvertSubcommand {
             expr,
             Some(["inputs".into()].into()),
         )?;
+        tracing::trace!("All inputs detected: {:#?}", all_toplevel_inputs);
         let all_inputs = crate::cli::cmd::add::flake::collect_all_inputs(all_toplevel_inputs)?;
+        tracing::trace!("Collected inputs: {:#?}", all_inputs);
         let mut flake_compat_input_name = None;
 
         for input in all_inputs.iter() {
+            tracing::trace!("Examining input: {:#?}", input);
             let Some(input_name) = input.from.iter().find_map(|part| match part {
                 nixel::Part::Raw(raw) => {
                     let content = raw.content.trim().to_string();
@@ -124,7 +129,11 @@ impl ConvertSubcommand {
                 continue;
             };
 
+            let span = span!(Level::DEBUG, "processing_input", %input_name);
+            let _span_guard = span.enter();
+
             let url = find_input_value_by_path(&input.to, ["url".into()].into())?;
+            tracing::debug!("Current input's `url` value: {:?}", url);
 
             let url = match url {
                 Some(url) => {
@@ -145,8 +154,10 @@ impl ConvertSubcommand {
                 }
                 None => None,
             };
+            tracing::debug!("Transformed URL: {:?}", url);
 
             let maybe_parsed_url = url.and_then(|u| u.parse::<url::Url>().ok());
+            tracing::trace!("Parsed URL: {:?}", maybe_parsed_url);
 
             let new_input_url = match maybe_parsed_url {
                 Some(parsed_url) => convert_input_to_flakehub(&self.api_addr, parsed_url).await?,
@@ -465,6 +476,15 @@ fn find_input_value_by_path(
                 nixel::Part::Raw(raw) => Some(raw.content.trim().to_string()),
                 _ => None,
             });
+        }
+        nixel::Expression::IndentedString(s) => {
+            found_value = s.parts.first().and_then(|part| match part {
+                nixel::Part::Raw(raw) => Some(raw.content.trim().to_string()),
+                _ => None,
+            });
+        }
+        nixel::Expression::Uri(u) => {
+            found_value = Some(u.uri.trim().to_string());
         }
         t => {
             let start = t.start();
