@@ -8,7 +8,7 @@ use tracing::{span, Level};
 
 use super::CommandExecute;
 
-// match {nixos,nixpkgs,releases}-YY.MM branches
+// match {nixos,nixpkgs,release}-YY.MM branches
 static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(nixos|nixpkgs|release)-(?<year>[[:digit:]]{2})\.(?<month>[[:digit:]]{2})")
         .unwrap()
@@ -133,7 +133,7 @@ impl ConvertSubcommand {
             let _span_guard = span.enter();
 
             let url = find_input_value_by_path(&input.to, ["url".into()].into())?;
-            tracing::debug!("Input URL as written: {:?}", url);
+            tracing::debug!("Current input's `url` value: {:?}", url);
 
             let url = match url {
                 Some(url) => {

@@ -46,7 +46,7 @@ pub(crate) fn update_flake_input(
             replace_input_value_uri(&existing_input_value, &flake_input_value, &flake_contents)
         }
         otherwise => {
-            // Unclear what this case could be
+            // a boolean, a number, or even another attrset, etc.
             Err(color_eyre::eyre::eyre!(
                 "`inputs.{flake_input_name}.url` was not a String, Indented String, or URI. Instead: {:?}", // this is enforced by Nix itself
                 otherwise
@@ -109,6 +109,7 @@ pub(crate) fn collect_all_inputs(
         let name_parts = match name_parts {
             Some(n) => n,
             None => {
+                tracing::trace!("skipped input because we didn't get Raw parts");
                 continue;
             }
         };
@@ -123,9 +124,6 @@ pub(crate) fn collect_all_inputs(
         .entered();
 
         match name_parts[..] {
-            [] => {
-                tracing::trace!("Surprise null case");
-            }
             ["inputs"] => {
                 all_inputs.extend(find_all_attrsets_by_path(&v.to, None)?);
             }
