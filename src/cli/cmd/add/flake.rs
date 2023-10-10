@@ -4,75 +4,102 @@ const NEWLINE: &str = "\n";
 
 #[tracing::instrument(skip_all)]
 pub(crate) fn upsert_flake_input(
-    expr: nixel::Expression,
+    expr: &nixel::Expression,
     flake_input_name: String,
     flake_input_value: url::Url,
     flake_contents: String,
     input_attr_path: VecDeque<String>,
     inputs_insertion_location: InputsInsertionLocation,
 ) -> color_eyre::Result<String> {
-    match find_first_attrset_by_path(&expr, Some(input_attr_path))? {
-        Some(attr) => {
-            let nixel::Expression::String(existing_input_value) = *attr.to else {
-                return Err(color_eyre::eyre::eyre!(
-                    "`inputs.{flake_input_name}.url` was not a string" // this is enforced by Nix itself
-                ))?;
-            };
-            replace_input_value(
-                &existing_input_value.parts,
-                &flake_input_value,
-                &flake_contents,
-            )
+    match find_first_attrset_by_path(expr, Some(input_attr_path))? {
+        Some(attr) => update_flake_input(attr, flake_input_name, flake_input_value, flake_contents),
+        None => insert_flake_input(
+            expr,
+            flake_input_name,
+            flake_input_value,
+            flake_contents,
+            inputs_insertion_location,
+        ),
+    }
+}
+
+pub(crate) fn update_flake_input(
+    attr: nixel::BindingKeyValue,
+    flake_input_name: String,
+    flake_input_value: url::Url,
+    flake_contents: String,
+) -> color_eyre::Result<String> {
+    let nixel::Expression::String(existing_input_value) = *attr.to else {
+        // OK technically it can be an IndentedString but I don't want to support that so yeah
+        return Err(color_eyre::eyre::eyre!(
+            "`inputs.{flake_input_name}.url` was not a string" // this is enforced by Nix itself
+        ))?;
+    };
+    replace_input_value(
+        &existing_input_value.parts,
+        &flake_input_value,
+        &flake_contents,
+    )
+}
+
+pub(crate) fn insert_flake_input(
+    expr: &nixel::Expression,
+    flake_input_name: String,
+    flake_input_value: url::Url,
+    flake_contents: String,
+    inputs_insertion_location: InputsInsertionLocation,
+) -> color_eyre::Result<String> {
+    let inputs_attr_path: VecDeque<String> = [String::from("inputs")].into();
+    let outputs_attr_path: VecDeque<String> = [String::from("outputs")].into();
+
+    let inputs_attr = match inputs_insertion_location {
+        InputsInsertionLocation::Top => find_first_attrset_by_path(expr, Some(inputs_attr_path))?,
+        InputsInsertionLocation::Bottom => {
+            let all_toplevel_inputs = find_all_attrsets_by_path(expr, Some(inputs_attr_path))?;
+            let all_inputs = collect_all_inputs(all_toplevel_inputs)?;
+            all_inputs.into_iter().last()
         }
-        None => {
-            let inputs_attr_path: VecDeque<String> = [String::from("inputs")].into();
-            let outputs_attr_path: VecDeque<String> = [String::from("outputs")].into();
+    };
 
-            let inputs_attr = match inputs_insertion_location {
-                InputsInsertionLocation::Top => {
-                    find_first_attrset_by_path(&expr, Some(inputs_attr_path))?
-                }
-                InputsInsertionLocation::Bottom => {
-                    let all_toplevel_inputs =
-                        find_all_attrsets_by_path(&expr, Some(inputs_attr_path))?;
-                    let mut all_inputs = Vec::new();
+    let outputs_attr = find_first_attrset_by_path(expr, Some(outputs_attr_path))?;
 
-                    for v in all_toplevel_inputs {
-                        let nixel::Part::Raw(raw) = &v.from[0] else {
-                            continue;
-                        };
+    upsert_into_inputs_and_outputs(
+        flake_input_name,
+        flake_input_value,
+        flake_contents,
+        expr.span(),
+        inputs_attr,
+        outputs_attr,
+        inputs_insertion_location,
+    )
+}
 
-                        if &*raw.content == "inputs" {
-                            // inputs = { ... }
-                            if v.from.len() == 1 {
-                                all_inputs.extend(find_all_attrsets_by_path(&v.to, None)?);
-                            }
-                            // inputs.nixpkgs = { ... }
-                            // OR
-                            // inputs.nixpkgs.url = ""
-                            else {
-                                all_inputs.push(v);
-                            }
-                        }
-                    }
+#[tracing::instrument(skip_all)]
+pub(crate) fn collect_all_inputs(
+    all_toplevel_inputs: Vec<nixel::BindingKeyValue>,
+) -> color_eyre::Result<Vec<nixel::BindingKeyValue>> {
+    let mut all_inputs = Vec::new();
 
-                    all_inputs.into_iter().last()
-                }
-            };
+    for v in all_toplevel_inputs {
+        let nixel::Part::Raw(raw) = &v.from[0] else {
+            continue;
+        };
 
-            let outputs_attr = find_first_attrset_by_path(&expr, Some(outputs_attr_path))?;
-
-            upsert_into_inputs_and_outputs(
-                flake_input_name,
-                flake_input_value,
-                flake_contents,
-                expr.span(),
-                inputs_attr,
-                outputs_attr,
-                inputs_insertion_location,
-            )
+        if &*raw.content == "inputs" {
+            // inputs = { ... }
+            if v.from.len() == 1 {
+                all_inputs.extend(find_all_attrsets_by_path(&v.to, None)?);
+            }
+            // inputs.nixpkgs = { ... }
+            // OR
+            // inputs.nixpkgs.url = ""
+            else {
+                all_inputs.push(v);
+            }
         }
     }
+
+    Ok(all_inputs)
 }
 
 #[tracing::instrument(skip_all)]
@@ -189,15 +216,6 @@ pub(crate) fn find_all_attrsets_by_path(
     Ok(found_kvs)
 }
 
-#[derive(Debug)]
-pub(crate) enum AttrType {
-    Inputs(nixel::BindingKeyValue),
-    Outputs(nixel::BindingKeyValue),
-    MissingInputs((nixel::Span, nixel::Span)),
-    MissingOutputs((nixel::Span, nixel::Span)),
-    MissingInputsAndOutputs(nixel::Span),
-}
-
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum InputsInsertionLocation {
     /// The new input will be inserted at the top (either above all other `inputs`, or as the first input inside of `inputs = { ... }`)
@@ -231,6 +249,15 @@ impl std::str::FromStr for InputsInsertionLocation {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum AttrType {
+    Inputs(nixel::BindingKeyValue),
+    Outputs(nixel::BindingKeyValue),
+    MissingInputs((nixel::Span, nixel::Span)),
+    MissingOutputs((nixel::Span, nixel::Span)),
+    MissingInputsAndOutputs(nixel::Span),
+}
+
 impl AttrType {
     pub(crate) fn process(
         self,
@@ -252,7 +279,7 @@ impl AttrType {
                                 let first_input =
                                     find_first_attrset_by_path(&inputs_attr.to, None)?
                                         .expect("there must be a first input");
-                                let (from_span, _to_span) = Self::kv_to_span(&first_input);
+                                let (from_span, _to_span) = kv_to_span(&first_input);
 
                                 self.insert_input(from_span, None, flake_contents, &flake_input)
                             }
@@ -366,19 +393,7 @@ impl AttrType {
     ) -> color_eyre::Result<String> {
         let mut new_flake_contents = flake_contents.to_string();
 
-        let old_content_start_of_indentation_pos = nixel::Position {
-            line: from_span.start.line,
-            column: 1,
-        };
-        let old_content_end_of_indentation_pos = from_span.start.clone();
-
-        let indentation_span = nixel::Span {
-            start: Box::new(old_content_start_of_indentation_pos),
-            end: old_content_end_of_indentation_pos,
-        };
-        let (indentation_start, indentation_end) =
-            span_to_start_end_offsets(flake_contents, &indentation_span)?;
-        let indentation = &flake_contents[indentation_start..indentation_end];
+        let indentation = indentation_from_from_span(flake_contents, &from_span)?;
 
         let line = if let Some(to_span) = to_span {
             to_span.end.line + 1
@@ -417,7 +432,7 @@ impl AttrType {
             .iter()
             .any(|arg| &*arg.identifier == flake_input_name)
         {
-            tracing::warn!("input {flake_input_name} was already in the `outputs` function args, not adding it again");
+            tracing::debug!("input {flake_input_name} was already in the `outputs` function args, not adding it again");
             return Ok(new_flake_contents);
         }
 
@@ -474,26 +489,47 @@ impl AttrType {
     }
 
     #[tracing::instrument(skip_all)]
-    fn kv_to_span(kv: &nixel::BindingKeyValue) -> (nixel::Span, nixel::Span) {
-        (
-            kv.from
-                .iter()
-                .next()
-                .map(|v| v.span())
-                .expect("attr existed, thus it must have a span"),
-            kv.to.span(),
-        )
-    }
-
-    #[tracing::instrument(skip_all)]
     pub(crate) fn span(&self) -> (nixel::Span, nixel::Span) {
         match self {
-            AttrType::Inputs(kv) | AttrType::Outputs(kv) => Self::kv_to_span(kv),
+            AttrType::Inputs(kv) | AttrType::Outputs(kv) => kv_to_span(kv),
             AttrType::MissingInputs(_)
             | AttrType::MissingOutputs(_)
             | AttrType::MissingInputsAndOutputs(_) => todo!(),
         }
     }
+}
+
+pub(crate) fn indentation_from_from_span<'a>(
+    flake_contents: &'a str,
+    from_span: &nixel::Span,
+) -> color_eyre::Result<&'a str> {
+    let old_content_start_of_indentation_pos = nixel::Position {
+        line: from_span.start.line,
+        column: 1,
+    };
+    let old_content_end_of_indentation_pos = from_span.start.clone();
+
+    let indentation_span = nixel::Span {
+        start: Box::new(old_content_start_of_indentation_pos),
+        end: old_content_end_of_indentation_pos,
+    };
+    let (indentation_start, indentation_end) =
+        span_to_start_end_offsets(flake_contents, &indentation_span)?;
+    let indentation = &flake_contents[indentation_start..indentation_end];
+
+    Ok(indentation)
+}
+
+#[tracing::instrument(skip_all)]
+pub(crate) fn kv_to_span(kv: &nixel::BindingKeyValue) -> (nixel::Span, nixel::Span) {
+    (
+        kv.from
+            .iter()
+            .next()
+            .map(|v| v.span())
+            .expect("attr existed, thus it must have a span"),
+        kv.to.span(),
+    )
 }
 
 #[tracing::instrument(skip_all)]
@@ -654,7 +690,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,
@@ -689,7 +725,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,
@@ -726,7 +762,7 @@ mod test {
                 url::Url::parse("https://flakehub.com/f/NixOS/nixpkgs/0.2305.*.tar.gz").unwrap();
 
             let res = super::upsert_flake_input(
-                *parsed.expression.clone(),
+                &parsed.expression.clone(),
                 input_name.clone(),
                 input_value.clone(),
                 flake_contents.clone(),
@@ -757,7 +793,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,
@@ -828,7 +864,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,
@@ -872,7 +908,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,
@@ -916,7 +952,7 @@ mod test {
         let parsed = nixel::parse(flake_contents.clone());
 
         let res = super::upsert_flake_input(
-            *parsed.expression,
+            &parsed.expression,
             input_name.clone(),
             input_value.clone(),
             flake_contents,

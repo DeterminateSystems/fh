@@ -34,5 +34,6 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
         List(list) => list.execute().await,
         Search(search) => search.execute().await,
         Completion(completion) => completion.execute().await,
+        Convert(convert) => convert.execute().await,
     }
 }
