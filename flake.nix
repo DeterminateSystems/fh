@@ -3,10 +3,7 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz";
 
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.1.tar.gz";
 
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1.1565.tar.gz";
