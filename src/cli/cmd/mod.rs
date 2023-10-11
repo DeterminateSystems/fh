@@ -3,6 +3,7 @@ pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod init;
 pub(crate) mod list;
+pub(crate) mod login;
 pub(crate) mod search;
 
 use lazy_static::lazy_static;
@@ -39,6 +40,7 @@ pub(crate) enum FhSubcommands {
     List(list::ListSubcommand),
     Search(search::SearchSubcommand),
     Convert(convert::ConvertSubcommand),
+    Login(login::LoginSubcommand),
 }
 
 pub(crate) struct FlakeHubClient {
