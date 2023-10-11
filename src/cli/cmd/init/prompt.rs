@@ -16,10 +16,10 @@ lazy_static! {
         .with_help_message(*GREY_TEXT);
 }
 
-pub(super) struct Prompt;
+pub(crate) struct Prompt;
 
 impl Prompt {
-    pub(super) fn bool(msg: &str) -> bool {
+    pub(crate) fn bool(msg: &str) -> bool {
         match Confirm::new(msg)
             .with_render_config(*PROMPT_CONFIG)
             .prompt()
@@ -29,7 +29,7 @@ impl Prompt {
         }
     }
 
-    pub(super) fn select(msg: &str, options: &[&str]) -> String {
+    pub(crate) fn select(msg: &str, options: &[&str]) -> String {
         let result = Select::new(msg, options.to_vec())
             .with_render_config(*PROMPT_CONFIG)
             .prompt();
@@ -40,7 +40,7 @@ impl Prompt {
         }
     }
 
-    pub(super) fn guided_multi_select(
+    pub(crate) fn guided_multi_select(
         msg: &str,
         thing: &str,
         options: Vec<MultiSelectOption>,
@@ -75,7 +75,7 @@ impl Prompt {
         }
     }
 
-    pub(super) fn multi_select(msg: &str, options: &[&str]) -> Vec<String> {
+    pub(crate) fn multi_select(msg: &str, options: &[&str]) -> Vec<String> {
         let result = MultiSelect::new(msg, options.to_vec())
             .with_render_config(*PROMPT_CONFIG)
             .prompt();
@@ -86,7 +86,7 @@ impl Prompt {
         }
     }
 
-    pub(super) fn maybe_string(msg: &str) -> Option<String> {
+    pub(crate) fn maybe_string(msg: &str) -> Option<String> {
         let result = Text::new(msg).with_render_config(*PROMPT_CONFIG).prompt();
 
         match result {
@@ -101,11 +101,11 @@ impl Prompt {
         }
     }
 
-    pub(super) fn for_language(lang: &str) -> bool {
+    pub(crate) fn for_language(lang: &str) -> bool {
         Self::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with some standard dependencies for {lang}?"))
     }
 
-    pub(super) fn for_tool(tool: &str) -> bool {
+    pub(crate) fn for_tool(tool: &str) -> bool {
         Self::bool(&format!(
             "This seems to be a {tool} project. Would you like to add it to your environment?"
         ))
@@ -113,10 +113,10 @@ impl Prompt {
 }
 
 #[derive(Clone)]
-pub(super) struct MultiSelectOption(
-    pub(super) &'static str,
-    pub(super) &'static str,
-    pub(super) bool,
+pub(crate) struct MultiSelectOption(
+    pub(crate) &'static str,
+    pub(crate) &'static str,
+    pub(crate) bool,
 );
 
 impl MultiSelectOption {

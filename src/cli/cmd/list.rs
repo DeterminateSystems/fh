@@ -11,7 +11,7 @@ use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
 
-pub(super) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
+pub(crate) const FLAKEHUB_WEB_ROOT: &str = "https://flakehub.com";
 
 /// Lists key FlakeHub resources.
 #[derive(Parser)]
@@ -28,9 +28,9 @@ pub(crate) struct ListSubcommand {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
-pub(super) struct Flake {
-    pub(super) org: String,
-    pub(super) project: String,
+pub(crate) struct Flake {
+    pub(crate) org: String,
+    pub(crate) project: String,
 }
 
 impl TryFrom<String> for Flake {
@@ -54,7 +54,7 @@ impl TryFrom<String> for Flake {
 }
 
 #[derive(Deserialize, Serialize)]
-pub(super) struct Version {
+pub(crate) struct Version {
     version: String,
     simplified_version: String,
 }
@@ -79,12 +79,12 @@ impl Flake {
 }
 
 #[derive(Deserialize)]
-pub(super) struct Org {
-    pub(super) name: String,
+pub(crate) struct Org {
+    pub(crate) name: String,
 }
 
 #[derive(Deserialize, Serialize)]
-pub(super) struct Release {
+pub(crate) struct Release {
     pub(crate) version: String,
 }
 

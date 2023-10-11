@@ -1,4 +1,4 @@
-mod cli;
+pub(crate) mod cli;
 
 use std::io::IsTerminal;
 

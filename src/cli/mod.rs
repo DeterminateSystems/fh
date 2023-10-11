@@ -1,5 +1,5 @@
 pub(crate) mod cmd;
-mod instrumentation;
+pub(crate) mod instrumentation;
 
 /// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
