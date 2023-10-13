@@ -47,24 +47,17 @@ impl CommandExecute for StatusSubcommand {
         let mut cli_status = self.api_addr.clone();
         cli_status.set_path("/cli/status");
 
-        let maybe_token_status: Result<TokenStatus, _> = reqwest::Client::new()
+        let token_status: TokenStatus = reqwest::Client::new()
             .get(cli_status)
             .header("Authorization", &format!("Bearer {token}"))
             .send()
             .await?
             .json()
-            .await;
+            .await?;
 
-        println!("Logged in: {}", maybe_token_status.is_ok());
-        match maybe_token_status {
-            Ok(token_status) => {
-                println!("GitHub user name: {}", token_status.gh_name);
-                println!("Token expires at: {}", token_status.expires_at);
-            }
-            Err(e) => {
-                tracing::error!("{e}");
-            }
-        }
+        println!("Logged in: {}", true);
+        println!("GitHub user name: {}", token_status.gh_name);
+        println!("Token expires at: {}", token_status.expires_at);
 
         Ok(ExitCode::SUCCESS)
     }
