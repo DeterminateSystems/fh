@@ -8,6 +8,7 @@ repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
 async-trait = "0.1.73"
+chrono = "0.4.31"
 clap = { version = "4.3.2", default-features = false, features = [
   "color",
   "derive",
