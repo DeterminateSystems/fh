@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -55,6 +56,8 @@ impl LoginSubcommand {
         let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
         // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
         let netrc_path = xdg.place_data_file("flakehub/netrc")?;
+        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+        let token_path = auth_token_path()?;
 
         let nix_config_addition = format!("\nnetrc-file = {}\n", netrc_path.display());
         let netrc_contents = format!(
@@ -73,11 +76,14 @@ impl LoginSubcommand {
         );
 
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
-        // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`.
+        // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
+        // benefit is that `access-tokens` can be appended to, but `netrc-file` is a one-time thing
+        // so if the user has their own `netrc-file`, Nix will decide which one wins.)
         // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
-        tokio::fs::write(netrc_path, netrc_contents).await?;
+        tokio::fs::write(netrc_path, &netrc_contents).await?;
+        tokio::fs::write(token_path, token).await?;
 
         if crate::cli::cmd::init::prompt::Prompt::bool(&format!(
             "May I add `{}` to {}?",
@@ -92,11 +98,22 @@ impl LoginSubcommand {
             file.write_all(nix_config_addition.as_bytes()).await?;
         } else {
             println!(
-                "No problem! Please add the following contents to {}:\n\n{nix_config_addition}\n",
+                "No problem! Please add the following contents to {}:\n\n{nix_config_addition}",
                 nix_config_path.display()
+            );
+            println!(
+                "Or add the following contents to your existing netrc file:\n\n{netrc_contents}"
             );
         }
 
         Ok(())
     }
+}
+
+pub(crate) fn auth_token_path() -> color_eyre::Result<PathBuf> {
+    let xdg = xdg::BaseDirectories::new()?;
+    // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+    let token_path = xdg.place_config_file("fh/auth")?;
+
+    Ok(token_path)
 }
