@@ -5,7 +5,7 @@ use std::io::IsTerminal;
 use clap::Parser;
 
 use crate::cli::{
-    cmd::{CommandExecute, FhSubcommands::*},
+    cmd::{CommandExecute, FhSubcommands},
     Cli,
 };
 
@@ -29,13 +29,13 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
     cli.instrumentation.setup().await?;
 
     match cli.subcommand {
-        Add(add) => add.execute().await,
-        Init(init) => init.execute().await,
-        List(list) => list.execute().await,
-        Search(search) => search.execute().await,
-        Completion(completion) => completion.execute().await,
-        Convert(convert) => convert.execute().await,
-        Login(login) => login.execute().await,
-        Status(status) => status.execute().await,
+        FhSubcommands::Add(add) => add.execute().await,
+        FhSubcommands::Init(init) => init.execute().await,
+        FhSubcommands::List(list) => list.execute().await,
+        FhSubcommands::Search(search) => search.execute().await,
+        FhSubcommands::Completion(completion) => completion.execute().await,
+        FhSubcommands::Convert(convert) => convert.execute().await,
+        FhSubcommands::Login(login) => login.execute().await,
+        FhSubcommands::Status(status) => status.execute().await,
     }
 }
