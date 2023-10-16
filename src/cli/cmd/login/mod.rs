@@ -42,11 +42,15 @@ impl LoginSubcommand {
         println!();
 
         let token = crate::cli::cmd::init::prompt::Prompt::maybe_string("Paste your token here:");
-        let token = match token {
+        let (token, status) = match token {
             Some(token) => {
-                // FIXME: validate that the token is valid?
-                // or at least validate that it's a... jwt at all lol
-                token
+                // This serves as validating that provided token is actually a JWT, and is valid.
+                let status = crate::cli::cmd::status::get_status_from_auth_token(
+                    self.api_addr.clone(),
+                    &token,
+                )
+                .await?;
+                (token, status)
             }
             None => {
                 tracing::error!("Missing token.");
@@ -111,7 +115,7 @@ impl LoginSubcommand {
         }
 
         if !self.skip_status {
-            crate::cli::cmd::status::get_status(self.api_addr.clone()).await?;
+            print!("{status}");
         }
 
         Ok(())
