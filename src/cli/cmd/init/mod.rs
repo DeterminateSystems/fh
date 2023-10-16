@@ -247,7 +247,7 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_directory(".git")
                 && command_exists("git")
-                && Prompt::bool("Would you like to add your new files to Git?")
+                && Prompt::bool("Would you like to add your new Nix files to Git?")
             {
                 Command::new("git")
                     .args(["add", "--intent-to-add", "flake.nix"])
