@@ -71,5 +71,21 @@ impl Handler for Tools {
         if project.has_file("sqlx-data.json") && Prompt::bool("This project appears to use sqlx for Rust. Would you like to add the sqlx CLI to your environment?") {
             flake.dev_shell_packages.push(String::from("sqlx-cli"));
         }
+
+        // Static site generation
+        if project.has_one_of(&["hugo.json", "hugo.toml", "hugo.yaml"]) && Prompt::for_tool("Hugo")
+        {
+            flake.dev_shell_packages.push(String::from("hugo"));
+        }
+
+        if project.has_one_of(&["_config.toml", "_config.toml"]) && Prompt::for_tool("Jekyll") {
+            flake
+                .dev_shell_packages
+                .push(String::from("rubyPackages.jekyll"));
+        }
+
+        if project.has_one_of(&["mkdocs.yaml", "mkdocs.yml"]) && Prompt::for_tool("MkDocs") {
+            flake.dev_shell_packages.push(String::from("mkdocs"));
+        }
     }
 }
