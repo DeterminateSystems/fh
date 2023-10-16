@@ -42,6 +42,7 @@ impl TemplateData {
         self.validate()?;
 
         let mut handlebars = Handlebars::new();
+
         handlebars
             .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))
             .map_err(|err| FhError::Template(Box::new(err)))?;

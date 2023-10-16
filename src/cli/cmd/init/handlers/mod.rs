@@ -33,6 +33,15 @@ pub(crate) struct Input {
     pub(crate) follows: Option<String>,
 }
 
+impl Input {
+    pub(crate) fn new(reference: &str, follows: Option<&str>) -> Self {
+        Self {
+            reference: String::from(reference),
+            follows: follows.map(|f| f.to_owned()),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Flake {
     pub(crate) description: Option<String>,

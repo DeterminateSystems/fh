@@ -124,20 +124,16 @@ impl CommandExecute for InitSubcommand {
                 _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
             };
 
-            flake.inputs.insert(
-                String::from("nixpkgs"),
-                Input {
-                    reference: nixpkgs_version,
-                    follows: None,
-                },
-            );
+            flake
+                .inputs
+                .insert(String::from("nixpkgs"), Input::new(&nixpkgs_version, None));
 
             flake.inputs.insert(
                 String::from("flake-schemas"),
-                Input {
-                    reference: FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
-                    follows: None,
-                },
+                Input::new(
+                    &FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
+                    None,
+                ),
             );
 
             // Languages
@@ -213,6 +209,25 @@ impl CommandExecute for InitSubcommand {
                 },
             );
 
+            let use_flake_compat = Prompt::bool(
+                "Would you like to support legacy Nix commands like `nix-build` and `nix-shell`?",
+            );
+
+            if use_flake_compat {
+                flake.inputs.insert(
+                    String::from("flake-compat"),
+                    Input::new(&FlakeHubUrl::latest("edolstra", "flake-compat"), None),
+                );
+                write(
+                    PathBuf::from("default.nix"),
+                    String::from(include_str!("../../../../assets/default.nix")),
+                )?;
+                write(
+                    PathBuf::from("shell.nix"),
+                    String::from(include_str!("../../../../assets/shell.nix")),
+                )?;
+            }
+
             let data = TemplateData {
                 description: flake.description,
                 inputs: flake.inputs,
@@ -232,11 +247,20 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_directory(".git")
                 && command_exists("git")
-                && Prompt::bool("Would you like to add your flake.nix file to Git?")
+                && Prompt::bool(&format!(
+                    "Would you like to add your new Nix {} to Git?",
+                    if use_flake_compat { "files" } else { "file" }
+                ))
             {
                 Command::new("git")
                     .args(["add", "--intent-to-add", "flake.nix"])
                     .output()?;
+
+                if use_flake_compat {
+                    Command::new("git")
+                        .args(["add", "--intent-to-add", "default.nix", "shell.nix"])
+                        .output()?;
+                }
             }
 
             if !project.has_file(".envrc")
