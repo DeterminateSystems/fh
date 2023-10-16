@@ -59,6 +59,10 @@ impl Handler for Rust {
             if project.has_file("Cross.toml") && Prompt::bool("This project appears to use cross-rs. Would you like to add the cargo-cross tool to your environment?") {
                 flake.dev_shell_packages.push(String::from("cargo-cross"));
             }
+
+            if project.has_file("deny.toml") && Prompt::bool("This project appears to use cargo-deny. Would you like to add it to your environment?") {
+                flake.dev_shell_packages.push(String::from("cargo-deny"));
+            }
         }
     }
 }

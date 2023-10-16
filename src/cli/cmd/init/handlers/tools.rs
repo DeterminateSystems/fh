@@ -51,5 +51,9 @@ impl Handler for Tools {
         if project.has_file(".shellcheckrc") && Prompt::for_tool("ShellCheck") {
             flake.dev_shell_packages.push(String::from("shellcheck"));
         }
+
+        if project.has_file("Vagrantfile") && Prompt::for_tool("Vagrant") {
+            flake.dev_shell_packages.push(String::from("vagrant"));
+        }
     }
 }
