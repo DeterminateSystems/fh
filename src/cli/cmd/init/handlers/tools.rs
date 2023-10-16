@@ -87,5 +87,12 @@ impl Handler for Tools {
         if project.has_one_of(&["mkdocs.yaml", "mkdocs.yml"]) && Prompt::for_tool("MkDocs") {
             flake.dev_shell_packages.push(String::from("mkdocs"));
         }
+
+        // Git
+        if project.has_file(".pre-commit-config.yaml") && Prompt::for_tool("pre-commit-hooks") {
+            flake
+                .dev_shell_packages
+                .push(String::from("python311Packages.pre-commit-hooks"));
+        }
     }
 }
