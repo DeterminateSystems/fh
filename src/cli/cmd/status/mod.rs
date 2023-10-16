@@ -81,6 +81,13 @@ pub(crate) async fn get_status_from_auth_token(
         .send()
         .await
         .wrap_err("Failed to send request")?;
+
+    if res.status() == 401 {
+        return Err(color_eyre::eyre::eyre!(
+            "The provided token was invalid. Please try again, or contact support@flakehub.com if the problem persists."
+        ));
+    }
+
     let res = res
         .error_for_status()
         .wrap_err("Request was unsuccessful")?;
