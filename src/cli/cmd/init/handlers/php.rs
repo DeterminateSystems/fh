@@ -11,11 +11,10 @@ impl Handler for Php {
         if project.has_one_of(&["composer.json", "php.ini"]) && Prompt::for_language("PHP") {
             flake.inputs.insert(
                 String::from("loophp"),
-                Input {
-                    reference: String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"),
-                    follows: Some(String::from("nixpkgs")),
-                    ..Default::default()
-                },
+                Input::new(
+                    "https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz",
+                    Some("nixpkgs"),
+                ),
             );
             flake
                 .overlay_refs

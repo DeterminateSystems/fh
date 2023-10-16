@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use handlebars::{handlebars_helper, Handlebars};
+use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -25,8 +25,6 @@ pub(super) struct TemplateData {
     pub(super) doc_comments: bool,
 }
 
-handlebars_helper!(is_false: |b: bool| !b);
-
 impl TemplateData {
     pub(super) fn as_json(&self) -> Result<Value, serde_json::Error> {
         serde_json::to_value(self)
@@ -44,10 +42,6 @@ impl TemplateData {
         self.validate()?;
 
         let mut handlebars = Handlebars::new();
-
-        // This helper is necessary because `not x` in Handlebars could mean `x = false` or it
-        // could mean that `x` is not defined, so we need a specific handler for the `x = false` case.
-        handlebars.register_helper("is_false", Box::new(is_false));
 
         handlebars
             .register_template_string("flake", include_str!("../../../../assets/flake.hbs"))

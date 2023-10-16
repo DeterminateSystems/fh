@@ -13,11 +13,7 @@ impl Handler for Rust {
         if project.has_file("Cargo.toml") && Prompt::for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
-                Input {
-                    reference: String::from("github:oxalica/rust-overlay"),
-                    follows: Some(String::from("nixpkgs")),
-                    ..Default::default()
-                },
+                Input::new("github:oxalica/rust-overlay", Some("nixpkgs")),
             );
 
             flake

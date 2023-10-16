@@ -124,20 +124,16 @@ impl CommandExecute for InitSubcommand {
                 _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
             };
 
-            flake.inputs.insert(
-                String::from("nixpkgs"),
-                Input {
-                    reference: nixpkgs_version,
-                    ..Default::default()
-                },
-            );
+            flake
+                .inputs
+                .insert(String::from("nixpkgs"), Input::new(&nixpkgs_version, None));
 
             flake.inputs.insert(
                 String::from("flake-schemas"),
-                Input {
-                    reference: FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
-                    ..Default::default()
-                },
+                Input::new(
+                    &FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
+                    None,
+                ),
             );
 
             // Languages
@@ -218,11 +214,7 @@ impl CommandExecute for InitSubcommand {
             ) {
                 flake.inputs.insert(
                     String::from("flake-compat"),
-                    Input {
-                        reference: FlakeHubUrl::latest("edolstra", "flake-compat"),
-                        flake: false,
-                        ..Default::default()
-                    },
+                    Input::new(&FlakeHubUrl::latest("edolstra", "flake-compat"), None),
                 );
                 write(
                     PathBuf::from("default.nix"),

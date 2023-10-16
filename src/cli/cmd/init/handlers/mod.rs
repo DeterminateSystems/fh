@@ -31,15 +31,13 @@ use super::{dev_shell::DevShell, project::Project};
 pub(crate) struct Input {
     pub(crate) reference: String,
     pub(crate) follows: Option<String>,
-    pub(crate) flake: bool,
 }
 
-impl Default for Input {
-    fn default() -> Self {
+impl Input {
+    pub(crate) fn new(reference: &str, follows: Option<&str>) -> Self {
         Self {
-            reference: String::new(),
-            follows: None,
-            flake: true,
+            reference: String::from(reference),
+            follows: follows.map(|f| f.to_owned()),
         }
     }
 }
