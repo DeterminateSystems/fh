@@ -220,8 +220,8 @@ impl CommandExecute for InitSubcommand {
                     String::from("flake-compat"),
                     Input {
                         reference: FlakeHubUrl::latest("edolstra", "flake-compat"),
-                        follows: None,
                         flake: false,
+                        ..Default::default()
                     },
                 );
                 write(

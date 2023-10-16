@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{version_as_attr, Flake, Handler};
+use super::{version_as_attr, Flake, Handler, Input};
 
 const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
 
@@ -11,7 +11,7 @@ impl Handler for Php {
         if project.has_one_of(&["composer.json", "php.ini"]) && Prompt::for_language("PHP") {
             flake.inputs.insert(
                 String::from("loophp"),
-                super::Input {
+                Input {
                     reference: String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"),
                     follows: Some(String::from("nixpkgs")),
                     ..Default::default()
