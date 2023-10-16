@@ -53,17 +53,23 @@ impl LoginSubcommand {
 
         // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
         let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
-        // $XDG_DATA_HOME/fh/netrc; basically $/.local/share/fh/netrc
-        let netrc_path = xdg.place_data_file("fh/netrc")?;
+        // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
+        let netrc_path = xdg.place_data_file("flakehub/netrc")?;
 
-        let nix_config_addition = format!("netrc-file = {}\n", netrc_path.display());
+        let nix_config_addition = format!("\nnetrc-file = {}\n", netrc_path.display());
         let netrc_contents = format!(
             "\
             machine {frontend_host} login FIXME password {token}\n\
             machine {backend_host} login FIXME password {token}\n\
             ",
-            frontend_host = self.frontend_addr.host_str().expect("FIXME"),
-            backend_host = self.api_addr.host_str().expect("FIXME"),
+            frontend_host = self
+                .frontend_addr
+                .host_str()
+                .ok_or_else(|| color_eyre::eyre::eyre!("frontend_addr had no host"))?,
+            backend_host = self
+                .api_addr
+                .host_str()
+                .ok_or_else(|| color_eyre::eyre::eyre!("api_addr had no host"))?,
         );
 
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
@@ -74,7 +80,8 @@ impl LoginSubcommand {
         tokio::fs::write(netrc_path, netrc_contents).await?;
 
         if crate::cli::cmd::init::prompt::Prompt::bool(&format!(
-            "May I add `{nix_config_addition}` to {}?",
+            "May I add `{}` to {}?",
+            nix_config_addition.trim(),
             nix_config_path.display()
         )) {
             let mut file = tokio::fs::OpenOptions::new()
