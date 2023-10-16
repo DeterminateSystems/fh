@@ -2,7 +2,7 @@ use crate::cli::cmd::init::prompt::Prompt;
 
 use super::{Flake, Handler, Input, Project};
 
-const CARGO_TOOLS: &[&str] = &["audit", "bloat", "edit", "outdated", "udeps", "watch"];
+const CARGO_TOOLS: &[&str] = &["bloat", "edit", "outdated", "udeps", "watch"];
 
 pub(crate) struct Rust;
 
@@ -62,6 +62,10 @@ impl Handler for Rust {
 
             if project.has_file("deny.toml") && Prompt::bool("This project appears to use cargo-deny. Would you like to add it to your environment?") {
                 flake.dev_shell_packages.push(String::from("cargo-deny"));
+            }
+
+            if project.has_file("audit.toml") && Prompt::bool("This project appears to use cargo-audit. Would you like to add it to your environment?") {
+                flake.dev_shell_packages.push(String::from("cargo-audit"));
             }
         }
     }
