@@ -62,7 +62,7 @@ pub(crate) async fn get_status(api_addr: url::Url) -> color_eyre::Result<()> {
         .json()
         .await?;
 
-    println!("Logged in: {}", true);
+    println!("Logged in: true");
     println!("GitHub user name: {}", token_status.gh_name);
     println!("Token expires at: {}", token_status.expires_at);
 

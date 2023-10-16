@@ -121,7 +121,7 @@ impl LoginSubcommand {
 pub(crate) fn auth_token_path() -> color_eyre::Result<PathBuf> {
     let xdg = xdg::BaseDirectories::new()?;
     // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-    let token_path = xdg.place_config_file("fh/auth")?;
+    let token_path = xdg.place_config_file("flakehub/auth")?;
 
     Ok(token_path)
 }
