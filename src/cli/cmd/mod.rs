@@ -5,6 +5,7 @@ pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
 pub(crate) mod search;
+pub(crate) mod status;
 
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
@@ -41,6 +42,7 @@ pub(crate) enum FhSubcommands {
     Search(search::SearchSubcommand),
     Convert(convert::ConvertSubcommand),
     Login(login::LoginSubcommand),
+    Status(status::StatusSubcommand),
 }
 
 pub(crate) struct FlakeHubClient {
