@@ -14,13 +14,15 @@
       url = "{{{this.reference}}}";
       inputs.{{this.follows}}.follows = "{{{this.follows}}}";
     };
-    {{else if this.not_a_flake}}
+    {{else}}
+    {{#if (is_false this.flake)}}
     {{@key}} = {
       url = "{{{this.reference}}}";
       flake = false;
     };
     {{else}}
     {{@key}}.url = "{{{this.reference}}}";
+    {{/if}}
     {{/if}}
     {{#unless @last}}
 
