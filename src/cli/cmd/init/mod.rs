@@ -129,6 +129,7 @@ impl CommandExecute for InitSubcommand {
                 Input {
                     reference: nixpkgs_version,
                     follows: None,
+                    flake: true,
                 },
             );
 
@@ -137,6 +138,7 @@ impl CommandExecute for InitSubcommand {
                 Input {
                     reference: FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
                     follows: None,
+                    flake: true,
                 },
             );
 
@@ -212,6 +214,27 @@ impl CommandExecute for InitSubcommand {
                     env_vars: flake.env_vars,
                 },
             );
+
+            if Prompt::bool(
+                "Would you like to make your project usable for Nix users who don't use flakes?",
+            ) {
+                flake.inputs.insert(
+                    String::from("flake-compat"),
+                    Input {
+                        reference: FlakeHubUrl::latest("edolstra", "flake-compat"),
+                        follows: None,
+                        flake: false,
+                    },
+                );
+                write(
+                    PathBuf::from("default.nix"),
+                    String::from(include_str!("../../../../assets/default.nix")),
+                )?;
+                write(
+                    PathBuf::from("shell.nix"),
+                    String::from(include_str!("../../../../assets/shell.nix")),
+                )?;
+            }
 
             let data = TemplateData {
                 description: flake.description,

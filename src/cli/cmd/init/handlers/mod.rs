@@ -31,6 +31,7 @@ use super::{dev_shell::DevShell, project::Project};
 pub(crate) struct Input {
     pub(crate) reference: String,
     pub(crate) follows: Option<String>,
+    pub(crate) flake: bool,
 }
 
 #[derive(Default)]

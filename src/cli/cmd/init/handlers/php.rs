@@ -14,6 +14,7 @@ impl Handler for Php {
                 super::Input {
                     reference: String::from("https://flakehub.com/f/loophp/nix-shell/0.1.*.tar.gz"),
                     follows: Some(String::from("nixpkgs")),
+                    flake: true,
                 },
             );
             flake
