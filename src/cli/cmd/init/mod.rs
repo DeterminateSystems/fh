@@ -210,7 +210,7 @@ impl CommandExecute for InitSubcommand {
             );
 
             let use_flake_compat = Prompt::bool(
-                "Would you like to make your project usable for Nix users who don't use flakes?",
+                "Would you like to support legacy Nix commands like `nix-build` and `nix-shell`?",
             );
 
             if use_flake_compat {
