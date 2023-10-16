@@ -128,8 +128,7 @@ impl CommandExecute for InitSubcommand {
                 String::from("nixpkgs"),
                 Input {
                     reference: nixpkgs_version,
-                    follows: None,
-                    flake: true,
+                    ..Default::default()
                 },
             );
 
@@ -137,8 +136,7 @@ impl CommandExecute for InitSubcommand {
                 String::from("flake-schemas"),
                 Input {
                     reference: FlakeHubUrl::latest("DeterminateSystems", "flake-schemas"),
-                    follows: None,
-                    flake: true,
+                    ..Default::default()
                 },
             );
 

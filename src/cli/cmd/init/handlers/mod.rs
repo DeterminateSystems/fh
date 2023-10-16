@@ -34,6 +34,16 @@ pub(crate) struct Input {
     pub(crate) flake: bool,
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Self {
+            reference: String::new(),
+            follows: None,
+            flake: true,
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Flake {
     pub(crate) description: Option<String>,

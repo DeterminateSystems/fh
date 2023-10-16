@@ -16,7 +16,7 @@ impl Handler for Rust {
                 Input {
                     reference: String::from("github:oxalica/rust-overlay"),
                     follows: Some(String::from("nixpkgs")),
-                    flake: true,
+                    ..Default::default()
                 },
             );
 
