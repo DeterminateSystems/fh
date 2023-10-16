@@ -62,7 +62,14 @@ pub(crate) async fn get_status_from_auth_file(
     api_addr: url::Url,
 ) -> color_eyre::Result<TokenStatus> {
     let auth_token_path = crate::cli::cmd::login::auth_token_path()?;
-    let token = tokio::fs::read_to_string(auth_token_path).await?;
+    let token = tokio::fs::read_to_string(&auth_token_path)
+        .await
+        .wrap_err_with(|| {
+            format!(
+                "Could not open {}; have you run `fh login`?",
+                auth_token_path.display()
+            )
+        })?;
     let token = token.trim();
 
     get_status_from_auth_token(api_addr, token).await
