@@ -1,17 +1,17 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-mod elm;
-mod go;
-mod java;
-mod javascript;
-mod php;
-mod python;
-mod ruby;
-mod rust;
-mod system;
-mod tools;
-mod zig;
+pub(crate) mod elm;
+pub(crate) mod go;
+pub(crate) mod java;
+pub(crate) mod javascript;
+pub(crate) mod php;
+pub(crate) mod python;
+pub(crate) mod ruby;
+pub(crate) mod rust;
+pub(crate) mod system;
+pub(crate) mod tools;
+pub(crate) mod zig;
 
 pub(crate) use elm::Elm;
 pub(crate) use go::Go;

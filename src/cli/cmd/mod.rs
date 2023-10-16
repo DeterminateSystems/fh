@@ -1,9 +1,10 @@
-mod add;
-mod completion;
-mod convert;
-mod init;
-mod list;
-mod search;
+pub(crate) mod add;
+pub(crate) mod completion;
+pub(crate) mod convert;
+pub(crate) mod init;
+pub(crate) mod list;
+pub(crate) mod login;
+pub(crate) mod search;
 
 use lazy_static::lazy_static;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
@@ -16,7 +17,7 @@ use self::{
 };
 
 lazy_static! {
-    pub(super) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
+    pub(crate) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
         .borders('|')
         .padding(1, 1)
         .separators(
@@ -39,15 +40,16 @@ pub(crate) enum FhSubcommands {
     List(list::ListSubcommand),
     Search(search::SearchSubcommand),
     Convert(convert::ConvertSubcommand),
+    Login(login::LoginSubcommand),
 }
 
-pub(super) struct FlakeHubClient {
+pub(crate) struct FlakeHubClient {
     client: HttpClient,
     api_addr: url::Url,
 }
 
 #[derive(Debug, thiserror::Error)]
-pub(super) enum FhError {
+pub(crate) enum FhError {
     #[error("file error: {0}")]
     Filesystem(#[from] std::io::Error),
 
@@ -83,7 +85,7 @@ pub(super) enum FhError {
 }
 
 impl FlakeHubClient {
-    pub(super) fn new(api_addr: &url::Url) -> Result<Self, FhError> {
+    pub(crate) fn new(api_addr: &url::Url) -> Result<Self, FhError> {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             "Accept",
@@ -101,7 +103,7 @@ impl FlakeHubClient {
         })
     }
 
-    pub(super) async fn search(&self, query: String) -> Result<Vec<SearchResult>, FhError> {
+    pub(crate) async fn search(&self, query: String) -> Result<Vec<SearchResult>, FhError> {
         let params = [("q", query)];
 
         let endpoint = self.api_addr.join("search")?;
@@ -224,7 +226,7 @@ impl FlakeHubClient {
     }
 }
 
-pub(super) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
+pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     let json = serde_json::to_string(&value)?;
     println!("{}", json);
     Ok(())

@@ -1,5 +1,5 @@
 pub(crate) mod cmd;
-mod instrumentation;
+pub(crate) mod instrumentation;
 
 /// fh: a CLI for interacting with FlakeHub
 #[derive(clap::Parser)]
@@ -15,6 +15,17 @@ pub(crate) struct Cli {
         hide = true
     )]
     pub api_addr: url::Url,
+
+    /// The FlakeHub frontend address to communicate with.
+    ///
+    /// Primarily useful for debugging FlakeHub.
+    #[clap(
+        global = true,
+        long,
+        default_value = "https://flakehub.com",
+        hide = true
+    )]
+    pub frontend_addr: url::Url,
 
     #[clap(subcommand)]
     pub subcommand: cmd::FhSubcommands,

@@ -1,4 +1,4 @@
-mod cli;
+pub(crate) mod cli;
 
 use std::io::IsTerminal;
 
@@ -35,5 +35,6 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
         Search(search) => search.execute().await,
         Completion(completion) => completion.execute().await,
         Convert(convert) => convert.execute().await,
+        Login(login) => login.execute().await,
     }
 }

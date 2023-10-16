@@ -9,28 +9,28 @@ use crate::cli::cmd::FhError;
 use super::{dev_shell::DevShell, handlers::Input};
 
 #[derive(Debug, Serialize)]
-pub(super) struct TemplateData {
-    pub(super) description: Option<String>,
-    pub(super) inputs: HashMap<String, Input>,
-    pub(super) systems: Vec<String>,
-    pub(super) dev_shells: HashMap<String, DevShell>,
-    pub(super) overlay_refs: Vec<String>,
-    pub(super) overlay_attrs: HashMap<String, String>,
-    pub(super) shell_hook: Option<String>,
-    pub(super) fh_version: String,
+pub(crate) struct TemplateData {
+    pub(crate) description: Option<String>,
+    pub(crate) inputs: HashMap<String, Input>,
+    pub(crate) systems: Vec<String>,
+    pub(crate) dev_shells: HashMap<String, DevShell>,
+    pub(crate) overlay_refs: Vec<String>,
+    pub(crate) overlay_attrs: HashMap<String, String>,
+    pub(crate) shell_hook: Option<String>,
+    pub(crate) fh_version: String,
     // This is tricky to determine inside the template because we need to check that
     // either overlay_refs or overlay_attrs is non-empty, so we calculate that in Rust
     // and set a Boolean here instead
-    pub(super) has_overlays: bool,
-    pub(super) doc_comments: bool,
+    pub(crate) has_overlays: bool,
+    pub(crate) doc_comments: bool,
 }
 
 impl TemplateData {
-    pub(super) fn as_json(&self) -> Result<Value, serde_json::Error> {
+    pub(crate) fn as_json(&self) -> Result<Value, serde_json::Error> {
         serde_json::to_value(self)
     }
 
-    pub(super) fn validate(&self) -> Result<(), FhError> {
+    pub(crate) fn validate(&self) -> Result<(), FhError> {
         if self.inputs.is_empty() {
             return Err(FhError::NoInputs);
         }
@@ -38,7 +38,7 @@ impl TemplateData {
         Ok(())
     }
 
-    pub(super) fn render(&self) -> Result<String, FhError> {
+    pub(crate) fn render(&self) -> Result<String, FhError> {
         self.validate()?;
 
         let mut handlebars = Handlebars::new();

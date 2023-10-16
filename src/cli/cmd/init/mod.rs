@@ -1,8 +1,8 @@
-mod dev_shell;
-mod handlers;
-mod project;
-mod prompt;
-mod template;
+pub(crate) mod dev_shell;
+pub(crate) mod handlers;
+pub(crate) mod project;
+pub(crate) mod prompt;
+pub(crate) mod template;
 
 use clap::Parser;
 use color_eyre::eyre::Result;
