@@ -9,6 +9,10 @@ use super::CommandExecute;
 /// Login to FlakeHub in order to allow authenticated fetching of flakes.
 #[derive(Debug, Parser)]
 pub(crate) struct LoginSubcommand {
+    /// Skip following up a successful login with `fh status`.
+    #[clap(long)]
+    skip_status: bool,
+
     #[clap(from_global)]
     api_addr: url::Url,
 
@@ -98,12 +102,16 @@ impl LoginSubcommand {
             file.write_all(nix_config_addition.as_bytes()).await?;
         } else {
             println!(
-                "No problem! Please add the following contents to {}:\n\n{nix_config_addition}",
+                "No problem! Please add the following contents to {}:\n{nix_config_addition}",
                 nix_config_path.display()
             );
             println!(
                 "Or add the following contents to your existing netrc file:\n\n{netrc_contents}"
             );
+        }
+
+        if !self.skip_status {
+            crate::cli::cmd::status::get_status(self.api_addr.clone()).await?;
         }
 
         Ok(())
