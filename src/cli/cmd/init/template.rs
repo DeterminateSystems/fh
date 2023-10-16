@@ -45,8 +45,8 @@ impl TemplateData {
 
         let mut handlebars = Handlebars::new();
 
-        // This helper is necessary because Handlebars `not x` in Handlebars could mean `x = false` or it
-        // could mean that `x` is not defined. So we need a specific handler for the Boolean case.
+        // This helper is necessary because `not x` in Handlebars could mean `x = false` or it
+        // could mean that `x` is not defined, so we need a specific handler for the `x = false` case.
         handlebars.register_helper("is_false", Box::new(is_false));
 
         handlebars
