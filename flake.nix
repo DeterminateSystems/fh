@@ -1,5 +1,6 @@
 {
   description = "The official CLI for FlakeHub: search for flakes, and add new inputs to your Nix flake.";
+
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz";
 
