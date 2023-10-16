@@ -209,9 +209,11 @@ impl CommandExecute for InitSubcommand {
                 },
             );
 
-            if Prompt::bool(
+            let use_flake_compat = Prompt::bool(
                 "Would you like to make your project usable for Nix users who don't use flakes?",
-            ) {
+            );
+
+            if use_flake_compat {
                 flake.inputs.insert(
                     String::from("flake-compat"),
                     Input::new(&FlakeHubUrl::latest("edolstra", "flake-compat"), None),
@@ -245,11 +247,17 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_directory(".git")
                 && command_exists("git")
-                && Prompt::bool("Would you like to add your flake.nix file to Git?")
+                && Prompt::bool("Would you like to add your new files to Git?")
             {
                 Command::new("git")
                     .args(["add", "--intent-to-add", "flake.nix"])
                     .output()?;
+
+                if use_flake_compat {
+                    Command::new("git")
+                        .args(["add", "--intent-to-add", "default.nix", "shell.nix"])
+                        .output()?;
+                }
             }
 
             if !project.has_file(".envrc")
