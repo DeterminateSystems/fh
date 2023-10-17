@@ -144,6 +144,11 @@ async fn infer_flake_input_name_url(
                 [org, project, version] => {
                     let version = version.strip_suffix(".tar.gz").unwrap_or(version);
                     let version = version.strip_prefix('v').unwrap_or(version);
+                    semver::VersionReq::parse(version).map_err(|_| {
+                        color_eyre::eyre::eyre!(
+                            "version '{version}' was not a valid SemVer version requirement"
+                        )
+                    })?;
 
                     (org, project, Some(version))
                 }
