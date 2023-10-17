@@ -7,6 +7,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
+use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde::Deserialize;
 
 use self::flake::InputsInsertionLocation;
@@ -191,10 +192,22 @@ pub(crate) async fn get_flakehub_project_and_url(
     version: Option<&str>,
 ) -> color_eyre::Result<(String, url::Url)> {
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(
-        "Accept",
-        reqwest::header::HeaderValue::from_static("application/json"),
-    );
+    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+
+    let xdg = xdg::BaseDirectories::new()?;
+    // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+    let token_path = xdg.get_config_file("flakehub/auth");
+
+    if token_path.exists() {
+        let token = tokio::fs::read_to_string(&token_path)
+            .await
+            .wrap_err_with(|| format!("Could not open {}", token_path.display()))?;
+
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {token}"))?,
+        );
+    }
 
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
