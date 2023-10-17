@@ -51,8 +51,19 @@ where
 #[async_trait::async_trait]
 impl CommandExecute for StatusSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let status = get_status_from_auth_file(self.api_addr).await?;
-        print!("{status}");
+        match get_status_from_auth_file(self.api_addr).await {
+            Ok(status) => {
+                print!("{status}");
+            }
+            Err(_) => {
+                print!(
+                    "\
+                    Logged in: false\n\
+                    To log in, run `fh login`.\n\
+                    "
+                );
+            }
+        };
 
         Ok(ExitCode::SUCCESS)
     }
@@ -64,12 +75,7 @@ pub(crate) async fn get_status_from_auth_file(
     let auth_token_path = crate::cli::cmd::login::auth_token_path()?;
     let token = tokio::fs::read_to_string(&auth_token_path)
         .await
-        .wrap_err_with(|| {
-            format!(
-                "Could not open {}; have you run `fh login`?",
-                auth_token_path.display()
-            )
-        })?;
+        .wrap_err_with(|| format!("Could not open {}", auth_token_path.display()))?;
     let token = token.trim();
 
     get_status_from_auth_token(api_addr, token).await
