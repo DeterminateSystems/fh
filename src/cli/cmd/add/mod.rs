@@ -230,11 +230,12 @@ pub(crate) async fn get_flakehub_project_and_url(
 
     let res = client.get(&flakehub_json_url.to_string()).send().await?;
 
-    if res.status().is_success() {
-        let res = res.json::<ProjectCanonicalNames>().await?;
+    if let Err(e) = res.error_for_status_ref() {
+        let err_text = res.text().await?;
+        return Err(e).wrap_err(err_text)?;
+    };
 
-        Ok((res.project, res.pretty_download_url))
-    } else {
-        Err(color_eyre::eyre::eyre!(res.text().await?))
-    }
+    let res = res.json::<ProjectCanonicalNames>().await?;
+
+    Ok((res.project, res.pretty_download_url))
 }
