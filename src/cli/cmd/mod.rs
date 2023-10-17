@@ -7,7 +7,7 @@ pub(crate) mod login;
 pub(crate) mod search;
 pub(crate) mod status;
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
 use serde::Serialize;
@@ -17,16 +17,16 @@ use self::{
     search::SearchResult,
 };
 
-lazy_static! {
-    pub(crate) static ref TABLE_FORMAT: TableFormat = FormatBuilder::new()
+pub(crate) static TABLE_FORMAT: Lazy<TableFormat> = Lazy::new(|| {
+    FormatBuilder::new()
         .borders('|')
         .padding(1, 1)
         .separators(
             &[LinePosition::Top, LinePosition::Title, LinePosition::Bottom],
             LineSeparator::new('-', '+', '+', '+'),
         )
-        .build();
-}
+        .build()
+});
 
 #[async_trait::async_trait]
 pub trait CommandExecute {

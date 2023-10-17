@@ -594,7 +594,6 @@ dependencies = [
  "handlebars",
  "indicatif",
  "inquire",
- "lazy_static",
  "nixel",
  "once_cell",
  "prettytable-rs",
