@@ -4,17 +4,18 @@ use inquire::{
     ui::{Color, RenderConfig, StyleSheet, Styled},
     Confirm, MultiSelect, Select, Text,
 };
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
-lazy_static! {
-    static ref MAGENTA_TEXT: StyleSheet = StyleSheet::default().with_fg(Color::DarkMagenta);
-    static ref GREY_TEXT: StyleSheet = StyleSheet::default().with_fg(Color::Grey);
-    static ref PROMPT_CONFIG: RenderConfig = RenderConfig::default()
+static MAGENTA_TEXT: Lazy<StyleSheet> =
+    Lazy::new(|| StyleSheet::default().with_fg(Color::DarkMagenta));
+static GREY_TEXT: Lazy<StyleSheet> = Lazy::new(|| StyleSheet::default().with_fg(Color::Grey));
+static PROMPT_CONFIG: Lazy<RenderConfig> = Lazy::new(|| {
+    RenderConfig::default()
         .with_prompt_prefix(Styled::new(">").with_fg(Color::LightBlue))
         .with_selected_option(Some(*MAGENTA_TEXT))
         .with_answer(*GREY_TEXT)
-        .with_help_message(*GREY_TEXT);
-}
+        .with_help_message(*GREY_TEXT)
+});
 
 pub(crate) struct Prompt;
 
