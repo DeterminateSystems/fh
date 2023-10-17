@@ -118,6 +118,7 @@ async fn infer_flake_input_name_url(
     flake_ref: String,
     input_name: Option<String>,
 ) -> color_eyre::Result<(String, url::Url)> {
+    let flake_ref = flake_ref.trim_end_matches('/');
     let url_result = flake_ref.parse::<url::Url>();
 
     match url_result {
