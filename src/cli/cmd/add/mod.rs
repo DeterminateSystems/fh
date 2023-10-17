@@ -118,6 +118,7 @@ async fn infer_flake_input_name_url(
     flake_ref: String,
     input_name: Option<String>,
 ) -> color_eyre::Result<(String, url::Url)> {
+    let flake_ref = flake_ref.trim_end_matches('/');
     let url_result = flake_ref.parse::<url::Url>();
 
     match url_result {
@@ -143,15 +144,19 @@ async fn infer_flake_input_name_url(
                 [org, project, version] => {
                     let version = version.strip_suffix(".tar.gz").unwrap_or(version);
                     let version = version.strip_prefix('v').unwrap_or(version);
+                    semver::VersionReq::parse(version).map_err(|_| {
+                        color_eyre::eyre::eyre!(
+                            "version '{version}' was not a valid SemVer version requirement"
+                        )
+                    })?;
 
                     (org, project, Some(version))
                 }
                 // `nixos/nixpkgs`
-                [org, project] => {
-                    (org, project, None)
-                }
+                [org, project] => (org, project, None),
                 _ => Err(color_eyre::eyre::eyre!(
-                    "flakehub input did not match the expected format of `org/project` or `org/project/version`"
+                    "flakehub input did not match the expected format of \
+                    `org/project` or `org/project/version`"
                 ))?,
             };
 
@@ -225,11 +230,12 @@ pub(crate) async fn get_flakehub_project_and_url(
 
     let res = client.get(&flakehub_json_url.to_string()).send().await?;
 
-    if res.status().is_success() {
-        let res = res.json::<ProjectCanonicalNames>().await?;
+    if let Err(e) = res.error_for_status_ref() {
+        let err_text = res.text().await?;
+        return Err(e).wrap_err(err_text)?;
+    };
 
-        Ok((res.project, res.pretty_download_url))
-    } else {
-        Err(color_eyre::eyre::eyre!(res.text().await?))
-    }
+    let res = res.json::<ProjectCanonicalNames>().await?;
+
+    Ok((res.project, res.pretty_download_url))
 }
