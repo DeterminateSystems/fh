@@ -153,11 +153,10 @@ async fn infer_flake_input_name_url(
                     (org, project, Some(version))
                 }
                 // `nixos/nixpkgs`
-                [org, project] => {
-                    (org, project, None)
-                }
+                [org, project] => (org, project, None),
                 _ => Err(color_eyre::eyre::eyre!(
-                    "flakehub input did not match the expected format of `org/project` or `org/project/version`"
+                    "flakehub input did not match the expected format of \
+                    `org/project` or `org/project/version`"
                 ))?,
             };
 
