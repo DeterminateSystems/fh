@@ -93,20 +93,37 @@ impl LoginSubcommand {
         tokio::fs::write(netrc_path, &netrc_contents).await?;
         tokio::fs::write(token_path, token).await?;
 
-        if crate::cli::cmd::init::prompt::Prompt::bool(&format!(
+        let write_to_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&format!(
             "May I add `{}` to {}?",
             nix_config_addition.trim(),
             nix_config_path.display()
-        )) {
-            let mut file = tokio::fs::OpenOptions::new()
+        ));
+        let write_success = if write_to_nix_conf {
+            match tokio::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(nix_config_path)
-                .await?;
-            file.write_all(nix_config_addition.as_bytes()).await?;
+                .open(&nix_config_path)
+                .await
+            {
+                Ok(mut file) => {
+                    let write_status = file.write_all(nix_config_addition.as_bytes()).await;
+                    write_status.is_ok()
+                }
+                Err(_) => false,
+            }
         } else {
+            false
+        };
+
+        if !write_to_nix_conf {
+            print!("No problem! ");
+        }
+        if !write_success {
+            print!("Writing to {} failed. ", nix_config_path.display());
+        }
+        if !write_success || !write_to_nix_conf {
             println!(
-                "No problem! Please add the following contents to {}:\n{nix_config_addition}",
+                "Please add the following contents to {}:\n{nix_config_addition}",
                 nix_config_path.display()
             );
             println!(
