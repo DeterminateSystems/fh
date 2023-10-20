@@ -393,7 +393,7 @@ impl ConvertSubcommand {
 // FIXME: only supports strings for now
 #[tracing::instrument(skip_all)]
 // TODO: return the span as well
-fn find_input_value_by_path(
+pub(crate) fn find_input_value_by_path(
     expr: &nixel::Expression,
     attr_path: VecDeque<String>,
     // FIXME: return a url::Url...?
