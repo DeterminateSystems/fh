@@ -12,7 +12,7 @@
     };
 
     naersk = {
-      url = "github:nix-community/naersk";
+      url = "https://flakehub.com/f/nix-community/naersk/0.1.332.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
