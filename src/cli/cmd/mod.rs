@@ -1,6 +1,7 @@
 pub(crate) mod add;
 pub(crate) mod completion;
 pub(crate) mod convert;
+pub(crate) mod eject;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
@@ -43,6 +44,7 @@ pub(crate) enum FhSubcommands {
     Convert(convert::ConvertSubcommand),
     Login(login::LoginSubcommand),
     Status(status::StatusSubcommand),
+    Eject(eject::EjectSubcommand),
 }
 
 pub(crate) struct FlakeHubClient {
