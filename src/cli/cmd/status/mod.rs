@@ -2,6 +2,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
+use reqwest::header::AUTHORIZATION;
 
 use super::CommandExecute;
 
@@ -88,9 +89,11 @@ pub(crate) async fn get_status_from_auth_token(
     let mut cli_status = api_addr;
     cli_status.set_path("/cli/status");
 
-    let res = reqwest::Client::new()
+    let res = reqwest::Client::builder()
+        .user_agent(crate::APP_USER_AGENT)
+        .build()?
         .get(cli_status)
-        .header("Authorization", &format!("Bearer {token}"))
+        .header(AUTHORIZATION, &format!("Bearer {token}"))
         .send()
         .await
         .wrap_err("Failed to send request")?;
