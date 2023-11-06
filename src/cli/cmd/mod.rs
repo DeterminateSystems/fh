@@ -8,8 +8,6 @@ pub(crate) mod login;
 pub(crate) mod search;
 pub(crate) mod status;
 
-use once_cell::sync::Lazy;
-use prettytable::format::{FormatBuilder, LinePosition, LineSeparator, TableFormat};
 use reqwest::Client as HttpClient;
 use serde::Serialize;
 
@@ -17,17 +15,6 @@ use self::{
     list::{Flake, Org, Release, Version},
     search::SearchResult,
 };
-
-pub(crate) static TABLE_FORMAT: Lazy<TableFormat> = Lazy::new(|| {
-    FormatBuilder::new()
-        .borders('|')
-        .padding(1, 1)
-        .separators(
-            &[LinePosition::Top, LinePosition::Title, LinePosition::Bottom],
-            LineSeparator::new('-', '+', '+', '+'),
-        )
-        .build()
-});
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
@@ -180,7 +167,7 @@ impl FlakeHubClient {
         Ok(flakes)
     }
 
-    async fn orgs(&self) -> Result<Vec<String>, FhError> {
+    async fn orgs(&self) -> Result<Vec<Org>, FhError> {
         let endpoint = self.api_addr.join("orgs")?;
 
         let orgs = self
@@ -189,10 +176,7 @@ impl FlakeHubClient {
             .send()
             .await?
             .json::<Vec<Org>>()
-            .await?
-            .iter()
-            .map(|Org { name }| name.clone())
-            .collect();
+            .await?;
 
         Ok(orgs)
     }

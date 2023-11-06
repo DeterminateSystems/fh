@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
-use prettytable::{row, Attr, Cell, Row, Table};
 use serde::{Deserialize, Serialize};
+use tabled::{Table, Tabled};
 use std::io::IsTerminal;
 use std::process::ExitCode;
 use url::Url;
 
-use super::{print_json, FhError, TABLE_FORMAT};
+use super::{print_json, FhError};
 use crate::cli::cmd::FlakeHubClient;
 
 use super::CommandExecute;
@@ -33,6 +33,25 @@ pub(crate) struct Flake {
     pub(crate) project: String,
 }
 
+impl Flake {
+    fn name(&self) -> String {
+        format!("{}/{}", self.org, self.project)
+    }
+
+    fn url(&self) -> Url {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
+
+            segs.push("flake").push(&self.org).push(&self.project);
+        }
+        url
+    }
+}
+
 impl TryFrom<String> for Flake {
     type Error = FhError;
 
@@ -53,37 +72,19 @@ impl TryFrom<String> for Flake {
     }
 }
 
+
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Version {
-    version: String,
-    simplified_version: String,
+    version: semver::Version,
+    simplified_version: semver::Version,
 }
 
-impl Flake {
-    fn name(&self) -> String {
-        format!("{}/{}", self.org, self.project)
-    }
-
-    fn url(&self) -> String {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("flake").push(&self.org).push(&self.project);
-        }
-        url.to_string()
-    }
-}
-
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(crate) struct Org {
     pub(crate) name: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Tabled)]
 pub(crate) struct Release {
     pub(crate) version: String,
 }
@@ -129,21 +130,12 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&flakes)?;
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row!["Flake", "FlakeHub URL"]);
-
-                            for flake in flakes {
-                                table.add_row(Row::new(vec![
-                                    Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url()).with_style(Attr::Dim),
-                                ]));
-                            }
-
+                            let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
-                                table.printstd();
+                                let table = Table::new(rows);
+                                println!("{table}");
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
                             }
                         }
                     }
@@ -164,22 +156,12 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&flakes)?;
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-
-                            table.set_titles(row!["Flake", "FlakeHub URL"]);
-
-                            for flake in flakes {
-                                table.add_row(Row::new(vec![
-                                    Cell::new(&flake.name()).with_style(Attr::Bold),
-                                    Cell::new(&flake.url()).with_style(Attr::Dim),
-                                ]));
-                            }
-
+                            let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
-                                table.printstd();
+                                let table = Table::new(rows);
+                                println!("{table}");
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
                             }
                         }
                     }
@@ -197,33 +179,13 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&orgs)?;
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row!["Organization", "FlakeHub URL"]);
-
-                            for org in orgs {
-                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                    "failed to parse flakehub web root url (this should never happen)",
-                                );
-
-                                {
-                                    let mut segs = url.path_segments_mut().expect(
-                                        "flakehub url cannot be base (this should never happen)",
-                                    );
-
-                                    segs.push("org").push(&org);
-                                }
-
-                                table.add_row(Row::new(vec![
-                                    Cell::new(&org).with_style(Attr::Bold),
-                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
-                                ]));
-                            }
+                            let rows = orgs.into_iter().map(Into::into).collect::<Vec<OrgRow>>();
 
                             if std::io::stdout().is_terminal() {
-                                table.printstd();
+                                let table = Table::new(rows);
+                                println!("{table}");
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
                             }
                         }
                     }
@@ -243,18 +205,11 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&releases)?;
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row!["Version"]);
-
-                            for release in releases {
-                                table.add_row(Row::new(vec![Cell::new(&release.version)]));
-                            }
-
                             if std::io::stdout().is_terminal() {
-                                table.printstd();
+                                let table = Table::new(releases);
+                                println!("{table}");
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                csv::Writer::from_writer(std::io::stdout()).serialize(releases)?;
                             }
                         }
                     }
@@ -277,42 +232,12 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&versions)?;
                         } else {
-                            let mut table = Table::new();
-                            table.set_format(*TABLE_FORMAT);
-                            table.set_titles(row![
-                                "Simplified version",
-                                "FlakeHub URL",
-                                "Full version",
-                            ]);
-
-                            for version in versions {
-                                let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-                                    "failed to parse flakehub web root url (this should never happen)",
-                                );
-
-                                {
-                                    let mut path_segments_mut = url.path_segments_mut().expect(
-                                        "flakehub url cannot be base (this should never happen)",
-                                    );
-
-                                    path_segments_mut
-                                        .push("flake")
-                                        .push(&flake.org)
-                                        .push(&flake.project)
-                                        .push(&version.simplified_version);
-                                }
-
-                                table.add_row(Row::new(vec![
-                                    Cell::new(&version.simplified_version).with_style(Attr::Bold),
-                                    Cell::new(url.as_ref()).with_style(Attr::Dim),
-                                    Cell::new(&version.version).with_style(Attr::Dim),
-                                ]));
-                            }
-
+                            let rows = versions.into_iter().map(|v| (flake.clone(), v).into()).collect::<Vec<VersionRow>>();
                             if std::io::stdout().is_terminal() {
-                                table.printstd();
+                                let table = Table::new(rows);
+                                println!("{table}");
                             } else {
-                                table.to_csv(std::io::stdout())?;
+                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
                             }
                         }
                     }
@@ -327,4 +252,86 @@ impl CommandExecute for ListSubcommand {
 
 fn string_has_whitespace(s: &str) -> bool {
     s.chars().any(char::is_whitespace)
+}
+
+
+#[derive(Tabled, serde::Serialize)]
+struct OrgRow {
+    organization: String,
+    #[tabled(rename = "FlakeHub URL")]
+    flakehub_url: Url,
+}
+
+impl From<Org> for OrgRow {
+    fn from(value: Org) -> Self {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+            "failed to parse flakehub web root url (this should never happen)",
+        );
+
+        {
+            let mut segs = url.path_segments_mut().expect(
+                "flakehub url cannot be base (this should never happen)",
+            );
+
+            segs.push("org").push(&value.name);
+        }
+
+        Self { organization: value.name, flakehub_url: url }
+    }
+}
+
+#[derive(Tabled, serde::Serialize)]
+struct VersionRow {
+    simplified_version: semver::Version,
+    #[tabled(rename = "FlakeHub URL")]
+    flakehub_url: Url,
+    full_version: semver::Version,
+}
+
+impl From<(Flake, Version)> for VersionRow {
+    fn from((flake, version): (Flake, Version)) -> Self {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+            "failed to parse flakehub web root url (this should never happen)",
+        );
+
+        {
+            let mut path_segments_mut = url.path_segments_mut().expect(
+                "flakehub url cannot be base (this should never happen)",
+            );
+
+            path_segments_mut
+                .push("flake")
+                .push(&flake.org)
+                .push(&flake.project)
+                .push(&version.simplified_version.to_string());
+        }
+
+        Self { simplified_version: version.simplified_version, flakehub_url: url, full_version: version.version }
+    }
+}
+
+
+#[derive(Tabled, serde::Serialize)]
+struct FlakeRow {
+    flake: String,
+    #[tabled(rename = "FlakeHub URL")]
+    flakehub_url: Url,
+}
+
+impl From<Flake> for FlakeRow {
+    fn from(value: Flake) -> Self {
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
+            "failed to parse flakehub web root url (this should never happen)",
+        );
+
+        {
+            let mut segs = url.path_segments_mut().expect(
+                "flakehub url cannot be base (this should never happen)",
+            );
+
+            segs.push("org").push(&value.org);
+        }
+
+        Self { flake: value.name(), flakehub_url: value.url() }
+    }
 }

@@ -1,11 +1,11 @@
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
-use prettytable::{row, Attr, Cell, Row, Table};
 use serde::{Deserialize, Serialize};
+use tabled::{Tabled, Table};
 use std::{io::IsTerminal, process::ExitCode};
 use url::Url;
 
-use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient, TABLE_FORMAT};
+use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient};
 
 /// Searches FlakeHub for flakes that match your query.
 #[derive(Debug, Parser)]
@@ -36,7 +36,7 @@ impl SearchResult {
         format!("{}/{}", self.org, self.project)
     }
 
-    fn url(&self) -> String {
+    fn url(&self) -> Url {
         let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
             .expect("failed to parse flakehub web root url (this should never happen)");
         {
@@ -46,7 +46,22 @@ impl SearchResult {
 
             segs.push("flake").push(&self.org).push(&self.project);
         }
-        url.to_string()
+        url
+    }
+}
+
+#[derive(Tabled, serde::Serialize)]
+pub struct SearchResultRow {
+    name: String,
+    url: Url,
+}
+
+impl From<SearchResult> for SearchResultRow {
+    fn from(value: SearchResult) -> Self {
+        Self {
+            name: value.name(),
+            url: value.url(),
+        }
     }
 }
 
@@ -65,24 +80,14 @@ impl CommandExecute for SearchSubcommand {
                 } else if self.json {
                     print_json(&results)?;
                 } else {
-                    let mut table = Table::new();
-                    table.set_format(*TABLE_FORMAT);
-                    table.set_titles(row!["Flake", "FlakeHub URL"]);
-
-                    let results: Vec<&SearchResult> =
-                        results.iter().take(self.max_results).collect();
-
-                    for result in results {
-                        table.add_row(Row::new(vec![
-                            Cell::new(&result.name()).with_style(Attr::Bold),
-                            Cell::new(&result.url()).with_style(Attr::Dim),
-                        ]));
-                    }
+                    let rows: Vec<SearchResultRow> =
+                        results.into_iter().take(self.max_results).map(Into::into).collect();
 
                     if std::io::stdout().is_terminal() {
-                        table.printstd();
+                        let table = Table::new(rows);
+                        println!("{table}");
                     } else {
-                        table.to_csv(std::io::stdout())?;
+                        csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
                     }
                 }
             }
