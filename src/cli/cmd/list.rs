@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
-use owo_colors::{OwoColorize, styles::DimDisplay};
+use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::io::IsTerminal;
 use std::process::ExitCode;
@@ -270,8 +270,9 @@ fn string_has_whitespace(s: &str) -> bool {
 
 #[derive(Tabled, serde::Serialize)]
 struct OrgRow {
+    #[tabled(display_with = "bold")]
     organization: String,
-    #[tabled(rename = "FlakeHub URL")]
+    #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
     flakehub_url: Url,
 }
 
@@ -297,9 +298,11 @@ impl From<Org> for OrgRow {
 
 #[derive(Tabled, serde::Serialize)]
 struct VersionRow {
+    #[tabled(rename = "Simplified version", display_with = "bold")]
     simplified_version: semver::Version,
-    #[tabled(rename = "FlakeHub URL")]
+    #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
     flakehub_url: Url,
+    #[tabled(rename = "Full version", display_with = "dimmed")]
     full_version: semver::Version,
 }
 

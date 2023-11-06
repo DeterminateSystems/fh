@@ -12,7 +12,7 @@ use once_cell::sync::Lazy;
 use reqwest::Client as HttpClient;
 use serde::Serialize;
 use tabled::settings::{
-    style::{HorizontalLine, HorizontalLineIter, On, VerticalLine, VerticalLineIter},
+    style::{HorizontalLine, On, VerticalLineIter},
     Style,
 };
 
@@ -29,10 +29,16 @@ const DEFAULT_STYLE: Lazy<
         On,
         (),
         (),
-        HorizontalLineIter<std::array::IntoIter<HorizontalLine, 0>>,
+        [HorizontalLine; 1],
         VerticalLineIter<std::array::IntoIter<tabled::settings::style::VerticalLine, 0>>,
     >,
-> = Lazy::new(|| Style::ascii().remove_vertical().remove_horizontal());
+> = Lazy::new(|| Style::ascii()
+        .remove_vertical()
+        .remove_horizontal()
+        .horizontals([HorizontalLine::new(1, Style::modern().get_horizontal())
+        .main(Some('-'))
+        .intersection(None)])
+);
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
