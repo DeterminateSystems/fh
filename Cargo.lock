@@ -555,6 +555,7 @@ dependencies = [
  "inquire",
  "nixel",
  "once_cell",
+ "owo-colors",
  "regex",
  "reqwest",
  "semver",

@@ -1,9 +1,10 @@
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
+use owo_colors::{OwoColorize, styles::DimDisplay};
 use serde::{Deserialize, Serialize};
-use tabled::{Table, Tabled};
 use std::io::IsTerminal;
 use std::process::ExitCode;
+use tabled::{Table, Tabled};
 use url::Url;
 
 use super::{print_json, FhError};
@@ -72,7 +73,6 @@ impl TryFrom<String> for Flake {
     }
 }
 
-
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Version {
     version: semver::Version,
@@ -130,7 +130,10 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&flakes)?;
                         } else {
-                            let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
+                            let rows = flakes
+                                .into_iter()
+                                .map(Into::into)
+                                .collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
                                 let mut table = Table::new(rows);
                                 table.with(DEFAULT_STYLE.clone());
@@ -157,7 +160,10 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&flakes)?;
                         } else {
-                            let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
+                            let rows = flakes
+                                .into_iter()
+                                .map(Into::into)
+                                .collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
                                 let mut table = Table::new(rows);
                                 table.with(DEFAULT_STYLE.clone());
@@ -236,7 +242,10 @@ impl CommandExecute for ListSubcommand {
                         } else if self.json {
                             print_json(&versions)?;
                         } else {
-                            let rows = versions.into_iter().map(|v| (flake.clone(), v).into()).collect::<Vec<VersionRow>>();
+                            let rows = versions
+                                .into_iter()
+                                .map(|v| (flake.clone(), v).into())
+                                .collect::<Vec<VersionRow>>();
                             if std::io::stdout().is_terminal() {
                                 let mut table = Table::new(rows);
                                 table.with(DEFAULT_STYLE.clone());
@@ -259,7 +268,6 @@ fn string_has_whitespace(s: &str) -> bool {
     s.chars().any(char::is_whitespace)
 }
 
-
 #[derive(Tabled, serde::Serialize)]
 struct OrgRow {
     organization: String,
@@ -269,19 +277,21 @@ struct OrgRow {
 
 impl From<Org> for OrgRow {
     fn from(value: Org) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-            "failed to parse flakehub web root url (this should never happen)",
-        );
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
 
         {
-            let mut segs = url.path_segments_mut().expect(
-                "flakehub url cannot be base (this should never happen)",
-            );
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
 
             segs.push("org").push(&value.name);
         }
 
-        Self { organization: value.name, flakehub_url: url }
+        Self {
+            organization: value.name,
+            flakehub_url: url,
+        }
     }
 }
 
@@ -295,14 +305,13 @@ struct VersionRow {
 
 impl From<(Flake, Version)> for VersionRow {
     fn from((flake, version): (Flake, Version)) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-            "failed to parse flakehub web root url (this should never happen)",
-        );
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
 
         {
-            let mut path_segments_mut = url.path_segments_mut().expect(
-                "flakehub url cannot be base (this should never happen)",
-            );
+            let mut path_segments_mut = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
 
             path_segments_mut
                 .push("flake")
@@ -311,32 +320,46 @@ impl From<(Flake, Version)> for VersionRow {
                 .push(&version.simplified_version.to_string());
         }
 
-        Self { simplified_version: version.simplified_version, flakehub_url: url, full_version: version.version }
+        Self {
+            simplified_version: version.simplified_version,
+            flakehub_url: url,
+            full_version: version.version,
+        }
     }
 }
 
-
 #[derive(Tabled, serde::Serialize)]
 struct FlakeRow {
+    #[tabled(display_with = "bold")]
     flake: String,
-    #[tabled(rename = "FlakeHub URL")]
+    #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
     flakehub_url: Url,
 }
 
 impl From<Flake> for FlakeRow {
     fn from(value: Flake) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT).expect(
-            "failed to parse flakehub web root url (this should never happen)",
-        );
+        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
+            .expect("failed to parse flakehub web root url (this should never happen)");
 
         {
-            let mut segs = url.path_segments_mut().expect(
-                "flakehub url cannot be base (this should never happen)",
-            );
+            let mut segs = url
+                .path_segments_mut()
+                .expect("flakehub url cannot be base (this should never happen)");
 
             segs.push("org").push(&value.org);
         }
 
-        Self { flake: value.name(), flakehub_url: value.url() }
+        Self {
+            flake: value.name(),
+            flakehub_url: value.url(),
+        }
     }
+}
+
+fn dimmed(v: impl ToString) -> String {
+    v.to_string().dimmed().to_string()
+}
+
+fn bold(v: impl ToString) -> String {
+    v.to_string().bold().to_string()
 }

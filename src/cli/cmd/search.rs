@@ -1,8 +1,8 @@
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
-use tabled::{Tabled, Table};
 use std::{io::IsTerminal, process::ExitCode};
+use tabled::{Table, Tabled};
 use url::Url;
 
 use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient};
@@ -80,8 +80,11 @@ impl CommandExecute for SearchSubcommand {
                 } else if self.json {
                     print_json(&results)?;
                 } else {
-                    let rows: Vec<SearchResultRow> =
-                        results.into_iter().take(self.max_results).map(Into::into).collect();
+                    let rows: Vec<SearchResultRow> = results
+                        .into_iter()
+                        .take(self.max_results)
+                        .map(Into::into)
+                        .collect();
 
                     if std::io::stdout().is_terminal() {
                         let table = Table::new(rows);
