@@ -8,13 +8,17 @@ pub(crate) mod login;
 pub(crate) mod search;
 pub(crate) mod status;
 
+use once_cell::sync::Lazy;
 use reqwest::Client as HttpClient;
 use serde::Serialize;
+use tabled::settings::{Style, style::{On, HorizontalLine, VerticalLine, HorizontalLineIter}};
 
 use self::{
     list::{Flake, Org, Release, Version},
     search::SearchResult,
 };
+
+const DEFAULT_STYLE: Lazy<Style<On, On, On, On, On, (), HorizontalLineIter<std::array::IntoIter<HorizontalLine, 0>>>> = Lazy::new(|| Style::ascii().remove_vertical());
 
 #[async_trait::async_trait]
 pub trait CommandExecute {

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use url::Url;
 
 use super::{print_json, FhError};
-use crate::cli::cmd::FlakeHubClient;
+use crate::cli::cmd::{FlakeHubClient, DEFAULT_STYLE};
 
 use super::CommandExecute;
 
@@ -132,7 +132,8 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
-                                let table = Table::new(rows);
+                                let mut table = Table::new(rows);
+                                table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
                                 csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
@@ -158,7 +159,8 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             let rows = flakes.into_iter().map(Into::into).collect::<Vec<FlakeRow>>();
                             if std::io::stdout().is_terminal() {
-                                let table = Table::new(rows);
+                                let mut table = Table::new(rows);
+                                table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
                                 csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
@@ -182,7 +184,8 @@ impl CommandExecute for ListSubcommand {
                             let rows = orgs.into_iter().map(Into::into).collect::<Vec<OrgRow>>();
 
                             if std::io::stdout().is_terminal() {
-                                let table = Table::new(rows);
+                                let mut table = Table::new(rows);
+                                table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
                                 csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
@@ -206,7 +209,8 @@ impl CommandExecute for ListSubcommand {
                             print_json(&releases)?;
                         } else {
                             if std::io::stdout().is_terminal() {
-                                let table = Table::new(releases);
+                                let mut table = Table::new(releases);
+                                table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
                                 csv::Writer::from_writer(std::io::stdout()).serialize(releases)?;
@@ -234,7 +238,8 @@ impl CommandExecute for ListSubcommand {
                         } else {
                             let rows = versions.into_iter().map(|v| (flake.clone(), v).into()).collect::<Vec<VersionRow>>();
                             if std::io::stdout().is_terminal() {
-                                let table = Table::new(rows);
+                                let mut table = Table::new(rows);
+                                table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
                                 csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
