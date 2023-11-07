@@ -32,13 +32,14 @@ const DEFAULT_STYLE: Lazy<
         [HorizontalLine; 1],
         VerticalLineIter<std::array::IntoIter<tabled::settings::style::VerticalLine, 0>>,
     >,
-> = Lazy::new(|| Style::ascii()
+> = Lazy::new(|| {
+    Style::ascii()
         .remove_vertical()
         .remove_horizontal()
         .horizontals([HorizontalLine::new(1, Style::modern().get_horizontal())
-        .main(Some('-'))
-        .intersection(None)])
-);
+            .main(Some('-'))
+            .intersection(None)])
+});
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
