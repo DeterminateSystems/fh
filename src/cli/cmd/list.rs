@@ -218,7 +218,10 @@ impl CommandExecute for ListSubcommand {
 
                 match client.releases(&flake.org, &flake.project).await {
                     Ok(releases) => {
-                        let rows = releases.into_iter().map(Into::into).collect::<Vec<ReleaseRow>>();
+                        let rows = releases
+                            .into_iter()
+                            .map(Into::into)
+                            .collect::<Vec<ReleaseRow>>();
 
                         if rows.is_empty() {
                             eprintln!("No results");
@@ -390,7 +393,7 @@ pub(crate) struct ReleaseRow {
 impl From<Release> for ReleaseRow {
     fn from(value: Release) -> Self {
         Self {
-            version: value.version
+            version: value.version,
         }
     }
 }
