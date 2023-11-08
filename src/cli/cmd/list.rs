@@ -285,7 +285,7 @@ fn string_has_whitespace(s: &str) -> bool {
 
 #[derive(Tabled, serde::Serialize)]
 struct OrgRow {
-    #[tabled(display_with = "bold")]
+    #[tabled(rename = "Organization", display_with = "bold")]
     #[serde(rename = "Organization")]
     organization: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
@@ -353,7 +353,7 @@ impl From<(Flake, Version)> for VersionRow {
 
 #[derive(Tabled, serde::Serialize)]
 struct FlakeRow {
-    #[tabled(display_with = "bold")]
+    #[tabled(rename = "Flake", display_with = "bold")]
     #[serde(rename = "Flake")]
     flake: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
