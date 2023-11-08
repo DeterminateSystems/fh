@@ -139,7 +139,10 @@ impl CommandExecute for ListSubcommand {
                                 table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
-                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
+                                let mut writer = csv::Writer::from_writer(std::io::stdout());
+                                for row in rows {
+                                    writer.serialize(row)?;
+                                }
                             }
                         }
                     }
@@ -169,7 +172,10 @@ impl CommandExecute for ListSubcommand {
                                 table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
-                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
+                                let mut writer = csv::Writer::from_writer(std::io::stdout());
+                                for row in rows {
+                                    writer.serialize(row)?;
+                                }
                             }
                         }
                     }
@@ -194,7 +200,10 @@ impl CommandExecute for ListSubcommand {
                                 table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
-                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
+                                let mut writer = csv::Writer::from_writer(std::io::stdout());
+                                for row in rows {
+                                    writer.serialize(row)?;
+                                }
                             }
                         }
                     }
@@ -218,7 +227,10 @@ impl CommandExecute for ListSubcommand {
                             table.with(DEFAULT_STYLE.clone());
                             println!("{table}");
                         } else {
-                            csv::Writer::from_writer(std::io::stdout()).serialize(releases)?;
+                            let mut writer = csv::Writer::from_writer(std::io::stdout());
+                            for row in releases {
+                                writer.serialize(row)?;
+                            }
                         }
                     }
                     Err(e) => return Err(e.into()),
@@ -249,7 +261,10 @@ impl CommandExecute for ListSubcommand {
                                 table.with(DEFAULT_STYLE.clone());
                                 println!("{table}");
                             } else {
-                                csv::Writer::from_writer(std::io::stdout()).serialize(rows)?;
+                                let mut writer = csv::Writer::from_writer(std::io::stdout());
+                                for row in rows {
+                                    writer.serialize(row)?;
+                                }
                             }
                         }
                     }
