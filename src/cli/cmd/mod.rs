@@ -21,7 +21,8 @@ use self::{
     search::SearchResult,
 };
 
-const DEFAULT_STYLE: Lazy<
+#[allow(clippy::type_complexity)]
+static DEFAULT_STYLE: Lazy<
     Style<
         On,
         On,

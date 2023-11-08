@@ -213,14 +213,12 @@ impl CommandExecute for ListSubcommand {
                             eprintln!("No results");
                         } else if self.json {
                             print_json(&releases)?;
+                        } else if std::io::stdout().is_terminal() {
+                            let mut table = Table::new(releases);
+                            table.with(DEFAULT_STYLE.clone());
+                            println!("{table}");
                         } else {
-                            if std::io::stdout().is_terminal() {
-                                let mut table = Table::new(releases);
-                                table.with(DEFAULT_STYLE.clone());
-                                println!("{table}");
-                            } else {
-                                csv::Writer::from_writer(std::io::stdout()).serialize(releases)?;
-                            }
+                            csv::Writer::from_writer(std::io::stdout()).serialize(releases)?;
                         }
                     }
                     Err(e) => return Err(e.into()),
