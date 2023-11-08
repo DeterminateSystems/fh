@@ -84,7 +84,7 @@ pub(crate) struct Org {
     pub(crate) name: String,
 }
 
-#[derive(Deserialize, Serialize, Tabled)]
+#[derive(Deserialize, Serialize)]
 pub(crate) struct Release {
     pub(crate) version: String,
 }
@@ -218,17 +218,19 @@ impl CommandExecute for ListSubcommand {
 
                 match client.releases(&flake.org, &flake.project).await {
                     Ok(releases) => {
-                        if releases.is_empty() {
+                        let rows = releases.into_iter().map(Into::into).collect::<Vec<ReleaseRow>>();
+
+                        if rows.is_empty() {
                             eprintln!("No results");
                         } else if self.json {
-                            print_json(&releases)?;
+                            print_json(&rows)?;
                         } else if std::io::stdout().is_terminal() {
-                            let mut table = Table::new(releases);
+                            let mut table = Table::new(rows);
                             table.with(DEFAULT_STYLE.clone());
                             println!("{table}");
                         } else {
                             let mut writer = csv::Writer::from_writer(std::io::stdout());
-                            for row in releases {
+                            for row in rows {
                                 writer.serialize(row)?;
                             }
                         }
@@ -284,8 +286,10 @@ fn string_has_whitespace(s: &str) -> bool {
 #[derive(Tabled, serde::Serialize)]
 struct OrgRow {
     #[tabled(display_with = "bold")]
+    #[serde(rename = "Organization")]
     organization: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
+    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
 }
 
@@ -312,10 +316,13 @@ impl From<Org> for OrgRow {
 #[derive(Tabled, serde::Serialize)]
 struct VersionRow {
     #[tabled(rename = "Simplified version", display_with = "bold")]
+    #[serde(rename = "Simplified version")]
     simplified_version: semver::Version,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
+    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
     #[tabled(rename = "Full version", display_with = "dimmed")]
+    #[serde(rename = "Full version")]
     full_version: semver::Version,
 }
 
@@ -347,8 +354,10 @@ impl From<(Flake, Version)> for VersionRow {
 #[derive(Tabled, serde::Serialize)]
 struct FlakeRow {
     #[tabled(display_with = "bold")]
+    #[serde(rename = "Flake")]
     flake: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
+    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
 }
 
@@ -368,6 +377,20 @@ impl From<Flake> for FlakeRow {
         Self {
             flake: value.name(),
             flakehub_url: value.url(),
+        }
+    }
+}
+
+#[derive(Tabled, serde::Serialize)]
+pub(crate) struct ReleaseRow {
+    #[serde(rename = "Version")]
+    pub(crate) version: String,
+}
+
+impl From<Release> for ReleaseRow {
+    fn from(value: Release) -> Self {
+        Self {
+            version: value.version
         }
     }
 }
