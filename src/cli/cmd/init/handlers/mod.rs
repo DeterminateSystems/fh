@@ -61,6 +61,10 @@ pub(crate) trait Handler {
 }
 
 // Helper functions
-fn version_as_attr(v: &str) -> String {
-    v.replace('.', "")
+fn version_as_attr(v: &str, substring: &str) -> String {
+    v.replace('.', substring)
+}
+
+fn version_as_attr_default(v: &str) -> String {
+    version_as_attr(v, "")
 }
