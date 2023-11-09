@@ -287,6 +287,6 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [python]: https://python.org
 [ruby]: https://ruby-lang.org
 [rust]: https://rust-lang.org
-[semver]: https://flakehub.com/docs#semver
+[semver]: https://flakehub.com/docs/concepts/semver
 [zig]: https://ziglang.org
 [zsh]: https://zsh.org
