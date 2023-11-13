@@ -19,17 +19,13 @@ impl Handler for Rust {
                 .push(String::from("rust-overlay.overlays.default"));
 
             let rust_toolchain_func = String::from(if project.has_file("rust-toolchain") {
-                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain"
+                "(final.rust-bin.fromRustupToolchainFile ./rust-toolchain)"
             } else if project.has_file("rust-toolchain.toml") {
-                "final.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml"
+                "(final.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)"
             } else {
                 // TODO: make this more granular
                 "final.rust-bin.stable.latest.default"
             });
-
-            flake
-                .overlay_attrs
-                .insert(String::from("rustToolchain"), rust_toolchain_func);
 
             flake.dev_shell_packages.push(String::from("rustToolchain"));
 
@@ -43,6 +39,25 @@ impl Handler for Rust {
 
             if Prompt::bool("Would you like to add Rust Analyzer to the environment?") {
                 flake.dev_shell_packages.push(String::from("rust-analyzer"));
+
+                let rust_toolchain_func_with_override = format!(
+                    "{}.override {{ extensions = [ \"rust-src\"]; }}",
+                    rust_toolchain_func
+                );
+
+                flake.overlay_attrs.insert(
+                    String::from("rustToolchain"),
+                    rust_toolchain_func_with_override,
+                );
+
+                flake.env_vars.insert(
+                    String::from("RUST_SRC_PATH"),
+                    String::from("${pkgs.rustToolchain}/lib/rustlib/src/rust/library"),
+                );
+            } else {
+                flake
+                    .overlay_attrs
+                    .insert(String::from("rustToolchain"), rust_toolchain_func);
             }
 
             if Prompt::bool(
