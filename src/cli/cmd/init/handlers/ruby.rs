@@ -11,7 +11,7 @@ impl Handler for Ruby {
         if project.has_one_of(&["Gemfile", "config.ru", "Rakefile"]) && Prompt::for_language("Ruby")
         {
             let ruby_version = Prompt::select("Select a version of Ruby", RUBY_VERSIONS);
-            let ruby_version_attr = version_as_attr(&ruby_version);
+            let ruby_version_attr = version_as_attr(&ruby_version, "_");
             flake
                 .dev_shell_packages
                 .push(format!("ruby_{ruby_version_attr}"));

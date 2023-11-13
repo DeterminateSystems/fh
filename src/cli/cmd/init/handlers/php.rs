@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{version_as_attr, Flake, Handler, Input};
+use super::{version_as_attr_default, Flake, Handler, Input};
 
 const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
 
@@ -20,7 +20,7 @@ impl Handler for Php {
                 .overlay_refs
                 .push(String::from("loophp.overlays.default"));
             let php_version = Prompt::select("Select a version of PHP", PHP_VERSIONS);
-            let php_version_attr = version_as_attr(&php_version);
+            let php_version_attr = version_as_attr_default(&php_version);
             flake
                 .dev_shell_packages
                 .push(format!("php{php_version_attr}"));
