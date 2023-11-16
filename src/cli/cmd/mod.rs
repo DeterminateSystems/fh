@@ -2,6 +2,7 @@ pub(crate) mod add;
 pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod eject;
+pub(crate) mod get_url;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
@@ -50,6 +51,7 @@ pub trait CommandExecute {
 #[derive(clap::Subcommand)]
 pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
+    GetURL(get_url::GetURLSubcommand),
     Completion(completion::CompletionSubcommand),
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
