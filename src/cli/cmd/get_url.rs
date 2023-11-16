@@ -20,7 +20,8 @@ pub(crate) struct GetURLSubcommand {
 impl CommandExecute for GetURLSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let (_, flake_input_url) =
-            crate::cli::cmd::add::infer_flake_input_name_url(self.api_addr, self.input_ref, None).await?;
+            crate::cli::cmd::add::infer_flake_input_name_url(self.api_addr, self.input_ref, None)
+                .await?;
 
         println!("{}", flake_input_url);
 
