@@ -16,6 +16,17 @@ pub(crate) struct Cli {
     )]
     pub api_addr: url::Url,
 
+    /// The FlakeHub cache to communicate with.
+    ///
+    /// Primarily useful for debugging FlakeHub.
+    #[clap(
+        global = true,
+        long,
+        default_value = "https://cache.flakehub.com",
+        hide = true
+    )]
+    pub cache_addr: url::Url,
+
     /// The FlakeHub frontend address to communicate with.
     ///
     /// Primarily useful for debugging FlakeHub.

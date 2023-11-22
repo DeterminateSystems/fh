@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -6,7 +6,12 @@ use tokio::io::AsyncWriteExt;
 
 use super::CommandExecute;
 
-/// Login to FlakeHub in order to allow authenticated fetching of flakes.
+const CACHE_PUBLIC_KEYS: &[&str; 2] = &[
+    "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE=",
+    "cache.flakehub.com-2:ntBGiaKSmygJOw2j1hFS7KDlUHQWmZALvSJ9PxMJJYU=",
+];
+
+/// Log in to FlakeHub in order to allow authenticated fetching of flakes.
 #[derive(Debug, Parser)]
 pub(crate) struct LoginSubcommand {
     /// Skip following up a successful login with `fh status`.
@@ -15,6 +20,9 @@ pub(crate) struct LoginSubcommand {
 
     #[clap(from_global)]
     api_addr: url::Url,
+
+    #[clap(from_global)]
+    cache_addr: url::Url,
 
     #[clap(from_global)]
     frontend_addr: url::Url,
@@ -31,13 +39,17 @@ impl CommandExecute for LoginSubcommand {
 
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
-        // FIXME: this should really be the frontend, but the frontend doesn't have a /login path
-        // yet...
-        let mut login_url = self.api_addr.clone();
-        login_url.set_path("login");
-        login_url.set_query(Some("redirect=/token/create"));
+        let mut login_url = self.frontend_addr.clone();
+        login_url.set_path("token/create");
+        login_url.query_pairs_mut().append_pair(
+            "description",
+            &format!(
+                "FlakeHub CLI on {}",
+                gethostname::gethostname().to_string_lossy()
+            ),
+        );
 
-        println!("Login to FlakeHub: {}", login_url);
+        println!("Log in to FlakeHub: {}", login_url);
         println!("And then follow the prompts below:");
         println!();
 
@@ -68,11 +80,38 @@ impl LoginSubcommand {
         let token_path = auth_token_path()?;
 
         let netrc_file_string = netrc_file_path.display().to_string();
-        let nix_config_addition = format!("\nnetrc-file = {}\n", netrc_file_string);
+        // Note the root version uses extra-trusted-substituters, which
+        // mean the cache is not enabled until a user (trusted or untrusted)
+        // adds it to extra-substituters in their nix.conf.
+        //
+        // Note the root version sets netrc-file until the user authentication
+        // patches (https://github.com/NixOS/nix/pull/9857) land.
+        let root_nix_config_addition = format!(
+            "\n\
+            netrc-file = {netrc}\n\
+            extra-trusted-substituters = {cache_addr}\n\
+            extra-trusted-public-keys = {keys}\n\
+            ",
+            netrc = netrc_file_string,
+            cache_addr = self.cache_addr,
+            keys = CACHE_PUBLIC_KEYS.join(" "),
+        );
+
+        let user_nix_config_addition = format!(
+            "\n\
+            netrc-file = {netrc}\n\
+            extra-substituters = {cache_addr}\n\
+            extra-trusted-public-keys = {keys}\n\
+            ",
+            netrc = netrc_file_string,
+            cache_addr = self.cache_addr,
+            keys = CACHE_PUBLIC_KEYS.join(" "),
+        );
         let netrc_contents = format!(
             "\
             machine {frontend_host} login flakehub password {token}\n\
             machine {backend_host} login flakehub password {token}\n\
+            machine {cache_host} login flakehub password {token}\n\
             ",
             frontend_host = self
                 .frontend_addr
@@ -82,6 +121,10 @@ impl LoginSubcommand {
                 .api_addr
                 .host_str()
                 .ok_or_else(|| color_eyre::eyre::eyre!("api_addr had no host"))?,
+            cache_host = self
+                .cache_addr
+                .host_str()
+                .ok_or_else(|| color_eyre::eyre::eyre!("cache_addr had no host"))?,
         );
 
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
@@ -91,71 +134,56 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
-        tokio::fs::write(&netrc_file_path, &netrc_contents).await?;
-        tokio::fs::write(&token_path, token).await?;
+        tokio::fs::write(netrc_file_path, &netrc_contents).await?;
+        tokio::fs::write(token_path, &token).await?;
 
-        let nix_config =
-            nix_config_parser::NixConfig::parse_file(&nix_config_path).unwrap_or_default();
-        let mut merged_nix_config = nix_config.clone();
-        let maybe_existing_netrc_file = merged_nix_config
-            .settings_mut()
-            .insert("netrc-file".to_string(), netrc_file_string.clone());
+        upsert_user_nix_config(
+            &nix_config_path,
+            &netrc_file_string,
+            &netrc_contents,
+            &user_nix_config_addition,
+            &self.cache_addr,
+        )
+        .await?;
 
-        let maybe_prompt = match maybe_existing_netrc_file {
-            // If the setting is the same as we'd set, we don't need to touch the file at all.
-            Some(existing_netrc_file) if existing_netrc_file == netrc_file_string => None,
-            // If the settings are different, ask if we can change it.
-            Some(existing_netrc_file) => Some(format!(
-                "May I change `netrc-file` from `{}` to `{}`?",
-                existing_netrc_file, netrc_file_string
-            )),
-            // If there is no `netrc-file` setting, ask if we can set it.
-            None => Some(format!(
-                "May I set `netrc-file` to `{}`?",
-                netrc_file_string
-            )),
-        };
+        let added_nix_config =
+            nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
+        let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
+        let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
+        let mut root_meaningfully_different = false;
 
-        let maybe_write_to_nix_conf =
-            maybe_prompt.map(|prompt| crate::cli::cmd::init::prompt::Prompt::bool(&prompt));
-
-        if let Some(write_to_nix_conf) = maybe_write_to_nix_conf {
-            let mut write_success = None;
-            if write_to_nix_conf {
-                write_success = match tokio::fs::OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .open(&nix_config_path)
-                    .await
-                {
-                    Ok(mut file) => {
-                        let nix_config_contents =
-                            tokio::fs::read_to_string(&nix_config_path).await?;
-                        let nix_config_contents =
-                            merge_nix_configs(nix_config, nix_config_contents, merged_nix_config);
-                        let write_status = file.write_all(nix_config_contents.as_bytes()).await;
-                        Some(write_status.is_ok())
-                    }
-                    Err(_) => Some(false),
-                };
+        for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
+            if let Some(existing_setting_value) =
+                root_nix_config.settings().get(merged_setting_name)
+            {
+                if merged_setting_value != existing_setting_value {
+                    dbg!(&merged_setting_name);
+                    root_meaningfully_different = true;
+                }
             } else {
-                print!("No problem! ");
+                root_meaningfully_different = true;
             }
+        }
 
-            let write_failed = write_success.is_some_and(|x| !x);
-            if write_failed {
-                print!("Writing to {} failed. ", nix_config_path.display());
+        if root_meaningfully_different {
+            println!(
+                "Please add the following configuration to {nix_conf_path}:\n\
+                {root_nix_config_addition}",
+                nix_conf_path = root_nix_config_path.display()
+            );
+
+            #[cfg(target_os = "macos")]
+            {
+                println!("Then restart the Nix daemon:\n");
+                println!("sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
+                println!("sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
+                println!();
             }
-
-            if write_failed || !write_to_nix_conf {
-                println!(
-                    "Please add the following contents to {}:\n{nix_config_addition}",
-                    nix_config_path.display()
-                );
-                println!(
-                    "Or add the following contents to your existing netrc file:\n\n\
-                    {netrc_contents}"
-                );
+            #[cfg(target_os = "linux")]
+            {
+                println!("Then restart the Nix daemon:\n");
+                println!("sudo systemctl restart nix-daemon.service");
+                println!();
             }
         }
 
@@ -165,6 +193,136 @@ impl LoginSubcommand {
 
         Ok(())
     }
+}
+
+// TODO(cole-h): make this atomic -- copy the nix_config_path to some temporary file, then operate
+// on that, then move it back if all is good
+async fn upsert_user_nix_config(
+    nix_config_path: &Path,
+    netrc_file_string: &str,
+    netrc_contents: &str,
+    user_nix_config_addition: &str,
+    cache_addr: &url::Url,
+) -> Result<(), color_eyre::eyre::Error> {
+    let nix_config = nix_config_parser::NixConfig::parse_file(nix_config_path).unwrap_or_default();
+    let mut merged_nix_config = nix_config_parser::NixConfig::new();
+    merged_nix_config
+        .settings_mut()
+        .insert("netrc-file".to_string(), netrc_file_string.to_string());
+
+    let setting = "extra-trusted-public-keys".to_string();
+    if let Some(existing) = nix_config.settings().get(&setting) {
+        let existing_value = existing.split(' ').collect::<Vec<_>>();
+        if CACHE_PUBLIC_KEYS.iter().all(|k| existing_value.contains(k)) {
+            // Do nothing, all our keys are already in place.
+        } else {
+            // We're missing some keys, let's insert them.
+            let mut merged_value =
+                Vec::with_capacity(existing_value.len() + CACHE_PUBLIC_KEYS.len());
+            merged_value.extend(CACHE_PUBLIC_KEYS);
+            merged_value.extend(existing_value);
+            merged_value.dedup();
+            let merged_value = merged_value.join(" ");
+            let merged_value = merged_value.trim();
+
+            merged_nix_config
+                .settings_mut()
+                .insert(setting, merged_value.to_owned());
+        }
+    } else {
+        merged_nix_config
+            .settings_mut()
+            .insert(setting, CACHE_PUBLIC_KEYS.join(" "));
+    }
+
+    let setting = "extra-substituters".to_string();
+    if let Some(existing) = nix_config.settings().get(&setting) {
+        let existing_value = existing.split(' ').collect::<Vec<_>>();
+        if existing_value.contains(&cache_addr.as_ref()) {
+            // Do nothing, our substituter is already in place.
+        } else {
+            // We're missing our substituter, let's insert it.
+            let mut merged_value = Vec::with_capacity(existing_value.len() + 1);
+            merged_value.push(cache_addr.as_ref());
+            merged_value.extend(existing_value);
+            merged_value.dedup();
+            let merged_value = merged_value.join(" ");
+            let merged_value = merged_value.trim();
+
+            merged_nix_config
+                .settings_mut()
+                .insert(setting, merged_value.to_owned());
+        }
+    } else {
+        merged_nix_config
+            .settings_mut()
+            .insert(setting, cache_addr.to_string());
+    }
+
+    let mut were_meaningfully_different = false;
+    let mut prompt = String::from("The following settings will be modified:\n");
+    for (merged_setting_name, merged_setting_value) in merged_nix_config.settings() {
+        let mut p = format!(
+            "* `{name}` = `{new_val}`",
+            name = merged_setting_name,
+            new_val = merged_setting_value,
+        );
+        if let Some(existing_setting_value) = nix_config.settings().get(merged_setting_name) {
+            if merged_setting_value != existing_setting_value {
+                were_meaningfully_different = true;
+                p += &format!(
+                    " (previously: `{old_val}`)",
+                    old_val = existing_setting_value
+                );
+            }
+        } else {
+            were_meaningfully_different = true;
+        }
+        prompt += &p;
+        prompt.push('\n');
+    }
+    prompt.push_str("Confirm? (y/N)");
+
+    let mut nix_conf_write_success = None;
+    if were_meaningfully_different {
+        let update_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&prompt);
+        if update_nix_conf {
+            nix_conf_write_success = match tokio::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(&nix_config_path)
+                .await
+            {
+                Ok(mut file) => {
+                    let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
+                    let nix_config_contents =
+                        merge_nix_configs(nix_config, nix_config_contents, merged_nix_config);
+                    let write_status = file.write_all(nix_config_contents.as_bytes()).await;
+                    Some(write_status.is_ok())
+                }
+                Err(_) => Some(false),
+            };
+        }
+
+        let write_failed = nix_conf_write_success.is_some_and(|x| !x);
+        if write_failed {
+            print!("Writing to {} failed. ", nix_config_path.display());
+        }
+
+        if write_failed || !update_nix_conf {
+            println!(
+                "Please add the following contents to {config_path}:\n{addition}",
+                config_path = nix_config_path.display(),
+                addition = user_nix_config_addition,
+            );
+            println!(
+                "Or add the following contents to your existing netrc file:\n\n\
+                {netrc_contents}"
+            );
+        }
+    }
+
+    Ok(())
 }
 
 pub(crate) fn auth_token_path() -> color_eyre::Result<PathBuf> {
