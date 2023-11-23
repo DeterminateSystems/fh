@@ -13,7 +13,7 @@ impl Handler for JavaScript {
         }
 
         if project.has_file("package.json") && Prompt::for_language("JavaScript/TypeScript") {
-            if project.has_file("bunfig.toml")
+            if project.has_one_of(&["bunfig.toml", "bun.lockb"])
                 && Prompt::bool(
                     "This seems to be a Bun project. Would you like to add it to your environment?",
                 )
