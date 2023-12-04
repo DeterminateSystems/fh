@@ -61,6 +61,19 @@
             src = self;
 
             doCheck = true;
+            cargoTestOptions = x: x ++ lib.optionals final.stdenv.isDarwin [
+              # These tests rely on localhost networking, but appear to be broken on darwin
+              "--"
+              "--skip cli::cmd::convert::test::nixpkgs_release_to_flakehub"
+              "--skip cli::cmd::convert::test::nixpkgs_to_flakehub"
+              "--skip cli::cmd::convert::test::old_flakehub_to_new_flakehub"
+              "--skip cli::cmd::convert::test::test_flake1_convert"
+              "--skip cli::cmd::convert::test::test_nixpkgs_from_registry"
+              "--skip cli::cmd::eject::test::flakehub_nixpkgs_to_github"
+              "--skip cli::cmd::eject::test::flakehub_to_github"
+              "--skip cli::cmd::eject::test::test_flake8_eject"
+              "--skip cli::cmd::eject::test::versioned_flakehub_to_github"
+            ];
 
             LIBCLANG_PATH = "${final.libclang.lib}/lib";
             NIX_CFLAGS_COMPILE = lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
