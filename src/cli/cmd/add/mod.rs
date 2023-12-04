@@ -34,7 +34,7 @@ pub(crate) struct AddSubcommand {
     pub(crate) input_name: Option<String>,
     /// The flake reference to add as an input.
     ///
-    /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2305.*` (without a URL
+    /// A reference in the form of `NixOS/nixpkgs` or `NixOS/nixpkgs/0.2311.*` (without a URL
     /// scheme) will be inferred as a FlakeHub input.
     pub(crate) input_ref: String,
     /// Whether to insert a new input at the top of or the bottom of an existing `inputs` attrset.
@@ -138,10 +138,10 @@ async fn infer_flake_input_name_url(
                 ))
             }
         }
-        // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2305`
+        // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2311`
         Err(url::ParseError::RelativeUrlWithoutBase) => {
             let (org, project, version) = match flake_ref.split('/').collect::<Vec<_>>()[..] {
-                // `nixos/nixpkgs/0.2305`
+                // `nixos/nixpkgs/0.2311`
                 [org, project, version] => {
                     let version = version.strip_suffix(".tar.gz").unwrap_or(version);
                     let version = version.strip_prefix('v').unwrap_or(version);
