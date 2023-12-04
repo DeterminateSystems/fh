@@ -106,7 +106,6 @@
               cargo-watch
               rust-analyzer
               nixpkgs-fmt
-              pkg-config
               gcc.cc.lib
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
