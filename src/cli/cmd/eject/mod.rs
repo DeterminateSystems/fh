@@ -373,13 +373,13 @@ mod test {
         let server_url = server_addr.parse().unwrap();
 
         let input_url =
-            url::Url::parse("https://flakehub.com/f/nixos/nixpkgs/0.2305.*.tar.gz").unwrap();
+            url::Url::parse("https://flakehub.com/f/nixos/nixpkgs/0.2311.*.tar.gz").unwrap();
         let github_url = super::eject_input_to_github(&server_url, input_url)
             .await
             .ok()
             .flatten()
             .unwrap();
-        assert_eq!(github_url.to_string(), "github:nixos/nixpkgs/nixos-23.05");
+        assert_eq!(github_url.to_string(), "github:nixos/nixpkgs/nixos-23.11");
     }
 
     #[tokio::test]
