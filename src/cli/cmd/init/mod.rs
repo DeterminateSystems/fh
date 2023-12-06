@@ -22,7 +22,8 @@ use super::FlakeHubClient;
 use self::{
     dev_shell::DevShell,
     handlers::{
-        Flake, Go, Handler, Input, Java, JavaScript, Php, Python, Ruby, Rust, System, Tools, Zig,
+        Elixir, Flake, Go, Handler, Input, Java, JavaScript, Php, Python, Ruby, Rust, System,
+        Tools, Zig,
     },
     project::Project,
     template::TemplateData,
@@ -137,6 +138,7 @@ impl CommandExecute for InitSubcommand {
             );
 
             // Languages
+            Elixir::handle(&project, &mut flake);
             Elm::handle(&project, &mut flake);
             Go::handle(&project, &mut flake);
             Java::handle(&project, &mut flake);

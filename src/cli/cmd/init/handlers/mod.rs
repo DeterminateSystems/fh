@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
+pub(crate) mod elixir;
 pub(crate) mod elm;
 pub(crate) mod go;
 pub(crate) mod java;
@@ -13,6 +14,7 @@ pub(crate) mod system;
 pub(crate) mod tools;
 pub(crate) mod zig;
 
+pub(crate) use elixir::Elixir;
 pub(crate) use elm::Elm;
 pub(crate) use go::Go;
 pub(crate) use java::Java;

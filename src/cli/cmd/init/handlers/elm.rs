@@ -1,11 +1,11 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::Handler;
+use super::{Flake, Handler};
 
 pub(crate) struct Elm;
 
 impl Handler for Elm {
-    fn handle(project: &Project, flake: &mut super::Flake) {
+    fn handle(project: &Project, flake: &mut Flake) {
         if project.has_file("elm.json") && Prompt::for_language("Elm") {
             flake
                 .dev_shell_packages
