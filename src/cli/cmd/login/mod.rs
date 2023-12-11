@@ -41,7 +41,7 @@ impl LoginSubcommand {
         println!("And then follow the prompts below:");
         println!();
 
-        let token = crate::cli::cmd::init::prompt::Prompt::maybe_string("Paste your token here:");
+        let token = crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:");
         let (token, status) = match token {
             Some(token) => {
                 // This serves as validating that provided token is actually a JWT, and is valid.

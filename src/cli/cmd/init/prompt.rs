@@ -2,7 +2,7 @@ use std::{fmt::Display, process::exit};
 
 use inquire::{
     ui::{Color, RenderConfig, StyleSheet, Styled},
-    Confirm, MultiSelect, Select, Text,
+    Confirm, MultiSelect, Password, Select, Text,
 };
 use once_cell::sync::Lazy;
 
@@ -89,6 +89,25 @@ impl Prompt {
 
     pub(crate) fn maybe_string(msg: &str) -> Option<String> {
         let result = Text::new(msg).with_render_config(*PROMPT_CONFIG).prompt();
+
+        match result {
+            Ok(s) => {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s)
+                }
+            }
+            Err(_) => exit(1),
+        }
+    }
+
+    // Prompts for a FlakeHub token without confirmation.
+    pub(crate) fn maybe_token(msg: &str) -> Option<String> {
+        let result = Password::new(msg)
+            .with_render_config(*PROMPT_CONFIG)
+            .without_confirmation()
+            .prompt();
 
         match result {
             Ok(s) => {
