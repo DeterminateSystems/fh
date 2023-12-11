@@ -116,11 +116,8 @@ impl LoginSubcommand {
             )),
         };
 
-        let maybe_write_to_nix_conf = if let Some(prompt) = maybe_prompt {
-            Some(crate::cli::cmd::init::prompt::Prompt::bool(&prompt))
-        } else {
-            None
-        };
+        let maybe_write_to_nix_conf =
+            maybe_prompt.map(|prompt| crate::cli::cmd::init::prompt::Prompt::bool(&prompt));
 
         if let Some(write_to_nix_conf) = maybe_write_to_nix_conf {
             let mut write_success = None;
@@ -145,7 +142,7 @@ impl LoginSubcommand {
                 print!("No problem! ");
             }
 
-            let write_failed = write_success.is_some_and(|x| x == false);
+            let write_failed = write_success.is_some_and(|x| !x);
             if write_failed {
                 print!("Writing to {} failed. ", nix_config_path.display());
             }
