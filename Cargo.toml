@@ -25,6 +25,7 @@ csv = "1.3.0"
 handlebars = "4.4.0"
 indicatif = { version = "0.17.6", default-features = false }
 inquire = "0.6.2"
+nix-config-parser = "0.2.0"
 nixel = "5.2.0"
 once_cell = "1.18.0"
 owo-colors = "3.5.0"
