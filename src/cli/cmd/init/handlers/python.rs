@@ -9,7 +9,9 @@ pub(crate) struct Python;
 
 impl Handler for Python {
     fn handle(project: &Project, flake: &mut Flake) {
-        if project.has_one_of(&["setup.py", "requirements.txt"]) && Prompt::for_language("Python") {
+        if project.has_one_of(&["setup.py", "requirements.txt", "pyproject.toml"])
+            && Prompt::for_language("Python")
+        {
             let python_version = Prompt::select("Select a version of Python", PYTHON_VERSIONS);
             let python_version_attr = version_as_attr_default(&python_version);
             flake
