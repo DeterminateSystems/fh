@@ -1,6 +1,6 @@
 [package]
 name = "fh"
-version = "0.1.9"
+version = "0.2.0"
 authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
 license = "Apache 2.0"
