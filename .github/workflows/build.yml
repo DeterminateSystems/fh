@@ -2,84 +2,52 @@ name: Build fh artifacts
 
 on:
   workflow_call:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
 
 jobs:
-  build-artifacts-ARM64-macOS:
-    runs-on: macos-latest-xlarge
+  build-artifacts:
+    runs-on: ${{ matrix.systems.runner }}
+    permissions:
+      id-token: "write"
+      contents: "read"
+    strategy:
+      matrix:
+        systems:
+          - nix-system: "aarch64-darwin"
+            runner: "macos-latest-xlarge"
+            artifact: "fh-ARM64-macOS"
+          - nix-system: "x86_64-darwin"
+            runner: "macos-12"
+            artifact: "fh-X64-macOS"
+          - nix-system: "aarch64-linux"
+            runner: "namespace-profile-default-arm64"
+            artifact: "fh-X64-Linux"
+          - nix-system: "x86_64-linux"
+            runner: "ubuntu-22.04"
+            artifact: "fh-ARM64-linux"
     steps:
-      - uses: actions/checkout@v3
+      - name: git checkout
+        uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Build package
-        run: |
-          nix build .# -L
-
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3.1.2
+      - name: Set up Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
         with:
-          name: fh-ARM64-macOS
-          path: result/bin/fh
-          retention-days: 1
+          use-flakehub: true
 
-  build-artifacts-X64-macOS:
-    runs-on: macos-12
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Build package
+      - name: Build package for ${{ matrix.systems.nix-system }}
         run: |
-          nix build .# -L
-
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3.1.2
-        with:
-          name: fh-X64-macOS
-          path: result/bin/fh
-          retention-days: 1
-
-  build-artifacts-X64-Linux:
-    runs-on: UbuntuLatest32Cores128G
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Build package
-        run: |
-          nix build .# -L
-
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3.1.2
-        with:
-          name: fh-X64-Linux
-          path: result/bin/fh
-          retention-days: 1
-
-  build-artifacts-ARM64-Linux:
-    runs-on: namespace-profile-default-arm64
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Build package
-        run: |
-          nix build .# -L
+          nix build -L ".#packages.${{ matrix.systems.nix-system }}.default"
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.2
         with:
           # Artifact name
-          name: fh-ARM64-Linux
+          name: ${{ matrix.systems.artifact }}
           path: result/bin/fh
           retention-days: 1
