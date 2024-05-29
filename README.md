@@ -47,7 +47,7 @@ To make the `fh` CLI readily available on a [NixOS] system:
 
 ### Log into FlakeHub
 
-`fh` is the standard way to set up your local Nix to use [FlakeHub]:
+`fh` is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
 
 ```shell
 fh login
