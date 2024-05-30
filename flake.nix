@@ -12,20 +12,18 @@
     };
 
     naersk = {
-      url = "https://flakehub.com/f/nix-community/naersk/0.1.332.tar.gz";
+      url = "https://flakehub.com/f/nix-community/naersk/0.1.335.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs = { self, ... }@inputs:
     let
-      inherit (inputs.nixpkgs) lib;
-
       lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
 
       version = "${builtins.substring 0 8 lastModifiedDate}-${self.shortRev or "dirty"}";
 
-      forSystems = s: f: lib.genAttrs s (system: f rec {
+      forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
         pkgs = import inputs.nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
       });
@@ -61,22 +59,10 @@
             src = self;
 
             doCheck = true;
-            cargoTestOptions = x: x ++ lib.optionals final.stdenv.isDarwin [
-              # These tests rely on localhost networking, but appear to be broken on darwin
-              "--"
-              "--skip cli::cmd::convert::test::nixpkgs_release_to_flakehub"
-              "--skip cli::cmd::convert::test::nixpkgs_to_flakehub"
-              "--skip cli::cmd::convert::test::old_flakehub_to_new_flakehub"
-              "--skip cli::cmd::convert::test::test_flake1_convert"
-              "--skip cli::cmd::convert::test::test_nixpkgs_from_registry"
-              "--skip cli::cmd::eject::test::flakehub_nixpkgs_to_github"
-              "--skip cli::cmd::eject::test::flakehub_to_github"
-              "--skip cli::cmd::eject::test::test_flake8_eject"
-              "--skip cli::cmd::eject::test::versioned_flakehub_to_github"
-            ];
+            SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
 
             LIBCLANG_PATH = "${final.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
+            NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with final; [
               pkg-config
@@ -111,7 +97,7 @@
             name = "dev";
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
+            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with pkgs; [ pkg-config clang ];
             buildInputs = with pkgs; [
@@ -121,7 +107,7 @@
               nixpkgs-fmt
               gcc.cc.lib
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; with darwin.apple_sdk.frameworks; [
+            ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               libiconv
               Security
               SystemConfiguration
@@ -130,3 +116,4 @@
         });
     };
 }
+
