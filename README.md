@@ -45,6 +45,17 @@ To make the `fh` CLI readily available on a [NixOS] system:
 
 ## Demo
 
+### Log into FlakeHub
+
+`fh` is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
+
+```shell
+fh login
+```
+
+This will prompt you for a FlakeHub token that you can obtain under [**Tokens**][tokens] on your [user settings page][settings].
+Click **New** to create a new token, provide your desired configuration, copy the token, paste it into the prompt, and follow the remaining instructions.
+
 ### Initialize a new `flake.nix` from scratch
 
 `fh init` generates a new [`flake.nix`][flakes] file for you using a combination of:
@@ -268,6 +279,7 @@ You can apply the `--json` flag to each list command to produce JSON output.
 For support, email support@flakehub.com or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
 
 [bash]: https://gnu.org/software/bash
+[cache]: https://determinate.systems/posts/flakehub-cache-beta
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
 [elm]: https://elm-lang.org
 [elvish]: https://elv.sh
@@ -288,5 +300,7 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [ruby]: https://ruby-lang.org
 [rust]: https://rust-lang.org
 [semver]: https://flakehub.com/docs/concepts/semver
+[settings]: https://flakehub.com/user/settings
+[tokens]: https://flakehub.com/user/settings?editview=tokens
 [zig]: https://ziglang.org
 [zsh]: https://zsh.org
