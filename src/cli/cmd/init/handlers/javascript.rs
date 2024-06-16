@@ -2,7 +2,7 @@ use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
 use super::{Flake, Handler};
 
-const NODE_VERSIONS: &[&str] = &["18", "16", "14"];
+const NODE_VERSIONS: &[&str] = &["22", "20", "18"];
 
 pub(crate) struct JavaScript;
 
@@ -23,7 +23,7 @@ impl Handler for JavaScript {
 
             if Prompt::bool("Is this a Node.js project?") {
                 let version = Prompt::select("Select a version of Node.js", NODE_VERSIONS);
-                flake.dev_shell_packages.push(format!("nodejs-{version}_x"));
+                flake.dev_shell_packages.push(format!("nodejs_{version}"));
             }
 
             if project.has_file("pnpm-lock.yaml") && Prompt::for_tool("pnpm") {
