@@ -30,6 +30,7 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
 
     match cli.subcommand {
         FhSubcommands::Add(add) => add.execute().await,
+        FhSubcommands::GetURL(get_url) => get_url.execute().await,
         FhSubcommands::Init(init) => init.execute().await,
         FhSubcommands::List(list) => list.execute().await,
         FhSubcommands::Search(search) => search.execute().await,
