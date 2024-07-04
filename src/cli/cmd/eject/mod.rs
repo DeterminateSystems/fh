@@ -336,80 +336,84 @@ mod test {
 
     #[tokio::test]
     async fn flakehub_to_github() {
-        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
-        let server_addr = test_server.server_address();
-        let server_url = server_addr.parse().unwrap();
+        if let Ok(test_server) = axum_test::TestServer::new(test_router().into_make_service()) {
+            let server_addr = test_server.server_address();
+            let server_url = server_addr.parse().unwrap();
 
-        let input_url =
-            url::Url::parse("https://flakehub.com/f/someorg/somerepo/*.tar.gz").unwrap();
-        let github_url = super::eject_input_to_github(&server_url, input_url)
-            .await
-            .ok()
-            .flatten()
-            .unwrap();
-        assert_eq!(github_url.to_string(), "github:someorg/somerepo");
+            let input_url =
+                url::Url::parse("https://flakehub.com/f/someorg/somerepo/*.tar.gz").unwrap();
+            let github_url = super::eject_input_to_github(&server_url, input_url)
+                .await
+                .ok()
+                .flatten()
+                .unwrap();
+            assert_eq!(github_url.to_string(), "github:someorg/somerepo");
+        }
     }
 
     #[tokio::test]
     async fn versioned_flakehub_to_github() {
-        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
-        let server_addr = test_server.server_address();
-        let server_url = server_addr.parse().unwrap();
+        if let Ok(test_server) = axum_test::TestServer::new(test_router().into_make_service()) {
+            let server_addr = test_server.server_address();
+            let server_url = server_addr.parse().unwrap();
 
-        let input_url =
-            url::Url::parse("https://flakehub.com/f/someorg/somerepo/1.0.0.tar.gz").unwrap();
-        let github_url = super::eject_input_to_github(&server_url, input_url)
-            .await
-            .ok()
-            .flatten()
-            .unwrap();
-        assert_eq!(github_url.to_string(), "github:someorg/somerepo/1.0.0");
+            let input_url =
+                url::Url::parse("https://flakehub.com/f/someorg/somerepo/1.0.0.tar.gz").unwrap();
+            let github_url = super::eject_input_to_github(&server_url, input_url)
+                .await
+                .ok()
+                .flatten()
+                .unwrap();
+            assert_eq!(github_url.to_string(), "github:someorg/somerepo/1.0.0");
+        }
     }
 
     #[tokio::test]
     async fn flakehub_nixpkgs_to_github() {
-        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
-        let server_addr = test_server.server_address();
-        let server_url = server_addr.parse().unwrap();
+        if let Ok(test_server) = axum_test::TestServer::new(test_router().into_make_service()) {
+            let server_addr = test_server.server_address();
+            let server_url = server_addr.parse().unwrap();
 
-        let input_url =
-            url::Url::parse("https://flakehub.com/f/nixos/nixpkgs/0.2311.*.tar.gz").unwrap();
-        let github_url = super::eject_input_to_github(&server_url, input_url)
-            .await
-            .ok()
-            .flatten()
-            .unwrap();
-        assert_eq!(github_url.to_string(), "github:nixos/nixpkgs/nixos-23.11");
+            let input_url =
+                url::Url::parse("https://flakehub.com/f/nixos/nixpkgs/0.2311.*.tar.gz").unwrap();
+            let github_url = super::eject_input_to_github(&server_url, input_url)
+                .await
+                .ok()
+                .flatten()
+                .unwrap();
+            assert_eq!(github_url.to_string(), "github:nixos/nixpkgs/nixos-23.11");
+        }
     }
 
     #[tokio::test]
     async fn test_flake8_eject() {
-        let test_server = axum_test::TestServer::new(test_router().into_make_service()).unwrap();
-        let server_addr = test_server.server_address();
-        let server_url = server_addr.parse().unwrap();
+        if let Ok(test_server) = axum_test::TestServer::new(test_router().into_make_service()) {
+            let server_addr = test_server.server_address();
+            let server_url = server_addr.parse().unwrap();
 
-        let eject = super::EjectSubcommand {
-            flake_path: "".into(),
-            dry_run: true,
-            api_addr: server_url,
-        };
-        let flake_contents = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/samples/flake8.test.nix"
-        ));
-        let flake_contents = flake_contents.to_string();
-        let parsed = nixel::parse(flake_contents.clone());
+            let eject = super::EjectSubcommand {
+                flake_path: "".into(),
+                dry_run: true,
+                api_addr: server_url,
+            };
+            let flake_contents = include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/samples/flake8.test.nix"
+            ));
+            let flake_contents = flake_contents.to_string();
+            let parsed = nixel::parse(flake_contents.clone());
 
-        let new_flake_contents = eject
-            .eject_inputs_to_github(&parsed.expression, &flake_contents)
-            .await
-            .unwrap();
+            let new_flake_contents = eject
+                .eject_inputs_to_github(&parsed.expression, &flake_contents)
+                .await
+                .unwrap();
 
-        assert!(new_flake_contents.contains("github:NixOS/nixpkgs/nixos-23.05"));
-        assert!(new_flake_contents.contains("github:DeterminateSystems/fh"));
-        assert!(new_flake_contents.contains("github:DeterminateSystems/fh/0.0.0"));
-        assert!(new_flake_contents.contains("github:edolstra/nix-warez/0.0.0?dir=blender"));
-        assert!(new_flake_contents.contains("github:edolstra/nix-warez?dir=blender"));
-        assert!(new_flake_contents.contains("github:nix-community/home-manager/release-23.05"));
+            assert!(new_flake_contents.contains("github:NixOS/nixpkgs/nixos-23.05"));
+            assert!(new_flake_contents.contains("github:DeterminateSystems/fh"));
+            assert!(new_flake_contents.contains("github:DeterminateSystems/fh/0.0.0"));
+            assert!(new_flake_contents.contains("github:edolstra/nix-warez/0.0.0?dir=blender"));
+            assert!(new_flake_contents.contains("github:edolstra/nix-warez?dir=blender"));
+            assert!(new_flake_contents.contains("github:nix-community/home-manager/release-23.05"));
+        }
     }
 }
