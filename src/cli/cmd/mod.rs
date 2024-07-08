@@ -132,27 +132,27 @@ impl FlakeHubClient {
     ) -> Result<Vec<SearchResult>, FhError> {
         let url = flakehub_url!(api_addr, "search");
         let params = vec![("q", query)];
-        Self::get_with_params(url, params, false).await
+        get_with_params(url, params, false).await
     }
 
     async fn flakes(api_addr: &str) -> Result<Vec<Flake>, FhError> {
         let url = flakehub_url!(api_addr, "flakes");
-        Self::get(url, true).await
+        get(url, true).await
     }
 
     async fn flakes_by_label(api_addr: &str, label: &str) -> Result<Vec<Flake>, FhError> {
         let url = flakehub_url!(api_addr, "label", label);
-        Self::get(url, true).await
+        get(url, true).await
     }
 
     async fn releases(api_addr: &str, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
         let url = flakehub_url!(api_addr, "f", org, project, "releases");
-        Self::get(url, true).await
+        get(url, true).await
     }
 
     async fn orgs(api_addr: &str) -> Result<Vec<Org>, FhError> {
         let url = flakehub_url!(api_addr, "orgs");
-        Self::get(url, true).await
+        get(url, true).await
     }
 
     async fn versions(
@@ -163,7 +163,7 @@ impl FlakeHubClient {
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
         let url = flakehub_url!(api_addr, "version", "resolve", org, project, &version);
-        Self::get(url, true).await
+        get(url, true).await
     }
 
     async fn metadata(
@@ -238,31 +238,28 @@ impl FlakeHubClient {
 
         Ok(token_status)
     }
+}
 
-    async fn get<T: for<'de> Deserialize<'de>>(
-        url: Url,
-        authenticated: bool,
-    ) -> Result<T, FhError> {
-        let client = make_base_client(authenticated).await?;
+async fn get<T: for<'de> Deserialize<'de>>(url: Url, authenticated: bool) -> Result<T, FhError> {
+    let client = make_base_client(authenticated).await?;
 
-        Ok(client.get(url).send().await?.json::<T>().await?)
-    }
+    Ok(client.get(url).send().await?.json::<T>().await?)
+}
 
-    async fn get_with_params<T: for<'de> Deserialize<'de>>(
-        url: Url,
-        params: Vec<(&str, String)>,
-        authenticated: bool,
-    ) -> Result<T, FhError> {
-        let client = make_base_client(authenticated).await?;
+async fn get_with_params<T: for<'de> Deserialize<'de>>(
+    url: Url,
+    params: Vec<(&str, String)>,
+    authenticated: bool,
+) -> Result<T, FhError> {
+    let client = make_base_client(authenticated).await?;
 
-        Ok(client
-            .get(url)
-            .query(&params)
-            .send()
-            .await?
-            .json::<T>()
-            .await?)
-    }
+    Ok(client
+        .get(url)
+        .query(&params)
+        .send()
+        .await?
+        .json::<T>()
+        .await?)
 }
 
 pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
