@@ -126,49 +126,33 @@ struct ProjectCanonicalNames {
 pub(crate) struct FlakeHubClient;
 
 impl FlakeHubClient {
-    async fn get<T: for<'de> Deserialize<'de>>(
-        url: Url,
-        params: Option<Vec<(&str, String)>>,
-        authenticated: bool,
-    ) -> Result<T, FhError> {
-        let client = make_base_client(authenticated).await?;
-
-        let req = client.get(url);
-
-        Ok(if let Some(params) = params {
-            req.query(&params).send().await?.json::<T>().await
-        } else {
-            req.send().await?.json::<T>().await
-        }?)
-    }
-
     pub(crate) async fn search(
         api_addr: &str,
         query: String,
     ) -> Result<Vec<SearchResult>, FhError> {
         let url = flakehub_url!(api_addr, "search");
         let params = vec![("q", query)];
-        Self::get(url, Some(params), false).await
+        Self::get_with_params(url, params, false).await
     }
 
     async fn flakes(api_addr: &str) -> Result<Vec<Flake>, FhError> {
         let url = flakehub_url!(api_addr, "flakes");
-        Self::get(url, None, true).await
+        Self::get(url, true).await
     }
 
     async fn flakes_by_label(api_addr: &str, label: &str) -> Result<Vec<Flake>, FhError> {
         let url = flakehub_url!(api_addr, "label", label);
-        Self::get(url, None, true).await
+        Self::get(url, true).await
     }
 
     async fn releases(api_addr: &str, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
         let url = flakehub_url!(api_addr, "f", org, project, "releases");
-        Self::get(url, None, true).await
+        Self::get(url, true).await
     }
 
     async fn orgs(api_addr: &str) -> Result<Vec<Org>, FhError> {
         let url = flakehub_url!(api_addr, "orgs");
-        Self::get(url, None, true).await
+        Self::get(url, true).await
     }
 
     async fn versions(
@@ -178,10 +162,8 @@ impl FlakeHubClient {
         constraint: &str,
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
-
         let url = flakehub_url!(api_addr, "version", "resolve", org, project, &version);
-
-        Self::get(url, None, true).await
+        Self::get(url, true).await
     }
 
     async fn metadata(
@@ -231,6 +213,7 @@ impl FlakeHubClient {
 
     async fn auth_status(api_addr: &str, token: &str) -> color_eyre::Result<TokenStatus> {
         let url = flakehub_url!(api_addr, "cli", "status");
+
         let res = reqwest::Client::builder()
             .user_agent(crate::APP_USER_AGENT)
             .build()?
@@ -239,6 +222,7 @@ impl FlakeHubClient {
             .send()
             .await
             .wrap_err("Failed to send request")?;
+
         if res.status() == 401 {
             return Err(color_eyre::eyre::eyre!(
                 "The provided token was invalid. Please try again, or contact support@flakehub.com if the problem persists."
@@ -253,6 +237,31 @@ impl FlakeHubClient {
         )?;
 
         Ok(token_status)
+    }
+
+    async fn get<T: for<'de> Deserialize<'de>>(
+        url: Url,
+        authenticated: bool,
+    ) -> Result<T, FhError> {
+        let client = make_base_client(authenticated).await?;
+
+        Ok(client.get(url).send().await?.json::<T>().await?)
+    }
+
+    async fn get_with_params<T: for<'de> Deserialize<'de>>(
+        url: Url,
+        params: Vec<(&str, String)>,
+        authenticated: bool,
+    ) -> Result<T, FhError> {
+        let client = make_base_client(authenticated).await?;
+
+        Ok(client
+            .get(url)
+            .query(&params)
+            .send()
+            .await?
+            .json::<T>()
+            .await?)
     }
 }
 
