@@ -4,8 +4,6 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.514192.tar.gz";
 
-    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.1.tar.gz";
-
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1.1565.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,6 +13,9 @@
       url = "https://flakehub.com/f/nix-community/naersk/0.1.335.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.1.tar.gz";
+    flake-schemas.url = "https://flakehub.com/f/DeterminateSystems/flake-schemas/*.tar.gz";
   };
 
   outputs = { self, ... }@inputs:
@@ -45,6 +46,10 @@
 
     in
     {
+      schemas = {
+        inherit (inputs.flake-schemas.schemas) devShells overlays packages;
+      };
+
       overlays.default = final: prev: rec {
         fh =
           let
