@@ -298,3 +298,28 @@ macro_rules! flakehub_url {
         url
     }};
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn flakehub_url_macro() {
+        let root = "https://flakehub.com";
+
+        for (provided, expected) in vec![
+            (
+                flakehub_url!(root, "flake", "DeterminateSystems", "fh"),
+                "https://flakehub.com/flake/DeterminateSystems/fh",
+            ),
+            (
+                flakehub_url!(root, "flake", "NixOS", "nixpkgs", "*"),
+                "https://flakehub.com/flake/NixOS/nixpkgs/*",
+            ),
+            (
+                flakehub_url!(root, "flake", "nix-community", "home-manager", "releases"),
+                "https://flakehub.com/flake/nix-community/home-manager/releases",
+            ),
+        ] {
+            assert_eq!(provided.as_ref(), expected);
+        }
+    }
+}
