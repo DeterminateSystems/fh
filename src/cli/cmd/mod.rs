@@ -263,6 +263,7 @@ async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
+    #[cfg(not(test))]
     if authenticated {
         if let Ok(token) = tokio::fs::read_to_string(auth_token_path()?).await {
             if !token.is_empty() {
