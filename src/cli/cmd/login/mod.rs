@@ -325,7 +325,7 @@ async fn upsert_user_nix_config(
 
 pub(crate) fn auth_token_path() -> Result<PathBuf, FhError> {
     let xdg = xdg::BaseDirectories::new()?;
-    // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+    // $XDG_CONFIG_HOME/flakehub/auth; basically ~/.config/flakehub/auth
     let token_path = xdg.place_config_file("flakehub/auth")?;
 
     Ok(token_path)
