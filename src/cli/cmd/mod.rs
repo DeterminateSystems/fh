@@ -23,7 +23,6 @@ use url::Url;
 
 use self::{
     list::{Flake, Org, Release, Version},
-    login::auth_token_path,
     search::SearchResult,
     status::TokenStatus,
 };
@@ -259,11 +258,13 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     Ok(())
 }
 
+#[cfg(not(test))]
 async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
+    use self::login::auth_token_path;
+
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
-    #[cfg(not(test))]
     if authenticated {
         if let Ok(token) = tokio::fs::read_to_string(auth_token_path()?).await {
             if !token.is_empty() {
@@ -274,6 +275,17 @@ async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
             }
         }
     }
+
+    Ok(reqwest::Client::builder()
+        .user_agent(crate::APP_USER_AGENT)
+        .default_headers(headers)
+        .build()?)
+}
+
+#[cfg(test)]
+async fn make_base_client(_authenticated: bool) -> Result<Client, FhError> {
+    let mut headers = HeaderMap::new();
+    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
     Ok(reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
