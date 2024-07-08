@@ -195,6 +195,7 @@ impl FlakeHubClient {
 
         let res = client.get(&url.to_string()).send().await?;
 
+        // Enrich the CLI error text with the error returned by FlakeHub
         if let Err(e) = res.error_for_status_ref() {
             let err_text = res.text().await?;
             return Err(e).wrap_err(err_text)?;
@@ -217,10 +218,13 @@ impl FlakeHubClient {
         };
         let client = make_base_client(true).await?;
         let res = client.get(&url.to_string()).send().await?;
+
+        // Enrich the CLI error text with the error returned by FlakeHub
         if let Err(e) = res.error_for_status_ref() {
             let err_text = res.text().await?;
             return Err(e).wrap_err(err_text)?;
         };
+
         let res = res.json::<ProjectCanonicalNames>().await?;
         Ok((res.project, res.pretty_download_url))
     }
