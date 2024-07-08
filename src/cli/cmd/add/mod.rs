@@ -189,6 +189,5 @@ pub(crate) async fn get_flakehub_project_and_url(
     project: &str,
     version: Option<&str>,
 ) -> color_eyre::Result<(String, url::Url)> {
-    let client = FlakeHubClient::new(api_addr);
-    Ok(client.project_and_url(org, project, version).await?)
+    Ok(FlakeHubClient::project_and_url(api_addr.as_ref(), org, project, version).await?)
 }

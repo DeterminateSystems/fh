@@ -241,8 +241,7 @@ async fn get_metadata_from_flakehub(
     project: &str,
     version: &str,
 ) -> color_eyre::Result<ProjectMetadata> {
-    let client = FlakeHubClient::new(api_addr);
-    Ok(client.metadata(org, project, version).await?)
+    Ok(FlakeHubClient::metadata(api_addr.as_ref(), org, project, version).await?)
 }
 
 #[cfg(test)]

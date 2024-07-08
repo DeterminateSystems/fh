@@ -110,14 +110,12 @@ impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.api_addr);
-
         match self.cmd {
             Flakes => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match client.flakes().await {
+                match FlakeHubClient::flakes(self.api_addr.as_ref()).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -150,7 +148,7 @@ impl CommandExecute for ListSubcommand {
 
                 let label = label.to_lowercase();
 
-                match client.flakes_by_label(&label).await {
+                match FlakeHubClient::flakes_by_label(self.api_addr.as_ref(), &label).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -180,7 +178,7 @@ impl CommandExecute for ListSubcommand {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match client.orgs().await {
+                match FlakeHubClient::orgs(self.api_addr.as_ref()).await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
                             eprintln!("No results");
@@ -210,7 +208,9 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?;
 
-                match client.releases(&flake.org, &flake.project).await {
+                match FlakeHubClient::releases(self.api_addr.as_ref(), &flake.org, &flake.project)
+                    .await
+                {
                     Ok(releases) => {
                         let rows = releases
                             .into_iter()
@@ -241,9 +241,13 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?.clone();
 
-                match client
-                    .versions(&flake.org, &flake.project, &constraint)
-                    .await
+                match FlakeHubClient::versions(
+                    self.api_addr.as_ref(),
+                    &flake.org,
+                    &flake.project,
+                    &constraint,
+                )
+                .await
                 {
                     Ok(versions) => {
                         if versions.is_empty() {

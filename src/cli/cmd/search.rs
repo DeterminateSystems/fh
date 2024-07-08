@@ -64,9 +64,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        let client = FlakeHubClient::new(&self.api_addr);
-
-        match client.search(self.query).await {
+        match FlakeHubClient::search(self.api_addr.as_ref(), self.query).await {
             Ok(results) => {
                 if results.is_empty() {
                     eprintln!("No results");
