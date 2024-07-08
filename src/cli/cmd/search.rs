@@ -71,7 +71,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        let client = FlakeHubClient::new(&self.api_addr)?;
+        let client = FlakeHubClient::new(&self.api_addr, false).await?;
 
         match client.search(self.query).await {
             Ok(results) => {

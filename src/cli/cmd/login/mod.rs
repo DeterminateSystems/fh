@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use tokio::io::AsyncWriteExt;
 
-use super::CommandExecute;
+use super::{CommandExecute, FhError};
 
 const CACHE_PUBLIC_KEYS: &[&str; 2] = &[
     "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE=",
@@ -325,7 +325,7 @@ async fn upsert_user_nix_config(
     Ok(())
 }
 
-pub(crate) fn auth_token_path() -> color_eyre::Result<PathBuf> {
+pub(crate) fn auth_token_path() -> Result<PathBuf, FhError> {
     let xdg = xdg::BaseDirectories::new()?;
     // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
     let token_path = xdg.place_config_file("flakehub/auth")?;

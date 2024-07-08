@@ -9,7 +9,10 @@ pub(crate) mod search;
 pub(crate) mod status;
 
 use once_cell::sync::Lazy;
-use reqwest::Client as HttpClient;
+use reqwest::{
+    header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
+    Client as HttpClient,
+};
 use serde::Serialize;
 use tabled::settings::{
     style::{HorizontalLine, On, VerticalLineIter},
@@ -18,6 +21,7 @@ use tabled::settings::{
 
 use self::{
     list::{Flake, Org, Release, Version},
+    login::auth_token_path,
     search::SearchResult,
 };
 
@@ -73,6 +77,9 @@ pub(crate) enum FhError {
     #[error("flake name parsing error: {0}")]
     FlakeParse(String),
 
+    #[error("invalid header: {0}")]
+    Header(#[from] reqwest::header::InvalidHeaderValue),
+
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 
@@ -99,15 +106,24 @@ pub(crate) enum FhError {
 
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
+
+    #[error("xdg base directory error: {0}")]
+    Xdg(#[from] xdg::BaseDirectoriesError),
 }
 
 impl FlakeHubClient {
-    pub(crate) fn new(api_addr: &url::Url) -> Result<Self, FhError> {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(
-            "Accept",
-            reqwest::header::HeaderValue::from_static("application/json"),
-        );
+    pub(crate) async fn new(api_addr: &url::Url, authenticate: bool) -> Result<Self, FhError> {
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+
+        if authenticate {
+            if let Ok(token) = tokio::fs::read_to_string(auth_token_path()?).await {
+                headers.insert(
+                    AUTHORIZATION,
+                    HeaderValue::from_str(&format!("Bearer {}", token.trim()))?,
+                );
+            }
+        }
 
         let client = reqwest::Client::builder()
             .user_agent(crate::APP_USER_AGENT)

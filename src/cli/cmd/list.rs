@@ -116,7 +116,7 @@ impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.api_addr)?;
+        let client = FlakeHubClient::new(&self.api_addr, true).await?;
 
         match self.cmd {
             Flakes => {
