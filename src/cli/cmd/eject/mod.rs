@@ -276,7 +276,7 @@ async fn get_metadata_from_flakehub(
         .default_headers(headers)
         .build()?;
 
-    let flakehub_json_url = flakehub_url!(&api_addr.to_string(), "version", org, project, version);
+    let flakehub_json_url = flakehub_url!(api_addr.as_ref(), "version", org, project, version);
 
     let res = client.get(&flakehub_json_url.to_string()).send().await?;
 

@@ -9,15 +9,13 @@ pub(crate) mod search;
 pub(crate) mod status;
 
 use once_cell::sync::Lazy;
-use reqwest::{
-    header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
-    Client as HttpClient,
-};
-use serde::Serialize;
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
+use serde::{Deserialize, Serialize};
 use tabled::settings::{
     style::{HorizontalLine, On, VerticalLineIter},
     Style,
 };
+use url::Url;
 
 use self::{
     list::{Flake, Org, Release, Version},
@@ -65,10 +63,7 @@ pub(crate) enum FhSubcommands {
     Eject(eject::EjectSubcommand),
 }
 
-pub(crate) struct FlakeHubClient {
-    client: HttpClient,
-    api_addr: url::Url,
-}
+pub(crate) struct FlakeHubClient(String);
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
@@ -113,11 +108,19 @@ pub(crate) enum FhError {
 }
 
 impl FlakeHubClient {
-    pub(crate) async fn new(api_addr: &url::Url, authenticate: bool) -> Result<Self, FhError> {
+    pub(crate) fn new(api_addr: &url::Url) -> Self {
+        Self(api_addr.to_string())
+    }
+
+    async fn get<T: for<'de> Deserialize<'de>>(
+        url: Url,
+        params: Option<Vec<(&str, String)>>,
+        authenticated: bool,
+    ) -> Result<T, FhError> {
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
-        if authenticate {
+        if authenticated {
             if let Ok(token) = tokio::fs::read_to_string(auth_token_path()?).await {
                 if !token.is_empty() {
                     headers.insert(
@@ -133,83 +136,39 @@ impl FlakeHubClient {
             .default_headers(headers)
             .build()?;
 
-        Ok(Self {
-            api_addr: api_addr.clone(),
-            client,
-        })
+        let req = client.get(url);
+
+        Ok(if let Some(params) = params {
+            req.query(&params).send().await?.json::<T>().await
+        } else {
+            req.send().await?.json::<T>().await
+        }?)
     }
 
     pub(crate) async fn search(&self, query: String) -> Result<Vec<SearchResult>, FhError> {
-        let params = [("q", query)];
-
-        let endpoint = self.api_addr.join("search")?;
-
-        let results = self
-            .client
-            .get(endpoint)
-            .query(&params)
-            .send()
-            .await?
-            .json::<Vec<SearchResult>>()
-            .await?;
-
-        Ok(results)
+        let url = flakehub_url!(&self.0.to_string(), "search");
+        let params = vec![("q", query)];
+        Self::get(url, Some(params), false).await
     }
 
     async fn flakes(&self) -> Result<Vec<Flake>, FhError> {
-        let endpoint = self.api_addr.join("flakes")?;
-
-        let flakes = self
-            .client
-            .get(endpoint)
-            .send()
-            .await?
-            .json::<Vec<Flake>>()
-            .await?;
-
-        Ok(flakes)
+        let url = flakehub_url!(&self.0, "flakes");
+        Self::get(url, None, true).await
     }
 
     async fn flakes_by_label(&self, label: &str) -> Result<Vec<Flake>, FhError> {
-        let url = flakehub_url!(&self.api_addr.to_string(), "label", label);
-
-        let flakes = self
-            .client
-            .get(&url.to_string())
-            .send()
-            .await?
-            .json::<Vec<Flake>>()
-            .await?;
-
-        Ok(flakes)
+        let url = flakehub_url!(&self.0, "label", label);
+        Self::get(url, None, true).await
     }
 
     async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
-        let url = flakehub_url!(&self.api_addr.to_string(), "f", org, project, "releases");
-
-        let flakes = self
-            .client
-            .get(&url.to_string())
-            .send()
-            .await?
-            .json::<Vec<Release>>()
-            .await?;
-
-        Ok(flakes)
+        let url = flakehub_url!(&self.0, "f", org, project, "releases");
+        Self::get(url, None, true).await
     }
 
     async fn orgs(&self) -> Result<Vec<Org>, FhError> {
-        let endpoint = self.api_addr.join("orgs")?;
-
-        let orgs = self
-            .client
-            .get(endpoint)
-            .send()
-            .await?
-            .json::<Vec<Org>>()
-            .await?;
-
-        Ok(orgs)
+        let url = flakehub_url!(&self.0, "orgs");
+        Self::get(url, None, true).await
     }
 
     async fn versions(
@@ -220,24 +179,9 @@ impl FlakeHubClient {
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
 
-        let url = flakehub_url!(
-            &self.api_addr.to_string(),
-            "version",
-            "resolve",
-            org,
-            project,
-            &version
-        );
+        let url = flakehub_url!(&self.0, "version", "resolve", org, project, &version);
 
-        let versions = self
-            .client
-            .get(url)
-            .send()
-            .await?
-            .json::<Vec<Version>>()
-            .await?;
-
-        Ok(versions)
+        Self::get(url, None, true).await
     }
 }
 

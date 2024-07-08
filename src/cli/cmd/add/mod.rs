@@ -217,8 +217,8 @@ pub(crate) async fn get_flakehub_project_and_url(
         .build()?;
 
     let flakehub_json_url = match version {
-        Some(version) => flakehub_url!(&api_addr.to_string(), "version", org, project, version),
-        None => flakehub_url!(&api_addr.to_string(), "f", org, project),
+        Some(version) => flakehub_url!(api_addr.as_ref(), "version", org, project, version),
+        None => flakehub_url!(api_addr.as_ref(), "f", org, project),
     };
 
     #[derive(Debug, Deserialize)]
