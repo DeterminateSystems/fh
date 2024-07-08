@@ -24,6 +24,7 @@ use self::{
     login::auth_token_path,
     search::SearchResult,
 };
+use crate::flakehub_url;
 
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
@@ -170,14 +171,7 @@ impl FlakeHubClient {
     }
 
     async fn flakes_by_label(&self, label: &str) -> Result<Vec<Flake>, FhError> {
-        let mut url = self.api_addr.clone();
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("label").push(label);
-        }
+        let url = flakehub_url!(&self.api_addr.to_string(), "label", label);
 
         let flakes = self
             .client
@@ -191,14 +185,7 @@ impl FlakeHubClient {
     }
 
     async fn releases(&self, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
-        let mut url = self.api_addr.clone();
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("f").push(org).push(project).push("releases");
-        }
+        let url = flakehub_url!(&self.api_addr.to_string(), "f", org, project, "releases");
 
         let flakes = self
             .client
@@ -233,18 +220,14 @@ impl FlakeHubClient {
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
 
-        let mut url = self.api_addr.clone();
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("version")
-                .push("resolve")
-                .push(org)
-                .push(project)
-                .push(&version);
-        }
+        let url = flakehub_url!(
+            &self.api_addr.to_string(),
+            "version",
+            "resolve",
+            org,
+            project,
+            &version
+        );
 
         let versions = self
             .client
@@ -262,4 +245,23 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     let json = serde_json::to_string(&value)?;
     println!("{}", json);
     Ok(())
+}
+
+#[macro_export]
+macro_rules! flakehub_url {
+    ($url:expr, $($segment:expr),+ $(,)?) => {{
+        let mut url = url::Url::parse($url)
+            .expect("failed to parse flakehub web root url (this should never happen)");
+
+        {
+            let mut segs = url
+                .path_segments_mut()
+                .expect("URL cannot be a base (this should never happen)");
+
+            $(
+                segs.push($segment);
+            )+
+        }
+        url
+    }};
 }

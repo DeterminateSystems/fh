@@ -8,7 +8,10 @@ use tabled::{Table, Tabled};
 use url::Url;
 
 use super::{print_json, FhError};
-use crate::cli::cmd::{FlakeHubClient, DEFAULT_STYLE};
+use crate::{
+    cli::cmd::{FlakeHubClient, DEFAULT_STYLE},
+    flakehub_url,
+};
 
 use super::CommandExecute;
 
@@ -40,16 +43,7 @@ impl Flake {
     }
 
     fn url(&self) -> Url {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("flake").push(&self.org).push(&self.project);
-        }
-        url
+        flakehub_url!(FLAKEHUB_WEB_ROOT, "flake", &self.org, &self.project)
     }
 }
 
@@ -298,20 +292,11 @@ struct OrgRow {
 
 impl From<Org> for OrgRow {
     fn from(value: Org) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("org").push(&value.name);
-        }
+        let flakehub_url = flakehub_url!(FLAKEHUB_WEB_ROOT, "org", &value.name);
 
         Self {
             organization: value.name,
-            flakehub_url: url,
+            flakehub_url,
         }
     }
 }
@@ -331,25 +316,18 @@ struct VersionRow {
 
 impl From<(Flake, Version)> for VersionRow {
     fn from((flake, version): (Flake, Version)) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut path_segments_mut = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            path_segments_mut
-                .push("flake")
-                .push(&flake.org)
-                .push(&flake.project)
-                .push(&version.simplified_version.to_string());
-        }
+        let flakehub_url = flakehub_url!(
+            FLAKEHUB_WEB_ROOT,
+            "flake",
+            &flake.org,
+            &flake.project,
+            &version.simplified_version.to_string()
+        );
 
         Self {
             simplified_version: version.simplified_version,
-            flakehub_url: url,
             full_version: version.version,
+            flakehub_url,
         }
     }
 }
@@ -366,17 +344,6 @@ struct FlakeRow {
 
 impl From<Flake> for FlakeRow {
     fn from(value: Flake) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("org").push(&value.org);
-        }
-
         Self {
             flake: value.name(),
             flakehub_url: value.url(),

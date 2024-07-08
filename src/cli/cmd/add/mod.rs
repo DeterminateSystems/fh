@@ -10,6 +10,8 @@ use color_eyre::eyre::WrapErr;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde::Deserialize;
 
+use crate::flakehub_url;
+
 use self::flake::InputsInsertionLocation;
 
 use super::CommandExecute;
@@ -214,25 +216,10 @@ pub(crate) async fn get_flakehub_project_and_url(
         .default_headers(headers)
         .build()?;
 
-    let mut flakehub_json_url = api_addr.clone();
-    {
-        let mut path_segments_mut = flakehub_json_url
-            .path_segments_mut()
-            .expect("flakehub url cannot be base (this should never happen)");
-
-        match version {
-            Some(version) => {
-                path_segments_mut
-                    .push("version")
-                    .push(org)
-                    .push(project)
-                    .push(version);
-            }
-            None => {
-                path_segments_mut.push("f").push(org).push(project);
-            }
-        }
-    }
+    let flakehub_json_url = match version {
+        Some(version) => flakehub_url!(&api_addr.to_string(), "version", org, project, version),
+        None => flakehub_url!(&api_addr.to_string(), "f", org, project),
+    };
 
     #[derive(Debug, Deserialize)]
     struct ProjectCanonicalNames {

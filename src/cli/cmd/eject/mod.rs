@@ -9,6 +9,8 @@ use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde::Deserialize;
 use tracing::{span, Level};
 
+use crate::flakehub_url;
+
 use super::CommandExecute;
 
 static ROLLING_RELEASE_BUILD_META_REGEX: Lazy<regex::Regex> =
@@ -274,18 +276,7 @@ async fn get_metadata_from_flakehub(
         .default_headers(headers)
         .build()?;
 
-    let mut flakehub_json_url = api_addr.clone();
-    {
-        let mut path_segments_mut = flakehub_json_url
-            .path_segments_mut()
-            .expect("flakehub url cannot be base (this should never happen)");
-
-        path_segments_mut
-            .push("version")
-            .push(org)
-            .push(project)
-            .push(version);
-    }
+    let flakehub_json_url = flakehub_url!(&api_addr.to_string(), "version", org, project, version);
 
     let res = client.get(&flakehub_json_url.to_string()).send().await?;
 
