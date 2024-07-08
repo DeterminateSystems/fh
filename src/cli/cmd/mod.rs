@@ -118,10 +118,12 @@ impl FlakeHubClient {
 
         if authenticate {
             if let Ok(token) = tokio::fs::read_to_string(auth_token_path()?).await {
-                headers.insert(
-                    AUTHORIZATION,
-                    HeaderValue::from_str(&format!("Bearer {}", token.trim()))?,
-                );
+                if !token.is_empty() {
+                    headers.insert(
+                        AUTHORIZATION,
+                        HeaderValue::from_str(&format!("Bearer {}", token.trim()))?,
+                    );
+                }
             }
         }
 
