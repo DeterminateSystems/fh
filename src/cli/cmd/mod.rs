@@ -26,7 +26,7 @@ use self::{
     search::SearchResult,
     status::TokenStatus,
 };
-use crate::flakehub_url;
+use crate::{flakehub_url, APP_USER_AGENT};
 
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
@@ -152,7 +152,8 @@ impl FlakeHubClient {
 
     async fn orgs(api_addr: &str) -> Result<Vec<Org>, FhError> {
         let url = flakehub_url!(api_addr, "orgs");
-        get(url, true).await
+        let params = vec![("include_public", String::from("true"))];
+        get_with_params(url, params, true).await
     }
 
     async fn versions(
@@ -215,7 +216,7 @@ impl FlakeHubClient {
         let url = flakehub_url!(api_addr, "cli", "status");
 
         let res = reqwest::Client::builder()
-            .user_agent(crate::APP_USER_AGENT)
+            .user_agent(APP_USER_AGENT)
             .build()?
             .get(url)
             .header(AUTHORIZATION, &format!("Bearer {token}"))
@@ -276,7 +277,7 @@ async fn make_base_client(_authenticated: bool) -> Result<Client, FhError> {
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
     Ok(reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
+        .user_agent(APP_USER_AGENT)
         .default_headers(headers)
         .build()?)
 }
@@ -300,7 +301,7 @@ async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
     }
 
     Ok(reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
+        .user_agent(APP_USER_AGENT)
         .default_headers(headers)
         .build()?)
 }
