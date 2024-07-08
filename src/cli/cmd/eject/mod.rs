@@ -174,7 +174,7 @@ async fn eject_flakehub_input_to_github(
         source_github_owner_repo_pair,
         source_subdirectory,
         version,
-    } = get_metadata_from_flakehub(api_addr, org, project, version).await?;
+    } = FlakeHubClient::metadata(api_addr.as_ref(), org, project, version).await?;
 
     let maybe_version_or_branch = match source_github_owner_repo_pair.to_lowercase().as_str() {
         "nixos/nixpkgs" => {
@@ -232,16 +232,6 @@ fn separate_year_from_month_in_version(version: &str) -> Option<String> {
     };
 
     version
-}
-
-#[tracing::instrument(skip_all)]
-async fn get_metadata_from_flakehub(
-    api_addr: &url::Url,
-    org: &str,
-    project: &str,
-    version: &str,
-) -> color_eyre::Result<ProjectMetadata> {
-    Ok(FlakeHubClient::metadata(api_addr.as_ref(), org, project, version).await?)
 }
 
 #[cfg(test)]

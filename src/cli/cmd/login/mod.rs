@@ -4,6 +4,8 @@ use std::process::ExitCode;
 use clap::Parser;
 use tokio::io::AsyncWriteExt;
 
+use crate::cli::cmd::FlakeHubClient;
+
 use super::{CommandExecute, FhError};
 
 const CACHE_PUBLIC_KEYS: &[&str; 2] = &[
@@ -57,11 +59,7 @@ impl LoginSubcommand {
         let (token, status) = match token {
             Some(token) => {
                 // This serves as validating that provided token is actually a JWT, and is valid.
-                let status = crate::cli::cmd::status::get_status_from_auth_token(
-                    self.api_addr.clone(),
-                    &token,
-                )
-                .await?;
+                let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token).await?;
                 (token, status)
             }
             None => {

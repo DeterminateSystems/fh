@@ -78,12 +78,5 @@ pub(crate) async fn get_status_from_auth_file(
         .wrap_err_with(|| format!("Could not open {}", auth_token_path.display()))?;
     let token = token.trim();
 
-    get_status_from_auth_token(api_addr, token).await
-}
-
-pub(crate) async fn get_status_from_auth_token(
-    api_addr: url::Url,
-    token: &str,
-) -> color_eyre::Result<TokenStatus> {
-    Ok(FlakeHubClient::auth_status(api_addr.as_ref(), token).await?)
+    FlakeHubClient::auth_status(api_addr.as_ref(), token).await
 }
