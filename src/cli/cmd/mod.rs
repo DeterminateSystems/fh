@@ -5,6 +5,7 @@ pub(crate) mod eject;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
+pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
@@ -23,6 +24,7 @@ use url::Url;
 
 use self::{
     list::{Flake, Org, Release, Version},
+    resolve::ResolvedPath,
     search::SearchResult,
     status::TokenStatus,
 };
@@ -65,6 +67,7 @@ pub(crate) enum FhSubcommands {
     Login(login::LoginSubcommand),
     Status(status::StatusSubcommand),
     Eject(eject::EjectSubcommand),
+    Resolve(resolve::ResolveSubcommand),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -89,6 +92,9 @@ pub(crate) enum FhError {
 
     #[error("label parsing error: {0}")]
     LabelParse(String),
+
+    #[error("missing from flake reference: {0}")]
+    MissingOutputPart(&'static str),
 
     #[error("the flake has no inputs")]
     NoInputs,
@@ -187,6 +193,36 @@ impl FlakeHubClient {
         let res = res.json::<ProjectMetadata>().await?;
 
         Ok(res)
+    }
+
+    async fn resolve(api_addr: &str, flake_ref: String) -> Result<ResolvedPath, FhError> {
+        let parts: Vec<&str> = flake_ref.split('#').collect();
+
+        let Some(release) = parts.first() else {
+            Err(FhError::MissingOutputPart(
+                "flake release info ({org}/{flake}/{version})",
+            ))?
+        };
+
+        let Some(output) = parts.get(1) else {
+            Err(FhError::MissingOutputPart("flake output"))?
+        };
+
+        let release_parts: Vec<&str> = release.split('/').collect();
+
+        let Some(org) = release_parts.first() else {
+            Err(FhError::MissingOutputPart("the flake's org"))?
+        };
+        let Some(flake) = release_parts.get(1) else {
+            Err(FhError::MissingOutputPart("the name of the flake"))?
+        };
+        let Some(version) = release_parts.get(2) else {
+            Err(FhError::MissingOutputPart("the version constraint"))?
+        };
+
+        let url = flakehub_url!(api_addr, "f", org, flake, version, "output", output);
+
+        get(url, true).await
     }
 
     async fn project_and_url(
