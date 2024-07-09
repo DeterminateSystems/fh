@@ -26,4 +26,5 @@ jobs:
         with:
           visibility: "public"
           name: "DeterminateSystems/fh"
+          include-output-paths: true
           tag: "${{ inputs.tag }}"
