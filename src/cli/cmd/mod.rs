@@ -93,8 +93,8 @@ pub(crate) enum FhError {
     #[error("label parsing error: {0}")]
     LabelParse(String),
 
-    #[error("missing from flake reference: {0}")]
-    MissingOutputPart(&'static str),
+    #[error("malformed flake output reference: {0}")]
+    MalformedOutputRef(String),
 
     #[error("the flake has no inputs")]
     NoInputs,
@@ -199,11 +199,11 @@ impl FlakeHubClient {
         let FlakeOutputRef {
             ref org,
             ref flake,
-            ref version,
-            ref output,
+            version_constraint: ref version,
+            ref attr_path,
         } = flake_ref.try_into()?;
 
-        let url = flakehub_url!(api_addr, "f", org, flake, version, "output", output);
+        let url = flakehub_url!(api_addr, "f", org, flake, version, "output", attr_path);
 
         get(url, true).await
     }
@@ -288,46 +288,54 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     Ok(())
 }
 
+// Parses a flake reference as a string to construct paths of the form:
+// https://api.flakehub.com/f/{org}/{flake}/{version_constraint}/output/{attr_path}
 struct FlakeOutputRef {
     org: String,
     flake: String,
-    version: String,
-    output: String,
+    version_constraint: String,
+    attr_path: String,
 }
 
 impl TryFrom<String> for FlakeOutputRef {
     type Error = FhError;
 
-    fn try_from(flake_ref: String) -> Result<Self, Self::Error> {
-        let parts: Vec<&str> = flake_ref.split('#').collect();
+    fn try_from(flakehub_ref: String) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = flakehub_ref.split('#').collect();
 
         let Some(release) = parts.first() else {
-            Err(FhError::MissingOutputPart(
+            Err(FhError::MalformedOutputRef(String::from(
                 "flake release info ({org}/{flake}/{version})",
-            ))?
+            )))?
         };
 
-        let Some(output) = parts.get(1) else {
-            Err(FhError::MissingOutputPart("flake output"))?
+        let Some(attr_path) = parts.get(1) else {
+            Err(FhError::MalformedOutputRef(String::from(
+                "flake output attribute path",
+            )))?
         };
 
-        let release_parts: Vec<&str> = release.split('/').collect();
+        let release: Vec<&str> = release.split('/').collect();
 
-        let Some(org) = release_parts.first() else {
-            Err(FhError::MissingOutputPart("the flake's org"))?
+        let Some(org) = release.first() else {
+            Err(FhError::MalformedOutputRef(String::from("the flake's org")))?
         };
-        let Some(flake) = release_parts.get(1) else {
-            Err(FhError::MissingOutputPart("the name of the flake"))?
+        let Some(flake) = release.get(1) else {
+            Err(FhError::MalformedOutputRef(String::from(
+                "the name of the flake",
+            )))?
         };
-        let Some(version) = release_parts.get(2) else {
-            Err(FhError::MissingOutputPart("the version constraint"))?
+        let Some(version) = release.get(2) else {
+            Err(FhError::MalformedOutputRef(String::from(
+                "the version constraint",
+            )))?
         };
 
         Ok(FlakeOutputRef {
             org: org.to_string(),
             flake: flake.to_string(),
-            version: version.to_string(),
-            output: output.to_string(),
+            version_constraint: version.to_string(),
+            attr_path: attr_path.to_string(),
         })
     }
 }
