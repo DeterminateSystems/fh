@@ -7,12 +7,10 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
-use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
-use serde::Deserialize;
 
 use self::flake::InputsInsertionLocation;
 
-use super::CommandExecute;
+use super::{CommandExecute, FlakeHubClient};
 
 const FALLBACK_FLAKE_CONTENTS: &str = r#"{
   description = "My new flake.";
@@ -191,64 +189,5 @@ pub(crate) async fn get_flakehub_project_and_url(
     project: &str,
     version: Option<&str>,
 ) -> color_eyre::Result<(String, url::Url)> {
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
-
-    let xdg = xdg::BaseDirectories::new()?;
-    // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-    let token_path = xdg.get_config_file("flakehub/auth");
-
-    if token_path.exists() {
-        let token = tokio::fs::read_to_string(&token_path)
-            .await
-            .wrap_err_with(|| format!("Could not open {}", token_path.display()))?;
-
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {token}"))?,
-        );
-    }
-
-    let client = reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
-        .default_headers(headers)
-        .build()?;
-
-    let mut flakehub_json_url = api_addr.clone();
-    {
-        let mut path_segments_mut = flakehub_json_url
-            .path_segments_mut()
-            .expect("flakehub url cannot be base (this should never happen)");
-
-        match version {
-            Some(version) => {
-                path_segments_mut
-                    .push("version")
-                    .push(org)
-                    .push(project)
-                    .push(version);
-            }
-            None => {
-                path_segments_mut.push("f").push(org).push(project);
-            }
-        }
-    }
-
-    #[derive(Debug, Deserialize)]
-    struct ProjectCanonicalNames {
-        project: String,
-        // FIXME: detect Nix version and strip .tar.gz if it supports it
-        pretty_download_url: url::Url,
-    }
-
-    let res = client.get(&flakehub_json_url.to_string()).send().await?;
-
-    if let Err(e) = res.error_for_status_ref() {
-        let err_text = res.text().await?;
-        return Err(e).wrap_err(err_text)?;
-    };
-
-    let res = res.json::<ProjectCanonicalNames>().await?;
-
-    Ok((res.project, res.pretty_download_url))
+    FlakeHubClient::project_and_url(api_addr.as_ref(), org, project, version).await
 }

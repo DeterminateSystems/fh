@@ -8,7 +8,10 @@ use tabled::{Table, Tabled};
 use url::Url;
 
 use super::{print_json, FhError};
-use crate::cli::cmd::{FlakeHubClient, DEFAULT_STYLE};
+use crate::{
+    cli::cmd::{FlakeHubClient, DEFAULT_STYLE},
+    flakehub_url,
+};
 
 use super::CommandExecute;
 
@@ -40,16 +43,7 @@ impl Flake {
     }
 
     fn url(&self) -> Url {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("flake").push(&self.org).push(&self.project);
-        }
-        url
+        flakehub_url!(FLAKEHUB_WEB_ROOT, "flake", &self.org, &self.project)
     }
 }
 
@@ -116,14 +110,12 @@ impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;
 
-        let client = FlakeHubClient::new(&self.api_addr)?;
-
         match self.cmd {
             Flakes => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match client.flakes().await {
+                match FlakeHubClient::flakes(self.api_addr.as_ref()).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -156,7 +148,7 @@ impl CommandExecute for ListSubcommand {
 
                 let label = label.to_lowercase();
 
-                match client.flakes_by_label(&label).await {
+                match FlakeHubClient::flakes_by_label(self.api_addr.as_ref(), &label).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -186,7 +178,7 @@ impl CommandExecute for ListSubcommand {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match client.orgs().await {
+                match FlakeHubClient::orgs(self.api_addr.as_ref()).await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
                             eprintln!("No results");
@@ -216,7 +208,9 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?;
 
-                match client.releases(&flake.org, &flake.project).await {
+                match FlakeHubClient::releases(self.api_addr.as_ref(), &flake.org, &flake.project)
+                    .await
+                {
                     Ok(releases) => {
                         let rows = releases
                             .into_iter()
@@ -247,9 +241,13 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?.clone();
 
-                match client
-                    .versions(&flake.org, &flake.project, &constraint)
-                    .await
+                match FlakeHubClient::versions(
+                    self.api_addr.as_ref(),
+                    &flake.org,
+                    &flake.project,
+                    &constraint,
+                )
+                .await
                 {
                     Ok(versions) => {
                         if versions.is_empty() {
@@ -298,20 +296,11 @@ struct OrgRow {
 
 impl From<Org> for OrgRow {
     fn from(value: Org) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("org").push(&value.name);
-        }
+        let flakehub_url = flakehub_url!(FLAKEHUB_WEB_ROOT, "org", &value.name);
 
         Self {
             organization: value.name,
-            flakehub_url: url,
+            flakehub_url,
         }
     }
 }
@@ -331,25 +320,18 @@ struct VersionRow {
 
 impl From<(Flake, Version)> for VersionRow {
     fn from((flake, version): (Flake, Version)) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut path_segments_mut = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            path_segments_mut
-                .push("flake")
-                .push(&flake.org)
-                .push(&flake.project)
-                .push(&version.simplified_version.to_string());
-        }
+        let flakehub_url = flakehub_url!(
+            FLAKEHUB_WEB_ROOT,
+            "flake",
+            &flake.org,
+            &flake.project,
+            &version.simplified_version.to_string()
+        );
 
         Self {
             simplified_version: version.simplified_version,
-            flakehub_url: url,
             full_version: version.version,
+            flakehub_url,
         }
     }
 }
@@ -366,17 +348,6 @@ struct FlakeRow {
 
 impl From<Flake> for FlakeRow {
     fn from(value: Flake) -> Self {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("org").push(&value.org);
-        }
-
         Self {
             flake: value.name(),
             flakehub_url: value.url(),

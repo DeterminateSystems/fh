@@ -3,13 +3,10 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
-use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
-use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
-use serde::Deserialize;
 use tracing::{span, Level};
 
-use super::CommandExecute;
+use super::{CommandExecute, FlakeHubClient, ProjectMetadata};
 
 static ROLLING_RELEASE_BUILD_META_REGEX: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"(rev)-.{40}").unwrap());
@@ -177,7 +174,7 @@ async fn eject_flakehub_input_to_github(
         source_github_owner_repo_pair,
         source_subdirectory,
         version,
-    } = get_metadata_from_flakehub(api_addr, org, project, version).await?;
+    } = FlakeHubClient::metadata(api_addr.as_ref(), org, project, version).await?;
 
     let maybe_version_or_branch = match source_github_owner_repo_pair.to_lowercase().as_str() {
         "nixos/nixpkgs" => {
@@ -235,68 +232,6 @@ fn separate_year_from_month_in_version(version: &str) -> Option<String> {
     };
 
     version
-}
-
-#[derive(Debug, Deserialize)]
-struct ProjectMetadata {
-    source_github_owner_repo_pair: String,
-    source_subdirectory: Option<String>,
-    version: String,
-}
-
-#[tracing::instrument(skip_all)]
-async fn get_metadata_from_flakehub(
-    api_addr: &url::Url,
-    org: &str,
-    project: &str,
-    version: &str,
-) -> color_eyre::Result<ProjectMetadata> {
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
-
-    let xdg = xdg::BaseDirectories::new()?;
-    // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-    let token_path = xdg.get_config_file("flakehub/auth");
-
-    if token_path.exists() {
-        let token = tokio::fs::read_to_string(&token_path)
-            .await
-            .wrap_err_with(|| format!("Could not open {}", token_path.display()))?;
-
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {token}"))?,
-        );
-    }
-
-    let client = reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
-        .default_headers(headers)
-        .build()?;
-
-    let mut flakehub_json_url = api_addr.clone();
-    {
-        let mut path_segments_mut = flakehub_json_url
-            .path_segments_mut()
-            .expect("flakehub url cannot be base (this should never happen)");
-
-        path_segments_mut
-            .push("version")
-            .push(org)
-            .push(project)
-            .push(version);
-    }
-
-    let res = client.get(&flakehub_json_url.to_string()).send().await?;
-
-    if let Err(e) = res.error_for_status_ref() {
-        let err_text = res.text().await?;
-        return Err(e).wrap_err(err_text)?;
-    };
-
-    let res = res.json::<ProjectMetadata>().await?;
-
-    Ok(res)
 }
 
 #[cfg(test)]

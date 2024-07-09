@@ -5,6 +5,8 @@ use std::{io::IsTerminal, process::ExitCode};
 use tabled::{Table, Tabled};
 use url::Url;
 
+use crate::flakehub_url;
+
 use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient};
 
 /// Searches FlakeHub for flakes that match your query.
@@ -37,16 +39,7 @@ impl SearchResult {
     }
 
     fn url(&self) -> Url {
-        let mut url = Url::parse(FLAKEHUB_WEB_ROOT)
-            .expect("failed to parse flakehub web root url (this should never happen)");
-        {
-            let mut segs = url
-                .path_segments_mut()
-                .expect("flakehub url cannot be base (this should never happen)");
-
-            segs.push("flake").push(&self.org).push(&self.project);
-        }
-        url
+        flakehub_url!(FLAKEHUB_WEB_ROOT, "flake", &self.org, &self.project)
     }
 }
 
@@ -71,9 +64,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        let client = FlakeHubClient::new(&self.api_addr)?;
-
-        match client.search(self.query).await {
+        match FlakeHubClient::search(self.api_addr.as_ref(), self.query).await {
             Ok(results) => {
                 if results.is_empty() {
                     eprintln!("No results");

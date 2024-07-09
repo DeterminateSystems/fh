@@ -2,9 +2,8 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use color_eyre::eyre::WrapErr;
-use reqwest::header::AUTHORIZATION;
 
-use super::CommandExecute;
+use super::{CommandExecute, FlakeHubClient};
 
 // TODO: make status and login subcommands of a `auth` subcommand?
 /// Check your FlakeHub token status.
@@ -79,38 +78,5 @@ pub(crate) async fn get_status_from_auth_file(
         .wrap_err_with(|| format!("Could not open {}", auth_token_path.display()))?;
     let token = token.trim();
 
-    get_status_from_auth_token(api_addr, token).await
-}
-
-pub(crate) async fn get_status_from_auth_token(
-    api_addr: url::Url,
-    token: &str,
-) -> color_eyre::Result<TokenStatus> {
-    let mut cli_status = api_addr;
-    cli_status.set_path("/cli/status");
-
-    let res = reqwest::Client::builder()
-        .user_agent(crate::APP_USER_AGENT)
-        .build()?
-        .get(cli_status)
-        .header(AUTHORIZATION, &format!("Bearer {token}"))
-        .send()
-        .await
-        .wrap_err("Failed to send request")?;
-
-    if res.status() == 401 {
-        return Err(color_eyre::eyre::eyre!(
-            "The provided token was invalid. Please try again, or contact support@flakehub.com if the problem persists."
-        ));
-    }
-
-    let res = res
-        .error_for_status()
-        .wrap_err("Request was unsuccessful")?;
-    let token_status: TokenStatus = res
-        .json()
-        .await
-        .wrap_err("Failed to get TokenStatus from response (wasn't JSON, or was invalid JSON?)")?;
-
-    Ok(token_status)
+    FlakeHubClient::auth_status(api_addr.as_ref(), token).await
 }
