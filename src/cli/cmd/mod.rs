@@ -156,11 +156,19 @@ impl FlakeHubClient {
         let FlakeOutputRef {
             ref org,
             ref flake,
-            version_constraint: ref version,
+            ref version_constraint,
             ref attr_path,
         } = flake_ref.try_into()?;
 
-        let url = flakehub_url!(api_addr, "f", org, flake, version, "output", attr_path);
+        let url = flakehub_url!(
+            api_addr,
+            "f",
+            org,
+            flake,
+            version_constraint,
+            "output",
+            attr_path
+        );
 
         get(url, true).await
     }
@@ -274,18 +282,18 @@ impl TryFrom<String> for FlakeOutputRef {
             };
             let Some(flake) = release_parts.get(1) else {
                 Err(FhError::MissingFromOutputRef(String::from(
-                    "the name of the flake",
+                    "the flake's name",
                 )))?
             };
             let Some(version) = release_parts.get(2) else {
                 Err(FhError::MissingFromOutputRef(String::from(
-                    "the version constraint",
+                    "the flake's version constraint",
                 )))?
             };
 
             let Some(attr_path) = parts.get(1) else {
                 Err(FhError::MissingFromOutputRef(String::from(
-                    "flake output attribute path",
+                    "the output attribute path",
                 )))?
             };
 
@@ -297,7 +305,7 @@ impl TryFrom<String> for FlakeOutputRef {
             })
         } else {
             Err(FhError::MissingFromOutputRef(String::from(
-                "flake release info ({org}/{flake}/{version})",
+                "the flake's release info ({org}/{flake}/{version})",
             )))
         }
     }
