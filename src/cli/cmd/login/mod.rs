@@ -5,8 +5,9 @@ use clap::Parser;
 use tokio::io::AsyncWriteExt;
 
 use crate::cli::cmd::FlakeHubClient;
+use crate::cli::error::FhError;
 
-use super::{CommandExecute, FhError};
+use super::CommandExecute;
 
 const CACHE_PUBLIC_KEYS: &[&str; 2] = &[
     "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE=",

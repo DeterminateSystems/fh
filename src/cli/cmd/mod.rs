@@ -30,6 +30,8 @@ use self::{
 };
 use crate::{flakehub_url, APP_USER_AGENT};
 
+use super::error::FhError;
+
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
     Style<
@@ -68,51 +70,6 @@ pub(crate) enum FhSubcommands {
     Status(status::StatusSubcommand),
     Eject(eject::EjectSubcommand),
     Resolve(resolve::ResolveSubcommand),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum FhError {
-    #[error("file error: {0}")]
-    Filesystem(#[from] std::io::Error),
-
-    #[error("flake name parsing error: {0}")]
-    FlakeParse(String),
-
-    #[error("invalid header: {0}")]
-    Header(#[from] reqwest::header::InvalidHeaderValue),
-
-    #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
-
-    #[error("interactive initializer error: {0}")]
-    Interactive(#[from] inquire::InquireError),
-
-    #[error("json parsing error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    #[error("label parsing error: {0}")]
-    LabelParse(String),
-
-    #[error("malformed flake output reference: {0}")]
-    MalformedOutputRef(String),
-
-    #[error("the flake has no inputs")]
-    NoInputs,
-
-    #[error("template error: {0}")]
-    Render(#[from] handlebars::RenderError),
-
-    #[error("template error: {0}")]
-    Template(#[from] Box<handlebars::TemplateError>),
-
-    #[error("a presumably unreachable point was reached: {0}")]
-    Unreachable(String),
-
-    #[error("url parse error: {0}")]
-    Url(#[from] url::ParseError),
-
-    #[error("xdg base directory error: {0}")]
-    Xdg(#[from] xdg::BaseDirectoriesError),
 }
 
 #[derive(Debug, Deserialize)]
@@ -303,40 +260,46 @@ impl TryFrom<String> for FlakeOutputRef {
     fn try_from(flakehub_ref: String) -> Result<Self, Self::Error> {
         let parts: Vec<&str> = flakehub_ref.split('#').collect();
 
-        let Some(release) = parts.first() else {
-            Err(FhError::MalformedOutputRef(String::from(
+        if let Some(release_parts) = parts.first() {
+            let release_parts: Vec<&str> = release_parts.split('/').collect();
+
+            if release_parts.len() > 3 {
+                return Err(FhError::MalformedFlakeOutputRef);
+            }
+
+            let Some(org) = release_parts.first() else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the flake's org",
+                )))?
+            };
+            let Some(flake) = release_parts.get(1) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the name of the flake",
+                )))?
+            };
+            let Some(version) = release_parts.get(2) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the version constraint",
+                )))?
+            };
+
+            let Some(attr_path) = parts.get(1) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "flake output attribute path",
+                )))?
+            };
+
+            Ok(FlakeOutputRef {
+                org: org.to_string(),
+                flake: flake.to_string(),
+                version_constraint: version.to_string(),
+                attr_path: attr_path.to_string(),
+            })
+        } else {
+            Err(FhError::MissingFromOutputRef(String::from(
                 "flake release info ({org}/{flake}/{version})",
-            )))?
-        };
-
-        let Some(attr_path) = parts.get(1) else {
-            Err(FhError::MalformedOutputRef(String::from(
-                "flake output attribute path",
-            )))?
-        };
-
-        let release: Vec<&str> = release.split('/').collect();
-
-        let Some(org) = release.first() else {
-            Err(FhError::MalformedOutputRef(String::from("the flake's org")))?
-        };
-        let Some(flake) = release.get(1) else {
-            Err(FhError::MalformedOutputRef(String::from(
-                "the name of the flake",
-            )))?
-        };
-        let Some(version) = release.get(2) else {
-            Err(FhError::MalformedOutputRef(String::from(
-                "the version constraint",
-            )))?
-        };
-
-        Ok(FlakeOutputRef {
-            org: org.to_string(),
-            flake: flake.to_string(),
-            version_constraint: version.to_string(),
-            attr_path: attr_path.to_string(),
-        })
+            )))
+        }
     }
 }
 

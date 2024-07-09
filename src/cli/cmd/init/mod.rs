@@ -16,7 +16,10 @@ use std::{
 use url::Url;
 
 use crate::{
-    cli::cmd::{init::handlers::Elm, list::FLAKEHUB_WEB_ROOT},
+    cli::{
+        cmd::{init::handlers::Elm, list::FLAKEHUB_WEB_ROOT},
+        error::FhError,
+    },
     flakehub_url,
 };
 
@@ -32,7 +35,7 @@ use self::{
     template::TemplateData,
 };
 
-use super::{CommandExecute, FhError};
+use super::CommandExecute;
 
 // Nixpkgs references
 const NIXPKGS_LATEST: &str = "latest stable (currently 24.05)";
