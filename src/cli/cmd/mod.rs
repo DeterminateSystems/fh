@@ -269,6 +269,12 @@ impl TryFrom<String> for FlakeOutputRef {
         let parts: Vec<&str> = flakehub_ref.split('#').collect();
 
         if let Some(release_parts) = parts.first() {
+            let Some(attr_path) = parts.get(1) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the output attribute path",
+                )))?
+            };
+
             let release_parts: Vec<&str> = release_parts.split('/').collect();
 
             if release_parts.len() > 3 {
@@ -291,12 +297,6 @@ impl TryFrom<String> for FlakeOutputRef {
                 )))?
             };
 
-            let Some(attr_path) = parts.get(1) else {
-                Err(FhError::MissingFromOutputRef(String::from(
-                    "the output attribute path",
-                )))?
-            };
-
             Ok(FlakeOutputRef {
                 org: org.to_string(),
                 flake: flake.to_string(),
@@ -305,7 +305,7 @@ impl TryFrom<String> for FlakeOutputRef {
             })
         } else {
             Err(FhError::MissingFromOutputRef(String::from(
-                "the flake's release info ({org}/{flake}/{version})",
+                "the flake's release info ({org}/{flake}/{version}) and the output's attribute path",
             )))
         }
     }
