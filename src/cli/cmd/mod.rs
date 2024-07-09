@@ -196,29 +196,12 @@ impl FlakeHubClient {
     }
 
     async fn resolve(api_addr: &str, flake_ref: String) -> Result<ResolvedPath, FhError> {
-        let parts: Vec<&str> = flake_ref.split('#').collect();
-
-        let Some(release) = parts.first() else {
-            Err(FhError::MissingOutputPart(
-                "flake release info ({org}/{flake}/{version})",
-            ))?
-        };
-
-        let Some(output) = parts.get(1) else {
-            Err(FhError::MissingOutputPart("flake output"))?
-        };
-
-        let release_parts: Vec<&str> = release.split('/').collect();
-
-        let Some(org) = release_parts.first() else {
-            Err(FhError::MissingOutputPart("the flake's org"))?
-        };
-        let Some(flake) = release_parts.get(1) else {
-            Err(FhError::MissingOutputPart("the name of the flake"))?
-        };
-        let Some(version) = release_parts.get(2) else {
-            Err(FhError::MissingOutputPart("the version constraint"))?
-        };
+        let FlakeOutputRef {
+            ref org,
+            ref flake,
+            ref version,
+            ref output,
+        } = flake_ref.try_into()?;
 
         let url = flakehub_url!(api_addr, "f", org, flake, version, "output", output);
 
@@ -303,6 +286,50 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     let json = serde_json::to_string(&value)?;
     println!("{}", json);
     Ok(())
+}
+
+struct FlakeOutputRef {
+    org: String,
+    flake: String,
+    version: String,
+    output: String,
+}
+
+impl TryFrom<String> for FlakeOutputRef {
+    type Error = FhError;
+
+    fn try_from(flake_ref: String) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = flake_ref.split('#').collect();
+
+        let Some(release) = parts.first() else {
+            Err(FhError::MissingOutputPart(
+                "flake release info ({org}/{flake}/{version})",
+            ))?
+        };
+
+        let Some(output) = parts.get(1) else {
+            Err(FhError::MissingOutputPart("flake output"))?
+        };
+
+        let release_parts: Vec<&str> = release.split('/').collect();
+
+        let Some(org) = release_parts.first() else {
+            Err(FhError::MissingOutputPart("the flake's org"))?
+        };
+        let Some(flake) = release_parts.get(1) else {
+            Err(FhError::MissingOutputPart("the name of the flake"))?
+        };
+        let Some(version) = release_parts.get(2) else {
+            Err(FhError::MissingOutputPart("the version constraint"))?
+        };
+
+        Ok(FlakeOutputRef {
+            org: org.to_string(),
+            flake: flake.to_string(),
+            version: version.to_string(),
+            output: output.to_string(),
+        })
+    }
 }
 
 // When testing, we need to not check for auth info in $XDG_CONFIG_HOME/flakehub/auth, as
