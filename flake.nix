@@ -64,10 +64,6 @@
             src = self;
 
             doCheck = true;
-            SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
-
-            LIBCLANG_PATH = "${final.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
 
             nativeBuildInputs = with final; [
               pkg-config
@@ -88,6 +84,12 @@
                 --zsh <("$out/bin/fh" completion zsh) \
                 --fish <("$out/bin/fh" completion fish)
             '';
+
+            env = {
+              SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
+              LIBCLANG_PATH = "${final.libclang.lib}/lib";
+              NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
+            };
           };
       };
 
@@ -99,17 +101,13 @@
       devShells = forAllSystems ({ system, pkgs, ... }:
         {
           default = pkgs.mkShell {
-            name = "dev";
-
-            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
-
-            nativeBuildInputs = with pkgs; [ pkg-config clang ];
-            buildInputs = with pkgs; [
+            packages = with pkgs; [
               (fenixToolchain stdenv.hostPlatform.system)
               cargo-watch
               rust-analyzer
               nixpkgs-fmt
+              pkg-config
+              clang
               gcc.cc.lib
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
@@ -117,6 +115,11 @@
               Security
               SystemConfiguration
             ]);
+
+            env = {
+              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+              NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
+            };
           };
         });
     };
