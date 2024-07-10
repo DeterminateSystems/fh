@@ -30,8 +30,15 @@ pub(crate) struct ResolvedPath {
 
 #[async_trait::async_trait]
 impl CommandExecute for ResolveSubcommand {
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let value = FlakeHubClient::resolve(self.api_addr.as_ref(), self.flake_ref).await?;
+        // Ensures that users can use otherwise-valid flake refs
+        let flake_ref = self
+            .flake_ref
+            .strip_prefix("https://flakehub.com/f/")
+            .unwrap_or(&self.flake_ref);
+
+        let value = FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
         if self.json {
             print_json(value)?;
