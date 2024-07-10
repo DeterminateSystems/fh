@@ -93,28 +93,28 @@
           };
       };
 
-      packages = forAllSystems ({ system, pkgs, ... }: rec {
+      packages = forAllSystems ({ system, pkgs }: rec {
         inherit (pkgs) fh;
         default = pkgs.fh;
       });
 
-      devShells = forAllSystems ({ system, pkgs, ... }:
+      devShells = forAllSystems ({ system, pkgs }:
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              (fenixToolchain stdenv.hostPlatform.system)
+              (fenixToolchain system)
               cargo-watch
               rust-analyzer
               nixpkgs-fmt
+
+              # For the Rust environment
               pkg-config
               clang
               gcc.cc.lib
             ]
-            ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
-              libiconv
+            ++ lib.optionals (stdenv.isDarwin) ([ libiconv ] ++ (with darwin.apple_sdk.frameworks; [
               Security
-              SystemConfiguration
-            ]);
+            ]));
 
             env = {
               LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
