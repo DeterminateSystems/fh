@@ -89,7 +89,8 @@ Respond to the prompts it provides you and at the end `fh` will write a `flake.n
 - [Rust]
 - [Zig]
 
-> [!NOTE] > `fh init` operates on a best-guess basis and is opinionated in its suggestions.
+> [!NOTE]
+> The `fh init` command operates on a best-guess basis and is opinionated in its suggestions.
 > It's intended less as a comprehensive flake creation solution and more as a helpful kickstarter.
 
 ### Add a flake published to FlakeHub to your `flake.nix`
