@@ -1,4 +1,5 @@
 pub(crate) mod cmd;
+mod error;
 pub(crate) mod instrumentation;
 
 /// fh: a CLI for interacting with FlakeHub

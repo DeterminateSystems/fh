@@ -7,9 +7,12 @@ use std::process::ExitCode;
 use tabled::{Table, Tabled};
 use url::Url;
 
-use super::{print_json, FhError};
+use super::print_json;
 use crate::{
-    cli::cmd::{FlakeHubClient, DEFAULT_STYLE},
+    cli::{
+        cmd::{FlakeHubClient, DEFAULT_STYLE},
+        error::FhError,
+    },
     flakehub_url,
 };
 

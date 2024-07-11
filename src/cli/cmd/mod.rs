@@ -5,6 +5,7 @@ pub(crate) mod eject;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
+pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
@@ -23,10 +24,13 @@ use url::Url;
 
 use self::{
     list::{Flake, Org, Release, Version},
+    resolve::ResolvedPath,
     search::SearchResult,
     status::TokenStatus,
 };
 use crate::{flakehub_url, APP_USER_AGENT};
+
+use super::error::FhError;
 
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
@@ -65,48 +69,7 @@ pub(crate) enum FhSubcommands {
     Login(login::LoginSubcommand),
     Status(status::StatusSubcommand),
     Eject(eject::EjectSubcommand),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum FhError {
-    #[error("file error: {0}")]
-    Filesystem(#[from] std::io::Error),
-
-    #[error("flake name parsing error: {0}")]
-    FlakeParse(String),
-
-    #[error("invalid header: {0}")]
-    Header(#[from] reqwest::header::InvalidHeaderValue),
-
-    #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
-
-    #[error("interactive initializer error: {0}")]
-    Interactive(#[from] inquire::InquireError),
-
-    #[error("json parsing error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    #[error("label parsing error: {0}")]
-    LabelParse(String),
-
-    #[error("the flake has no inputs")]
-    NoInputs,
-
-    #[error("template error: {0}")]
-    Render(#[from] handlebars::RenderError),
-
-    #[error("template error: {0}")]
-    Template(#[from] Box<handlebars::TemplateError>),
-
-    #[error("a presumably unreachable point was reached: {0}")]
-    Unreachable(String),
-
-    #[error("url parse error: {0}")]
-    Url(#[from] url::ParseError),
-
-    #[error("xdg base directory error: {0}")]
-    Xdg(#[from] xdg::BaseDirectoriesError),
+    Resolve(resolve::ResolveSubcommand),
 }
 
 #[derive(Debug, Deserialize)]
@@ -189,6 +152,27 @@ impl FlakeHubClient {
         Ok(res)
     }
 
+    async fn resolve(api_addr: &str, flake_ref: String) -> Result<ResolvedPath, FhError> {
+        let FlakeOutputRef {
+            ref org,
+            ref flake,
+            ref version_constraint,
+            ref attr_path,
+        } = flake_ref.try_into()?;
+
+        let url = flakehub_url!(
+            api_addr,
+            "f",
+            org,
+            flake,
+            version_constraint,
+            "output",
+            attr_path
+        );
+
+        get(url, true).await
+    }
+
     async fn project_and_url(
         api_addr: &str,
         org: &str,
@@ -267,6 +251,64 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     let json = serde_json::to_string(&value)?;
     println!("{}", json);
     Ok(())
+}
+
+// Parses a flake reference as a string to construct paths of the form:
+// https://api.flakehub.com/f/{org}/{flake}/{version_constraint}/output/{attr_path}
+struct FlakeOutputRef {
+    org: String,
+    flake: String,
+    version_constraint: String,
+    attr_path: String,
+}
+
+impl TryFrom<String> for FlakeOutputRef {
+    type Error = FhError;
+
+    fn try_from(flakehub_ref: String) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = flakehub_ref.split('#').collect();
+
+        if let Some(release_parts) = parts.first() {
+            let Some(attr_path) = parts.get(1) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the output attribute path",
+                )))?
+            };
+
+            let release_parts: Vec<&str> = release_parts.split('/').collect();
+
+            if release_parts.len() > 3 {
+                return Err(FhError::MalformedFlakeOutputRef);
+            }
+
+            let Some(org) = release_parts.first() else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the flake's org",
+                )))?
+            };
+            let Some(flake) = release_parts.get(1) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the flake's name",
+                )))?
+            };
+            let Some(version) = release_parts.get(2) else {
+                Err(FhError::MissingFromOutputRef(String::from(
+                    "the flake's version constraint",
+                )))?
+            };
+
+            Ok(FlakeOutputRef {
+                org: org.to_string(),
+                flake: flake.to_string(),
+                version_constraint: version.to_string(),
+                attr_path: attr_path.to_string(),
+            })
+        } else {
+            Err(FhError::MissingFromOutputRef(String::from(
+                "the flake's release info ({org}/{flake}/{version}) and the output's attribute path",
+            )))
+        }
+    }
 }
 
 // When testing, we need to not check for auth info in $XDG_CONFIG_HOME/flakehub/auth, as

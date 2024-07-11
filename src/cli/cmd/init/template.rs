@@ -4,7 +4,7 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::cli::cmd::FhError;
+use crate::cli::error::FhError;
 
 use super::{dev_shell::DevShell, handlers::Input};
 

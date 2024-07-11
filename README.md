@@ -12,7 +12,8 @@ Using `fh` from FlakeHub:
 nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
-> **Note:** This builds `fh` locally on your computer.
+> [!NOTE]
+> This builds `fh` locally on your computer.
 > Pre-built binaries aren't yet available.
 
 ## Installation
@@ -43,7 +44,17 @@ To make the `fh` CLI readily available on a [NixOS] system:
 }
 ```
 
-## Demo
+## Using `fh`
+
+You can use `fh` to:
+
+- [Log into FlakeHub](#log-into-flakehub)
+- [Initialize a new `flake.nix`](#initialize-a-new-flakenix-from-scratch)
+- [Add flake inputs to your `flake.nix`](#add-a-flake-published-to-flakehub-to-your-flakenix)
+- [Resolve flake references to store paths](#resolve-flake-references-to-store-paths)
+- [Search FlakeHub flakes](#searching-published-flakes)
+- List available [releases](#listing-releases) and [flakes, organizations, and versions](#listing-flakes-organizations-and-versions)
+- List flakes by [label](#list-by-label)
 
 ### Log into FlakeHub
 
@@ -68,17 +79,18 @@ Respond to the prompts it provides you and at the end `fh` will write a `flake.n
 
 `fh init` has built-in support for the following languages:
 
-* [Elm]
-* [Go]
-* [Java]
-* [JavaScript]
-* [PHP]
-* [Python]
-* [Ruby]
-* [Rust]
-* [Zig]
+- [Elm]
+- [Go]
+- [Java]
+- [JavaScript]
+- [PHP]
+- [Python]
+- [Ruby]
+- [Rust]
+- [Zig]
 
-> **Note**: `fh init` operates on a best-guess basis and is opinionated in its suggestions.
+> [!NOTE]
+> The `fh init` command operates on a best-guess basis and is opinionated in its suggestions.
 > It's intended less as a comprehensive flake creation solution and more as a helpful kickstarter.
 
 ### Add a flake published to FlakeHub to your `flake.nix`
@@ -102,6 +114,41 @@ The resulting `flake.nix` would look something like this:
     # Fill in your outputs here
   };
 }
+```
+
+### Resolve flake references to store paths
+
+You can resolve flake references on FlakeHub to Nix store paths using the `fh resolve` command:
+
+```shell
+fh resolve "omnicorp/devtools/0.1.0#packages.x86_64-linux.cli"
+/nix/store/1ab797rfbdcjzissxrsf25rqy0l8mksq-cli-0.1.0
+```
+
+You can only use `fh resolve` with flake releases for which [`include-output-paths`][flakehub-push-params] has been set to `true`.
+Here's an example [flakehub-push] configuration:
+
+```yaml
+- name: Publish to FlakeHub
+  uses: determinatesystems/flakehub-push@main
+  with:
+    visibility: "public" # or "unlisted" or "private"
+    include-output-paths: true
+```
+
+The `fh resolve` command is most useful when used in conjunction with [FlakeHub Cache][cache].
+If the cache is enabled on the flake and the current Nix user is [logged into FlakeHub](#log-into-flakehub), then resolved store paths are also available to Nix.
+Under those conditions, you can, for example, apply a NixOS configuration published to FlakeHub:
+
+```shell
+# Build the derivation
+nix build \
+  --max-jobs 0 \
+  --profile /nix/var/nix/profiles/system \
+  $(fh resolve "my-org/my-nixos-configs#nixosConfigurations.my-dev-workstation")
+
+# Apply the configuration
+/nix/var/nix/profiles/system/bin/switch-to-configuration switch
 ```
 
 ### Searching published flakes
@@ -258,11 +305,11 @@ fh completion bash
 
 These shells are supported:
 
-* [Bash]
-* [Elvish]
-* [Fish]
-* [Powershell]
-* [zsh]
+- [Bash]
+- [Elvish]
+- [Fish]
+- [Powershell]
+- [zsh]
 
 ## A note on automation
 
@@ -285,6 +332,8 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [elvish]: https://elv.sh
 [fish]: https://fishshell.com
 [flakehub]: https://flakehub.com
+[flakehub-push]: https://github.com/determinateSystems/flakehub-push
+[flakehub-push-params]: https://github.com/determinateSystems/flakehub-push?tab=readme-ov-file#available-parameters
 [flakes]: https://flakehub.com/flakes
 [go]: https://golang.org
 [inputs]: https://zero-to-nix.com/concepts/flakes#inputs
