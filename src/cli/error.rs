@@ -24,6 +24,9 @@ pub(crate) enum FhError {
     #[error("malformed flake reference")]
     MalformedFlakeOutputRef,
 
+    #[error("{0} is not installed or not on the PATH")]
+    MissingExecutable(String),
+
     #[error("missing from flake output reference: {0}")]
     MissingFromOutputRef(String),
 

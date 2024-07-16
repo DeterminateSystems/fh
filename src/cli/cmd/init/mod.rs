@@ -280,7 +280,7 @@ impl CommandExecute for InitSubcommand {
     }
 }
 
-fn command_exists(cmd: &str) -> bool {
+pub(super) fn command_exists(cmd: &str) -> bool {
     Command::new(cmd).output().is_ok()
 }
 

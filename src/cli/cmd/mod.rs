@@ -23,6 +23,7 @@ use tabled::settings::{
 use url::Url;
 
 use self::{
+    init::command_exists,
     list::{Flake, Org, Release, Version},
     resolve::ResolvedPath,
     search::SearchResult,
@@ -368,6 +369,10 @@ macro_rules! flakehub_url {
 }
 
 async fn nix_command(args: &[&str]) -> Result<(), FhError> {
+    if !command_exists("nix") {
+        return Err(FhError::MissingExecutable(String::from("nix")));
+    }
+
     tokio::process::Command::new("nix")
         .args(["--extra-experimental-features", "nix-command flakes"])
         .args(args)
