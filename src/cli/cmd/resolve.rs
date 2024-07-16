@@ -47,9 +47,15 @@ impl CommandExecute for ResolveSubcommand {
             FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
         if self.fetch {
-            nix_command(&["build", "--print-build-logs", &resolved_path.store_path])
-                .await
-                .wrap_err("failed to build resolved store path with Nix")?;
+            nix_command(&[
+                "build",
+                "--print-build-logs",
+                "--max-jobs",
+                "0",
+                &resolved_path.store_path,
+            ])
+            .await
+            .wrap_err("failed to build resolved store path with Nix")?;
         }
 
         if self.json {
