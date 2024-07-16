@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::process::{ExitCode, Stdio};
 
 use clap::Parser;
+use color_eyre::eyre::Context;
 use once_cell::sync::Lazy;
 use tracing::{span, Level};
 
@@ -82,7 +83,9 @@ impl CommandExecute for ConvertSubcommand {
         } else {
             tokio::fs::write(self.flake_path, new_flake_contents).await?;
 
-            nix_command(&["flake", "lock"]).await?;
+            nix_command(&["flake", "lock"])
+                .await
+                .wrap_err("failed to create missing lock file entries")?;
         }
 
         Ok(ExitCode::SUCCESS)

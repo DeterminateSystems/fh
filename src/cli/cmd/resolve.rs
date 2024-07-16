@@ -1,6 +1,7 @@
 use std::process::ExitCode;
 
 use clap::Parser;
+use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 
 use super::{nix_command, print_json, CommandExecute, FlakeHubClient};
@@ -53,7 +54,8 @@ impl CommandExecute for ResolveSubcommand {
                 "--print-build-logs",
                 &resolved_path.store_path,
             ])
-            .await?;
+            .await
+            .wrap_err("failed to build resolved store path with Nix")?;
         }
 
         if self.json {

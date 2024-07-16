@@ -36,6 +36,9 @@ pub(crate) enum FhError {
     #[error("template error: {0}")]
     Render(#[from] handlebars::RenderError),
 
+    #[error(transparent)]
+    Report(#[from] color_eyre::Report),
+
     #[error("template error: {0}")]
     Template(#[from] Box<handlebars::TemplateError>),
 
