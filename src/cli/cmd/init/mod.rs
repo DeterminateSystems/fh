@@ -281,7 +281,7 @@ impl CommandExecute for InitSubcommand {
 }
 
 pub(super) fn command_exists(cmd: &str) -> Result<bool, FhError> {
-    if !Command::new(cmd).output().is_ok() {
+    if Command::new(cmd).output().is_err() {
         return Err(FhError::MissingExecutable(String::from(cmd)));
     }
 
