@@ -17,9 +17,9 @@ pub(crate) struct ResolveSubcommand {
     #[arg(long)]
     json: bool,
 
-    /// Build the resolved path with Nix.
+    /// Fetch the resolved path with Nix.
     #[arg(short, long, default_value_t = false)]
-    build: bool,
+    fetch: bool,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -46,16 +46,10 @@ impl CommandExecute for ResolveSubcommand {
         let resolved_path =
             FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
-        if self.build {
-            nix_command(&[
-                "build",
-                "--max-jobs",
-                "0",
-                "--print-build-logs",
-                &resolved_path.store_path,
-            ])
-            .await
-            .wrap_err("failed to build resolved store path with Nix")?;
+        if self.fetch {
+            nix_command(&["build", "--print-build-logs", &resolved_path.store_path])
+                .await
+                .wrap_err("failed to build resolved store path with Nix")?;
         }
 
         if self.json {
