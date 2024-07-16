@@ -83,6 +83,8 @@ impl CommandExecute for ConvertSubcommand {
         } else {
             tokio::fs::write(self.flake_path, new_flake_contents).await?;
 
+            tracing::debug!("Running: nix flake lock");
+
             nix_command(&["flake", "lock"])
                 .await
                 .wrap_err("failed to create missing lock file entries")?;

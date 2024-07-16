@@ -47,6 +47,11 @@ impl CommandExecute for ResolveSubcommand {
             FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
         if self.fetch {
+            tracing::debug!(
+                "Running: nix build --print-build-logs --max-jobs 0 {}",
+                &resolved_path.store_path,
+            );
+
             nix_command(&[
                 "build",
                 "--print-build-logs",
