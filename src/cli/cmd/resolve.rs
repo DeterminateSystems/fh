@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
-use super::{print_json, CommandExecute, FlakeHubClient};
+use super::{nix_command, print_json, CommandExecute, FlakeHubClient};
 
 /// Resolves a FlakeHub flake reference into a store path.
 #[derive(Debug, Parser)]
@@ -15,6 +15,10 @@ pub(crate) struct ResolveSubcommand {
     /// Output the result as JSON displaying the store path plus the original attribute path.
     #[arg(long)]
     json: bool,
+
+    /// Build the resolved path with Nix.
+    #[arg(short, long, default_value_t = false)]
+    build: bool,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -38,12 +42,17 @@ impl CommandExecute for ResolveSubcommand {
             .strip_prefix("https://flakehub.com/f/")
             .unwrap_or(&self.flake_ref);
 
-        let value = FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
+        let resolved_path =
+            FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
+
+        if self.build {
+            nix_command(&["build", &resolved_path.store_path]).await?;
+        }
 
         if self.json {
-            print_json(value)?;
+            print_json(resolved_path)?;
         } else {
-            println!("{}", value.store_path);
+            println!("{}", resolved_path.store_path);
         }
 
         Ok(ExitCode::SUCCESS)

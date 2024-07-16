@@ -367,6 +367,16 @@ macro_rules! flakehub_url {
     }};
 }
 
+async fn nix_command(args: &[&str]) -> Result<(), FhError> {
+    tokio::process::Command::new("nix")
+        .args(["--extra-experimental-features", "nix-command flakes"])
+        .args(args)
+        .status()
+        .await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

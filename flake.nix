@@ -103,7 +103,7 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               (fenixToolchain system)
-              cargo-watch
+              bacon
               rust-analyzer
               nixpkgs-fmt
 
