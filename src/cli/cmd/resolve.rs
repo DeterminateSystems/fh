@@ -46,7 +46,14 @@ impl CommandExecute for ResolveSubcommand {
             FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
         if self.build {
-            nix_command(&["build", &resolved_path.store_path]).await?;
+            nix_command(&[
+                "build",
+                "--max-jobs",
+                "0",
+                "--print-build-logs",
+                &resolved_path.store_path,
+            ])
+            .await?;
         }
 
         if self.json {
