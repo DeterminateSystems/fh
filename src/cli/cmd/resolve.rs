@@ -3,6 +3,9 @@ use std::process::ExitCode;
 use clap::Parser;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
+use tokio::fs::metadata;
+
+use crate::cli::error::FhError;
 
 use super::{nix_command, print_json, CommandExecute, FlakeHubClient};
 
@@ -17,9 +20,9 @@ pub(crate) struct ResolveSubcommand {
     #[arg(long)]
     json: bool,
 
-    /// Fetch the resolved path with Nix.
-    #[arg(short, long, default_value_t = false)]
-    fetch: bool,
+    /// TODO
+    #[arg(short, long)]
+    profile: Option<String>,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -46,24 +49,39 @@ impl CommandExecute for ResolveSubcommand {
         let resolved_path =
             FlakeHubClient::resolve(self.api_addr.as_ref(), flake_ref.to_string()).await?;
 
-        if self.fetch {
+        if let Some(profile) = self.profile {
             tracing::debug!(
                 "Running: nix build --print-build-logs --max-jobs 0 {}",
                 &resolved_path.store_path,
             );
+
+            let profile = if profile.starts_with("/nix/var/nix/profiles") {
+                profile
+            } else {
+                format!("/nix/var/nix/profiles/{profile}")
+            };
+
+            // Ensure that the profile exists
+            if let Ok(path) = metadata(&profile).await {
+                if !path.is_dir() {
+                    return Err(FhError::MissingProfile(profile).into());
+                }
+            } else {
+                return Err(FhError::MissingProfile(profile).into());
+            }
 
             nix_command(&[
                 "build",
                 "--print-build-logs",
                 "--max-jobs",
                 "0",
+                "--profile",
+                &profile,
                 &resolved_path.store_path,
             ])
             .await
             .wrap_err("failed to build resolved store path with Nix")?;
-        }
-
-        if self.json {
+        } else if self.json {
             print_json(resolved_path)?;
         } else {
             println!("{}", resolved_path.store_path);

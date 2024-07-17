@@ -104,6 +104,7 @@
             packages = with pkgs; [
               (fenixToolchain system)
               bacon
+              cargo-watch
               rust-analyzer
               nixpkgs-fmt
 
