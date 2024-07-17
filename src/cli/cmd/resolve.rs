@@ -17,11 +17,11 @@ pub(crate) struct ResolveSubcommand {
     flake_ref: String,
 
     /// Output the result as JSON displaying the store path plus the original attribute path.
-    #[arg(long)]
+    #[arg(long, env = "FH_RESOLVE_JSON_OUTPUT")]
     json: bool,
 
-    /// TODO
-    #[arg(short, long)]
+    /// Update a specific Nix profile with the resolved path.
+    #[arg(short, long, env = "FH_RESOLVE_PROFILE")]
     profile: Option<String>,
 
     #[clap(from_global)]
