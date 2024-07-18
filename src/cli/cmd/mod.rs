@@ -400,12 +400,12 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         if !stdout.is_empty() {
-            s.push_str(&stdout.trim());
+            s.push_str(stdout.trim());
         }
 
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
         if !stderr.is_empty() {
-            s.push_str(&stderr.trim());
+            s.push_str(stderr.trim());
         }
 
         Err(FhError::FailedCommand(s))
