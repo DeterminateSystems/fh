@@ -10,6 +10,8 @@ pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
+use std::fmt::Display;
+
 use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
 use reqwest::{
@@ -155,10 +157,10 @@ impl FlakeHubClient {
         Ok(res)
     }
 
-    async fn resolve(api_addr: &str, output_ref: FlakeOutputRef) -> Result<ResolvedPath, FhError> {
+    async fn resolve(api_addr: &str, output_ref: &FlakeOutputRef) -> Result<ResolvedPath, FhError> {
         let FlakeOutputRef {
             ref org,
-            ref flake,
+            project: ref flake,
             ref version_constraint,
             ref attr_path,
         } = output_ref;
@@ -260,9 +262,19 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
 // https://api.flakehub.com/f/{org}/{flake}/{version_constraint}/output/{attr_path}
 struct FlakeOutputRef {
     org: String,
-    flake: String,
+    project: String,
     version_constraint: String,
     attr_path: String,
+}
+
+impl Display for FlakeOutputRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}#{}",
+            self.org, self.project, self.version_constraint, self.attr_path
+        )
+    }
 }
 
 impl TryFrom<String> for FlakeOutputRef {
@@ -302,7 +314,7 @@ impl TryFrom<String> for FlakeOutputRef {
 
             Ok(FlakeOutputRef {
                 org: org.to_string(),
-                flake: flake.to_string(),
+                project: flake.to_string(),
                 version_constraint: version.to_string(),
                 attr_path: attr_path.to_string(),
             })

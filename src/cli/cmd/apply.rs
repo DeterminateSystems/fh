@@ -34,7 +34,13 @@ impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let output_ref = parse_output_ref(self.output_ref)?;
 
-        let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), output_ref).await?;
+        let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
+
+        tracing::debug!(
+            "Successfully resolved reference {} to path {}",
+            &output_ref,
+            &resolved_path.store_path
+        );
 
         let profile = if self.profile.starts_with("/nix/var/nix/profiles") {
             self.profile
@@ -42,7 +48,11 @@ impl CommandExecute for ApplySubcommand {
             format!("/nix/var/nix/profiles/{}", self.profile)
         };
 
+        tracing::debug!("Successfully located Nix profile {profile}");
+
         if let Ok(path) = tokio::fs::metadata(&profile).await {
+            tracing::debug!("Profile path {path:?} exists but isn't a directory");
+
             if !path.is_dir() {
                 return Err(FhError::MissingProfile(profile).into());
             }
@@ -68,7 +78,10 @@ impl CommandExecute for ApplySubcommand {
         .await
         .wrap_err("failed to build resolved store path with Nix")?;
 
-        tracing::info!("Successfully applied resolved path to profile {profile}");
+        tracing::info!(
+            "Successfully applied resolved path {} to profile {profile}",
+            &resolved_path.store_path
+        );
 
         Ok(ExitCode::SUCCESS)
     }
