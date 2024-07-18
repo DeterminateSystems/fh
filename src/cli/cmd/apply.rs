@@ -10,10 +10,10 @@ use crate::cli::{
 
 use super::{CommandExecute, FlakeHubClient};
 
-/// Apply a FlakeHub store path to the specified Nix profile.
+/// Update the specified Nix profile with the path resolved from a flake output reference.
 #[derive(Parser)]
 pub(crate) struct ApplySubcommand {
-    /// Update a specific Nix profile with the resolved path.
+    /// The Nix profile to which you want to apply the resolved store path.
     #[arg(env = "FH_RESOLVE_PROFILE")]
     profile: String,
 
