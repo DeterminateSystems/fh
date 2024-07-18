@@ -1,4 +1,5 @@
 pub(crate) mod add;
+pub(crate) mod apply;
 pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod eject;
@@ -62,15 +63,16 @@ pub trait CommandExecute {
 #[derive(clap::Subcommand)]
 pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
+    Apply(apply::ApplySubcommand),
     Completion(completion::CompletionSubcommand),
+    Convert(convert::ConvertSubcommand),
+    Eject(eject::EjectSubcommand),
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
-    Search(search::SearchSubcommand),
-    Convert(convert::ConvertSubcommand),
     Login(login::LoginSubcommand),
-    Status(status::StatusSubcommand),
-    Eject(eject::EjectSubcommand),
     Resolve(resolve::ResolveSubcommand),
+    Search(search::SearchSubcommand),
+    Status(status::StatusSubcommand),
 }
 
 #[derive(Debug, Deserialize)]
@@ -153,13 +155,13 @@ impl FlakeHubClient {
         Ok(res)
     }
 
-    async fn resolve(api_addr: &str, flake_ref: String) -> Result<ResolvedPath, FhError> {
+    async fn resolve(api_addr: &str, output_ref: FlakeOutputRef) -> Result<ResolvedPath, FhError> {
         let FlakeOutputRef {
             ref org,
             ref flake,
             ref version_constraint,
             ref attr_path,
-        } = flake_ref.try_into()?;
+        } = output_ref;
 
         let url = flakehub_url!(
             api_addr,
@@ -378,6 +380,19 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
         .await?;
 
     Ok(())
+}
+
+fn parse_output_ref(output_ref: String) -> Result<FlakeOutputRef, FhError> {
+    // Ensures that users can use both forms:
+    // 1. https://flakehub/f/{org}/{project}/{version_req}#{output}
+    // 2. {org}/{project}/{version_req}#{output}
+    let output_ref = String::from(
+        output_ref
+            .strip_prefix("https://flakehub.com/f/")
+            .unwrap_or(&output_ref),
+    );
+
+    output_ref.try_into()
 }
 
 #[cfg(test)]
