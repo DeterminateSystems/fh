@@ -10,7 +10,7 @@ pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
-use std::fmt::Display;
+use std::{fmt::Display, process::Stdio};
 
 use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
@@ -385,13 +385,31 @@ macro_rules! flakehub_url {
 async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     command_exists("nix")?;
 
-    tokio::process::Command::new("nix")
+    let output = tokio::process::Command::new("nix")
         .args(["--extra-experimental-features", "nix-command flakes"])
         .args(args)
-        .status()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
         .await?;
 
-    Ok(())
+    if output.status.success() {
+        Ok(())
+    } else {
+        let mut s = String::new();
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        if !stdout.is_empty() {
+            s.push_str(&stdout.trim());
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        if !stderr.is_empty() {
+            s.push_str(&stderr.trim());
+        }
+
+        Err(FhError::FailedCommand(s))
+    }
 }
 
 fn parse_output_ref(output_ref: String) -> Result<FlakeOutputRef, FhError> {
