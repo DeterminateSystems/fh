@@ -207,7 +207,7 @@ impl CommandExecute for InitSubcommand {
                 flake.inputs.insert(
                     String::from("flake-compat"),
                     Input::new(
-                        flakehub_url!(FLAKEHUB_WEB_ROOT, "flake", "edolstra", "flake-compat", "*")
+                        flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "edolstra", "flake-compat", "*")
                             .as_str(),
                         None,
                     ),
