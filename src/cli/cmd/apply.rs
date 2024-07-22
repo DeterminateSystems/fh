@@ -59,6 +59,8 @@ impl Display for Verb {
 #[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
+        tracing::info!("Resolving store path for output: {}", self.output_ref);
+
         let output_ref = parse_output_ref(self.output_ref)?;
 
         let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
@@ -75,7 +77,7 @@ impl CommandExecute for ApplySubcommand {
             format!("/nix/var/nix/profiles/{}", self.profile)
         };
 
-        tracing::debug!("Successfully located Nix profile {profile_path}");
+        tracing::debug!("Successfully located Nix profile at {profile_path}");
 
         if let Ok(path) = tokio::fs::metadata(&profile_path).await {
             if !path.is_dir() {
@@ -87,6 +89,11 @@ impl CommandExecute for ApplySubcommand {
         } else {
             return Err(FhError::MissingProfile(profile_path).into());
         }
+
+        tracing::info!(
+            "Building resolved store path with Nix: {}",
+            &resolved_path.store_path,
+        );
 
         nix_command(&[
             "build",
