@@ -26,7 +26,6 @@ pub(crate) struct ApplySubcommand {
     json: bool,
 
     /// The command to run with the profile: bin/switch-to-configuration <verb>
-    /// For NixOS, this would be `switch`: bin/switch-to-configuration switch
     #[arg(long, env = "FH_RESOLVE_VERB")]
     verb: Option<Verb>,
 
