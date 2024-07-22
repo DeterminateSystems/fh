@@ -10,7 +10,7 @@ use crate::cli::{
 
 use super::{CommandExecute, FlakeHubClient};
 
-/// Update the specified Nix profile with the path resolved from a flake output reference.
+/// Update the specified Nix profile with the path resolved from a FlakeHub output reference.
 #[derive(Parser)]
 pub(crate) struct ApplySubcommand {
     /// The Nix profile to which you want to apply the resolved store path.
@@ -25,14 +25,17 @@ pub(crate) struct ApplySubcommand {
     #[arg(long, env = "FH_JSON_OUTPUT")]
     json: bool,
 
-    /// The command to run with the profile: bin/switch-to-configuration <verb>
-    #[arg(long, env = "FH_RESOLVE_VERB")]
-    verb: Option<Verb>,
+    /// The command to run from the profile's bin/switch-to-configuration.
+    /// Takes the form bin/switch-to-configuration <cmd>.
+    #[arg(long, env = "FH_RESOLVE_VERB", name = "CMD")]
+    run: Option<Verb>,
 
     #[clap(from_global)]
     api_addr: url::Url,
 }
 
+// For available commands, see
+// https://github.com/NixOS/nixpkgs/blob/12100837a815473e96c9c86fdacf6e88d0e6b113/nixos/modules/system/activation/switch-to-configuration.pl#L85-L88
 #[derive(Clone, Debug, ValueEnum)]
 pub enum Verb {
     Switch,
@@ -98,6 +101,8 @@ impl CommandExecute for ApplySubcommand {
         nix_command(&[
             "build",
             "--print-build-logs",
+            // `--max-jobs 0` ensures that `nix build` doesn't really *build* anything
+            // and acts more as a fetch operation
             "--max-jobs",
             "0",
             "--profile",
@@ -133,7 +138,7 @@ impl CommandExecute for ApplySubcommand {
             if let Ok(switch_bin_path_metadata) = tokio::fs::metadata(&switch_bin_path).await {
                 let permissions = switch_bin_path_metadata.permissions();
                 if permissions.mode() & 0o111 != 0 {
-                    if let Some(verb) = self.verb {
+                    if let Some(verb) = self.run {
                         tracing::info!(
                             "Switching configuration by running {} {}",
                             &switch_bin_path.display().to_string(),

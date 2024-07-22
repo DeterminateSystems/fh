@@ -1,6 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
-    #[error("Nix command failed")]
+    #[error("Nix command failed; check prior Nix output for details")]
     FailedNixCommand,
 
     #[error("file error: {0}")]

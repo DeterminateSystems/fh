@@ -395,9 +395,11 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
         .args(args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .spawn()?
+        .spawn()
+        .wrap_err("failed to spawn Nix command")?
         .wait_with_output()
-        .await?;
+        .await
+        .wrap_err("failed to wait for Nix command output")?;
 
     if output.status.success() {
         Ok(())
