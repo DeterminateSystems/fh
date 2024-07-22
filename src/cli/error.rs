@@ -1,7 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
-    #[error("failed command: {0}")]
-    FailedCommand(String),
+    #[error("Nix command failed")]
+    FailedNixCommand,
 
     #[error("file error: {0}")]
     Filesystem(#[from] std::io::Error),

@@ -89,12 +89,6 @@ impl CommandExecute for ApplySubcommand {
             return Err(FhError::MissingProfile(profile_path).into());
         }
 
-        tracing::debug!(
-            "Running: nix build --print-build-logs --max-jobs 0 --profile {} {}",
-            &profile_path,
-            &resolved_path.store_path,
-        );
-
         nix_command(&[
             "build",
             "--print-build-logs",

@@ -385,30 +385,24 @@ macro_rules! flakehub_url {
 async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     command_exists("nix")?;
 
+    tracing::debug!(
+        "Running: nix build --extra-experimental-features 'nix-command-flakes' {}",
+        args.join(" ")
+    );
+
     let output = tokio::process::Command::new("nix")
         .args(["--extra-experimental-features", "nix-command flakes"])
         .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?
+        .wait_with_output()
         .await?;
 
     if output.status.success() {
         Ok(())
     } else {
-        let mut s = String::new();
-
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        if !stdout.is_empty() {
-            s.push_str(stdout.trim());
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        if !stderr.is_empty() {
-            s.push_str(stderr.trim());
-        }
-
-        Err(FhError::FailedCommand(s))
+        Err(FhError::FailedNixCommand)
     }
 }
 
