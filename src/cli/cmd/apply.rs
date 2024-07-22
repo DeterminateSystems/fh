@@ -25,7 +25,7 @@ pub(crate) struct ApplySubcommand {
     #[arg(long, env = "FH_JSON_OUTPUT")]
     json: bool,
 
-    /// TODO
+    /// Run the specified profile's bin/switch-to-configuration if present
     #[arg(short, long, env = "FH_RESOLVE_SWITCH")]
     switch: bool,
 
@@ -83,8 +83,13 @@ impl CommandExecute for ApplySubcommand {
         .await
         .wrap_err("failed to build resolved store path with Nix")?;
 
+        tracing::info!(
+            "Successfully applied resolved path {} to profile at {profile_path}",
+            &resolved_path.store_path
+        );
+
         let switch_bin_path = {
-            let mut path = PathBuf::from(&resolved_path.store_path);
+            let mut path = PathBuf::from(&profile_path);
             path.push("bin");
             path.push("switch-to-configuration");
             path
@@ -96,12 +101,17 @@ impl CommandExecute for ApplySubcommand {
         );
 
         if switch_bin_path.exists() && switch_bin_path.is_file() {
+            tracing::debug!(
+                "Found switch-to-configuration executable at {}",
+                &switch_bin_path.display().to_string(),
+            );
+
             if let Ok(switch_bin_path_metadata) = tokio::fs::metadata(&switch_bin_path).await {
                 let permissions = switch_bin_path_metadata.permissions();
                 if permissions.mode() & 0o111 != 0 {
                     if self.switch {
-                        tracing::debug!(
-                            "Running {} as an executable",
+                        tracing::info!(
+                            "Switching configuration by running {}",
                             &switch_bin_path.display().to_string(),
                         );
 
@@ -119,14 +129,19 @@ impl CommandExecute for ApplySubcommand {
                         );
 
                         println!("To update your machine, run:\n\n    {profile_path}/bin/switch-to-configuration switch\n");
-                        println!("Or for more information:\n\n    {profile_path}/bin/switch-to-configuration --help");
+                        println!("For more information:\n\n    {profile_path}/bin/switch-to-configuration --help");
                     }
+                } else {
+                    tracing::debug!(
+                        "switch-to-configuration executable at {} isn't executable; skipping",
+                        &switch_bin_path.display().to_string()
+                    );
                 }
             }
         } else {
-            tracing::info!(
-                "Successfully applied resolved path {} to profile at {profile_path}",
-                &resolved_path.store_path
+            tracing::debug!(
+                "No switch-to-configuration executable found at {}",
+                &switch_bin_path.display().to_string(),
             );
         }
 
