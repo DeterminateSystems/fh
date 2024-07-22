@@ -1,6 +1,6 @@
-use std::{os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
+use std::{fmt::Display, os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use color_eyre::eyre::Context;
 
 use crate::cli::{
@@ -28,10 +28,33 @@ pub(crate) struct ApplySubcommand {
     /// The command to run with the profile: bin/switch-to-configuration <verb>
     /// For NixOS, this would be `switch`: bin/switch-to-configuration switch
     #[arg(long, env = "FH_RESOLVE_VERB")]
-    verb: Option<String>,
+    verb: Option<Verb>,
 
     #[clap(from_global)]
     api_addr: url::Url,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum Verb {
+    Switch,
+    Boot,
+    Test,
+    DryActivate,
+}
+
+impl Display for Verb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Switch => "switch",
+                Self::Boot => "boot",
+                Self::Test => "test",
+                Self::DryActivate => "dry-activate",
+            }
+        )
+    }
 }
 
 #[async_trait::async_trait]
@@ -114,11 +137,11 @@ impl CommandExecute for ApplySubcommand {
                         tracing::info!(
                             "Switching configuration by running {} {}",
                             &switch_bin_path.display().to_string(),
-                            verb,
+                            verb.to_string(),
                         );
 
                         let output = tokio::process::Command::new(&switch_bin_path)
-                            .args([&verb])
+                            .args([&verb.to_string()])
                             .output()
                             .await
                             .wrap_err("failed to run switch-to-configuration")?;
@@ -131,8 +154,7 @@ impl CommandExecute for ApplySubcommand {
                             profile_path
                         );
 
-                        println!("To update your machine, run:\n\n    {profile_path}/bin/switch-to-configuration switch\n");
-                        println!("For more information:\n\n    {profile_path}/bin/switch-to-configuration --help");
+                        println!("For more information on how to update your machine:\n\n    {profile_path}/bin/switch-to-configuration --help");
                     }
                 } else {
                     tracing::debug!(
