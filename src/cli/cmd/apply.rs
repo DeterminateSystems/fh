@@ -25,9 +25,10 @@ pub(crate) struct ApplySubcommand {
     #[arg(long, env = "FH_JSON_OUTPUT")]
     json: bool,
 
-    /// Run the specified profile's bin/switch-to-configuration if present
-    #[arg(short, long, env = "FH_RESOLVE_SWITCH")]
-    switch: bool,
+    /// The command to run with the profile: bin/switch-to-configuration <verb>
+    /// For NixOS, this would be `switch`: bin/switch-to-configuration switch
+    #[arg(long, env = "FH_RESOLVE_VERB")]
+    verb: Option<String>,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -109,16 +110,18 @@ impl CommandExecute for ApplySubcommand {
             if let Ok(switch_bin_path_metadata) = tokio::fs::metadata(&switch_bin_path).await {
                 let permissions = switch_bin_path_metadata.permissions();
                 if permissions.mode() & 0o111 != 0 {
-                    if self.switch {
+                    if let Some(verb) = self.verb {
                         tracing::info!(
-                            "Switching configuration by running {}",
+                            "Switching configuration by running {} {}",
                             &switch_bin_path.display().to_string(),
+                            verb,
                         );
 
                         let output = tokio::process::Command::new(&switch_bin_path)
+                            .args([&verb])
                             .output()
                             .await
-                            .wrap_err("failed to run switch-to-configuration executable")?;
+                            .wrap_err("failed to run switch-to-configuration")?;
 
                         println!("{}", String::from_utf8_lossy(&output.stdout));
                     } else {
