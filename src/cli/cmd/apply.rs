@@ -1,4 +1,4 @@
-use std::process::ExitCode;
+use std::{os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
 
 use clap::Parser;
 use color_eyre::eyre::Context;
@@ -25,6 +25,10 @@ pub(crate) struct ApplySubcommand {
     #[arg(long, env = "FH_JSON_OUTPUT")]
     json: bool,
 
+    /// TODO
+    #[arg(short, long, env = "FH_RESOLVE_SWITCH")]
+    switch: bool,
+
     #[clap(from_global)]
     api_addr: url::Url,
 }
@@ -42,27 +46,28 @@ impl CommandExecute for ApplySubcommand {
             &resolved_path.store_path
         );
 
-        let profile = if self.profile.starts_with("/nix/var/nix/profiles") {
+        let profile_path = if self.profile.starts_with("/nix/var/nix/profiles") {
             self.profile
         } else {
             format!("/nix/var/nix/profiles/{}", self.profile)
         };
 
-        tracing::debug!("Successfully located Nix profile {profile}");
+        tracing::debug!("Successfully located Nix profile {profile_path}");
 
-        if let Ok(path) = tokio::fs::metadata(&profile).await {
-            tracing::debug!("Profile path {path:?} exists but isn't a directory");
-
+        if let Ok(path) = tokio::fs::metadata(&profile_path).await {
             if !path.is_dir() {
-                return Err(FhError::MissingProfile(profile).into());
+                tracing::debug!(
+                    "Profile path {path:?} exists but isn't a directory; this should never happen"
+                );
+                return Err(FhError::MissingProfile(profile_path).into());
             }
         } else {
-            return Err(FhError::MissingProfile(profile).into());
+            return Err(FhError::MissingProfile(profile_path).into());
         }
 
         tracing::debug!(
             "Running: nix build --print-build-logs --max-jobs 0 --profile {} {}",
-            &profile,
+            &profile_path,
             &resolved_path.store_path,
         );
 
@@ -72,16 +77,58 @@ impl CommandExecute for ApplySubcommand {
             "--max-jobs",
             "0",
             "--profile",
-            &profile,
+            &profile_path,
             &resolved_path.store_path,
         ])
         .await
         .wrap_err("failed to build resolved store path with Nix")?;
 
-        tracing::info!(
-            "Successfully applied resolved path {} to profile {profile}",
-            &resolved_path.store_path
+        let switch_bin_path = {
+            let mut path = PathBuf::from(&resolved_path.store_path);
+            path.push("bin");
+            path.push("switch-to-configuration");
+            path
+        };
+
+        tracing::debug!(
+            "Checking for switch-to-configuration executable at {}",
+            &switch_bin_path.display().to_string(),
         );
+
+        if switch_bin_path.exists() && switch_bin_path.is_file() {
+            if let Ok(switch_bin_path_metadata) = tokio::fs::metadata(&switch_bin_path).await {
+                let permissions = switch_bin_path_metadata.permissions();
+                if permissions.mode() & 0o111 != 0 {
+                    if self.switch {
+                        tracing::debug!(
+                            "Running {} as an executable",
+                            &switch_bin_path.display().to_string(),
+                        );
+
+                        let output = tokio::process::Command::new(&switch_bin_path)
+                            .output()
+                            .await
+                            .wrap_err("failed to run switch-to-configuration executable")?;
+
+                        println!("{}", String::from_utf8_lossy(&output.stdout));
+                    } else {
+                        tracing::info!(
+                            "Successfully resolved path {} to profile {}",
+                            &resolved_path.store_path,
+                            profile_path
+                        );
+
+                        println!("To update your machine, run:\n\n    {profile_path}/bin/switch-to-configuration switch\n");
+                        println!("Or for more information:\n\n    {profile_path}/bin/switch-to-configuration --help");
+                    }
+                }
+            }
+        } else {
+            tracing::info!(
+                "Successfully applied resolved path {} to profile at {profile_path}",
+                &resolved_path.store_path
+            );
+        }
 
         Ok(ExitCode::SUCCESS)
     }
