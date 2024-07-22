@@ -388,8 +388,8 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     let output = tokio::process::Command::new("nix")
         .args(["--extra-experimental-features", "nix-command flakes"])
         .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .output()
         .await?;
 
