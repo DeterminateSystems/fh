@@ -38,9 +38,7 @@ enum System {
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let (profile, script, output_ref) = match &self.system {
-            System::NixOS(NixOS { output_ref, .. }) => {
-                ("system", "switch-to-configuration", output_ref)
-            }
+            System::NixOS(nixos) => ("system", "switch-to-configuration", nixos.output_ref()?),
         };
 
         tracing::info!("Resolving store path for output: {}", output_ref);

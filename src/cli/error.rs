@@ -24,6 +24,9 @@ pub(crate) enum FhError {
     #[error("label parsing error: {0}")]
     LabelParse(String),
 
+    #[error("malformed NixOS configuration path: {0}")]
+    MalformedNixOSConfigPath(String),
+
     #[error("malformed flake reference")]
     MalformedFlakeOutputRef,
 
