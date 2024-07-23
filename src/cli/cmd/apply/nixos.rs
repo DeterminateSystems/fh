@@ -4,19 +4,14 @@ use clap::{Parser, ValueEnum};
 
 #[derive(Parser)]
 pub(super) struct NixOS {
-    /// The command to run from the profile's switch-to-configuration script.
-    /// Takes the form: switch-to-configuration <cmd>.
-    #[arg(
-        long,
-        env = "FH_APPLY_NIXOS_CMD",
-        name = "CMD",
-        default_value = "switch"
-    )]
-    pub(super) run: Verb,
-
     /// The FlakeHub output reference to apply to the system profile.
     /// References must be of this form: {org}/{flake}/{version_req}#{attr_path}
     pub(super) output_ref: String,
+
+    /// The command to run from the profile's switch-to-configuration script.
+    /// Takes the form: switch-to-configuration <cmd>.
+    #[clap(name = "CMD", default_value = "switch")]
+    pub(super) run: Verb,
 }
 
 // For available commands, see
