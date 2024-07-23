@@ -76,15 +76,16 @@ impl CommandExecute for ApplySubcommand {
                 let permissions = script_path_metadata.permissions();
                 if permissions.mode() & 0o111 != 0 {
                     match self.system {
-                        System::NixOS(NixOS { ref run, .. }) => {
+                        System::NixOS(NixOS { ref action, .. }) => {
                             tracing::info!(
                                 "{} {}",
                                 &script_path.display().to_string(),
-                                run.to_string(),
+                                action.to_string(),
                             );
 
+                            // switch-to-configuration <action>
                             let output = tokio::process::Command::new(&script_path)
-                                .args([&run.to_string()])
+                                .args([&action.to_string()])
                                 .output()
                                 .await
                                 .wrap_err("failed to run switch-to-configuration")?;

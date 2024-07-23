@@ -9,9 +9,9 @@ pub(super) struct NixOS {
     pub(super) output_ref: String,
 
     /// The command to run from the profile's switch-to-configuration script.
-    /// Takes the form: switch-to-configuration <cmd>.
-    #[clap(name = "CMD", default_value = "switch")]
-    pub(super) run: Verb,
+    /// Takes the form: switch-to-configuration <action>.
+    #[clap(name = "ACTION", default_value = "switch")]
+    pub(super) action: Verb,
 }
 
 // For available commands, see
