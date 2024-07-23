@@ -7,7 +7,8 @@ use crate::cli::error::FhError;
 #[derive(Parser)]
 pub(super) struct NixOS {
     /// The FlakeHub output reference to apply to the system profile.
-    /// References must be of this form: {org}/{flake}/{version_req}#{attr_path}
+    /// References must take one of two forms: {org}/{flake}/{version_req}#{attr_path} or {org}/{flake}/{version_req}.
+    /// If the latter, the attribute path defaults to nixosConfigurations.{hostname}.
     pub(super) output_ref: String,
 
     /// The command to run from the profile's switch-to-configuration script.
