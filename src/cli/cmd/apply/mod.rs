@@ -77,29 +77,19 @@ impl CommandExecute for ApplySubcommand {
                 if permissions.mode() & 0o111 != 0 {
                     match self.system {
                         System::NixOS(NixOS { ref run, .. }) => {
-                            if let Some(verb) = run {
-                                tracing::info!(
-                                    "Switching NixOS configuration by running {} {}",
-                                    &script_path.display().to_string(),
-                                    verb.to_string(),
-                                );
+                            tracing::info!(
+                                "{} {}",
+                                &script_path.display().to_string(),
+                                run.to_string(),
+                            );
 
-                                let output = tokio::process::Command::new(&script_path)
-                                    .args([&verb.to_string()])
-                                    .output()
-                                    .await
-                                    .wrap_err("failed to run switch-to-configuration")?;
+                            let output = tokio::process::Command::new(&script_path)
+                                .args([&run.to_string()])
+                                .output()
+                                .await
+                                .wrap_err("failed to run switch-to-configuration")?;
 
-                                println!("{}", String::from_utf8_lossy(&output.stdout));
-                            } else {
-                                tracing::info!(
-                                    "Successfully resolved path {} to profile {}",
-                                    &resolved_path.store_path,
-                                    profile_path
-                                );
-
-                                println!("For more information on how to update your machine:\n\n    {profile_path}/bin/{} --help", script);
-                            }
+                            println!("{}", String::from_utf8_lossy(&output.stdout));
                         }
                     }
                 }
