@@ -6,7 +6,7 @@ use clap::{Parser, ValueEnum};
 pub(super) struct NixOS {
     /// The command to run from the profile's bin/switch-to-configuration.
     /// Takes the form bin/switch-to-configuration <cmd>.
-    #[arg(long, env = "FH_RESOLVE_VERB", name = "CMD")]
+    #[arg(long, env = "FH_NIXOS_VERB", name = "CMD")]
     pub(super) run: Option<Verb>,
 
     /// The FlakeHub output reference to apply to the profile.

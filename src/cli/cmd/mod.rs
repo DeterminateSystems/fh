@@ -382,6 +382,19 @@ macro_rules! flakehub_url {
     }};
 }
 
+#[macro_export]
+macro_rules! path {
+    ($root:expr, $($segment:expr),+ $(,)?) => {{
+        let mut path = PathBuf::from($root);
+
+        $(
+            path.push($segment);
+        )+
+
+        path
+    }};
+}
+
 async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     command_exists("nix")?;
 

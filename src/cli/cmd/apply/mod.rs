@@ -5,9 +5,12 @@ use std::{os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 
-use crate::cli::{
-    cmd::{nix_command, parse_output_ref},
-    error::FhError,
+use crate::{
+    cli::{
+        cmd::{nix_command, parse_output_ref},
+        error::FhError,
+    },
+    path,
 };
 
 use self::nixos::NixOS;
@@ -34,8 +37,10 @@ enum System {
 #[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let (profile, output_ref) = match &self.system {
-            System::NixOS(NixOS { output_ref, .. }) => ("system", output_ref),
+        let (profile, script, output_ref) = match &self.system {
+            System::NixOS(NixOS { output_ref, .. }) => {
+                ("system", "switch-to-configuration", output_ref)
+            }
         };
 
         tracing::info!("Resolving store path for output: {}", output_ref);
@@ -52,39 +57,34 @@ impl CommandExecute for ApplySubcommand {
 
         let profile_path = apply_path_to_profile(profile, &resolved_path.store_path).await?;
 
-        match self.system {
-            System::NixOS(NixOS { run, .. }) => {
-                let switch_bin_path = {
-                    let mut path = PathBuf::from(&profile_path);
-                    path.push("bin");
-                    path.push("switch-to-configuration");
-                    path
-                };
+        let script_path = path!(&profile_path, "bin", script);
 
-                tracing::debug!(
-                    "Checking for switch-to-configuration executable at {}",
-                    &switch_bin_path.display().to_string(),
-                );
+        tracing::debug!(
+            "Checking for {} script at {}",
+            script,
+            &script_path.display().to_string(),
+        );
 
-                if switch_bin_path.exists() && switch_bin_path.is_file() {
-                    tracing::debug!(
-                        "Found switch-to-configuration executable at {}",
-                        &switch_bin_path.display().to_string(),
-                    );
+        if script_path.exists() && script_path.is_file() {
+            tracing::debug!(
+                "Found {} script at {}",
+                script,
+                &script_path.display().to_string(),
+            );
 
-                    if let Ok(switch_bin_path_metadata) =
-                        tokio::fs::metadata(&switch_bin_path).await
-                    {
-                        let permissions = switch_bin_path_metadata.permissions();
-                        if permissions.mode() & 0o111 != 0 {
+            if let Ok(script_path_metadata) = tokio::fs::metadata(&script_path).await {
+                let permissions = script_path_metadata.permissions();
+                if permissions.mode() & 0o111 != 0 {
+                    match self.system {
+                        System::NixOS(NixOS { ref run, .. }) => {
                             if let Some(verb) = run {
                                 tracing::info!(
-                                    "Switching configuration by running {} {}",
-                                    &switch_bin_path.display().to_string(),
+                                    "Switching NixOS configuration by running {} {}",
+                                    &script_path.display().to_string(),
                                     verb.to_string(),
                                 );
 
-                                let output = tokio::process::Command::new(&switch_bin_path)
+                                let output = tokio::process::Command::new(&script_path)
                                     .args([&verb.to_string()])
                                     .output()
                                     .await
@@ -98,20 +98,10 @@ impl CommandExecute for ApplySubcommand {
                                     profile_path
                                 );
 
-                                println!("For more information on how to update your machine:\n\n    {profile_path}/bin/switch-to-configuration --help");
+                                println!("For more information on how to update your machine:\n\n    {profile_path}/bin/{} --help", script);
                             }
-                        } else {
-                            tracing::debug!(
-                        "switch-to-configuration executable at {} isn't executable; skipping",
-                        &switch_bin_path.display().to_string()
-                    );
                         }
                     }
-                } else {
-                    tracing::debug!(
-                        "No switch-to-configuration executable found at {}",
-                        &switch_bin_path.display().to_string(),
-                    );
                 }
             }
         }
