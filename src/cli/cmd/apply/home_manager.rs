@@ -25,13 +25,13 @@ impl HomeManager {
 // Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0.1#homeConfigurations.$(whoami)`.
 // If you need to apply a configuration at a path that doesn't conform to this pattern, you
 // can still provide an explicit path.
-fn parse_output_ref(path: &str) -> Result<String, FhError> {
+fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
     let username = whoami::username();
 
-    Ok(match path.split('#').collect::<Vec<_>>()[..] {
-        [_release, _output_path] => parse_release_ref(path)?,
+    Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
+        [_release, _output_path] => parse_release_ref(output_ref)?,
         [release] => format!("{release}#homeConfigurations.{username}"),
-        _ => return Err(FhError::MalformedOutputRef(path.to_string())),
+        _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
     })
 }
 

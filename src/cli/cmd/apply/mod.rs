@@ -13,7 +13,7 @@ use color_eyre::eyre::Context;
 
 use crate::{
     cli::{
-        cmd::{init::command_exists, nix_command, parse_output_ref},
+        cmd::{init::command_exists, nix_command, parse_flake_output_ref},
         error::FhError,
     },
     path,
@@ -61,7 +61,7 @@ impl CommandExecute for ApplySubcommand {
 
         tracing::info!("Resolving store path for output: {}", output_ref);
 
-        let output_ref = parse_output_ref(&output_ref)?;
+        let output_ref = parse_flake_output_ref(&output_ref)?;
 
         let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
 

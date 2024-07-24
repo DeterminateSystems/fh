@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
-use super::{parse_output_ref, print_json, CommandExecute, FlakeHubClient};
+use super::{parse_flake_output_ref, print_json, CommandExecute, FlakeHubClient};
 
 /// Resolves a FlakeHub flake reference into a store path.
 #[derive(Debug, Parser)]
@@ -32,7 +32,7 @@ pub(crate) struct ResolvedPath {
 impl CommandExecute for ResolveSubcommand {
     #[tracing::instrument(skip_all)]
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let output_ref = parse_output_ref(&self.flake_ref)?;
+        let output_ref = parse_flake_output_ref(&self.flake_ref)?;
 
         let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
 

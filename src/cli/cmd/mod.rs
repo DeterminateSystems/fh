@@ -421,7 +421,7 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     }
 }
 
-fn parse_output_ref(output_ref: &str) -> Result<FlakeOutputRef, FhError> {
+fn parse_flake_output_ref(output_ref: &str) -> Result<FlakeOutputRef, FhError> {
     // Ensures that users can use both forms:
     // 1. https://flakehub/f/{org}/{project}/{version_req}#{output}
     // 2. {org}/{project}/{version_req}#{output}
