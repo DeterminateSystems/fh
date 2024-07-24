@@ -2,17 +2,19 @@ use clap::Parser;
 
 use crate::cli::{cmd::parse_release_ref, error::FhError};
 
-pub(super) const HOME_MANAGER_SCRIPT: &str = "activate";
+pub(super) const NIX_DARWIN_ACTION: &str = "activate";
+pub(super) const NIX_DARWIN_SCRIPT: &str = "darwin-rebuild";
 
 #[derive(Parser)]
-pub(super) struct HomeManager {
-    /// The FlakeHub output reference for the Home Manager configuration.
+pub(super) struct NixDarwin {
+    /// The FlakeHub output reference for the nix-darwin configuration.
     /// References must take one of two forms: {org}/{flake}/{version_req}#{attr_path} or {org}/{flake}/{version_req}.
-    /// If the latter, the attribute path defaults to homeConfigurations.{whoami}.
+    /// If the latter, the attribute path defaults to darwinConfigurations.{devicename}.system, where devicename
+    /// is the output of scutil --get LocalHostName.
     pub(super) output_ref: String,
 }
 
-impl HomeManager {
+impl NixDarwin {
     pub(super) fn output_ref(&self) -> Result<String, FhError> {
         parse_output_ref(&self.output_ref)
     }
@@ -20,41 +22,41 @@ impl HomeManager {
 
 // This function enables you to provide simplified paths:
 //
-// fh apply home-manager omnicorp/home/0.1
+// fh apply nix-darwin omnicorp/home/0.1
 //
-// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0.1#homeConfigurations.$(whoami)`.
+// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0#darwinConfigurations.$(devicename).system`.
 // If you need to apply a configuration at a path that doesn't conform to this pattern, you
 // can still provide an explicit path.
 fn parse_output_ref(path: &str) -> Result<String, FhError> {
-    let username = whoami::username();
+    let devicename = whoami::devicename();
 
     Ok(match path.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => parse_release_ref(path)?,
-        [release] => format!("{release}#homeConfigurations.{username}"),
+        [release] => format!("{release}#darwinConfigurations.{devicename}.system"),
         _ => return Err(FhError::MalformedOutputRef(path.to_string())),
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::cli::cmd::apply::home_manager::parse_output_ref;
+    use crate::cli::cmd::apply::nix_darwin::parse_output_ref;
 
     #[test]
-    fn test_parse_home_manager_output_ref() {
-        let username = whoami::username();
+    fn test_parse_nixos_output_ref() {
+        let devicename = whoami::devicename();
 
         let cases: Vec<(&str, String)> = vec![
             (
                 "foo/bar/*",
-                format!("foo/bar/*#homeConfigurations.{username}"),
+                format!("foo/bar/*#darwinConfigurations.{devicename}.system"),
             ),
             (
                 "foo/bar/0.1.*",
-                format!("foo/bar/0.1.*#homeConfigurations.{username}"),
+                format!("foo/bar/0.1.*#darwinConfigurations.{devicename}.system"),
             ),
             (
-                "omnicorp/web/0.1.2#homeConfigurations.my-config",
-                "omnicorp/web/0.1.2#homeConfigurations.my-config".to_string(),
+                "omnicorp/web/0.1.2#darwinConfigurations.my-config",
+                "omnicorp/web/0.1.2#darwinConfigurations.my-config".to_string(),
             ),
             (
                 "omnicorp/web/0.1.2#packages.x86_64-linux.default",

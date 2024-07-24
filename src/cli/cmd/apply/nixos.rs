@@ -8,7 +8,7 @@ pub(super) const NIXOS_PROFILE: &str = "system";
 pub(super) const NIXOS_SCRIPT: &str = "switch-to-configuration";
 
 #[derive(Parser)]
-pub(super) struct NixOS {
+pub(super) struct NixOs {
     /// The FlakeHub output reference to apply to the system profile.
     /// References must take one of two forms: {org}/{flake}/{version_req}#{attr_path} or {org}/{flake}/{version_req}.
     /// If the latter, the attribute path defaults to nixosConfigurations.{hostname}.
@@ -17,10 +17,10 @@ pub(super) struct NixOS {
     /// The command to run from the profile's switch-to-configuration script.
     /// Takes the form: switch-to-configuration <action>.
     #[clap(name = "ACTION", default_value = "switch")]
-    pub(super) action: Verb,
+    pub(super) action: NixOsAction,
 }
 
-impl NixOS {
+impl NixOs {
     pub(super) fn output_ref(&self) -> Result<String, FhError> {
         parse_output_ref(&self.output_ref)
     }
@@ -29,14 +29,14 @@ impl NixOS {
 // For available commands, see
 // https://github.com/NixOS/nixpkgs/blob/12100837a815473e96c9c86fdacf6e88d0e6b113/nixos/modules/system/activation/switch-to-configuration.pl#L85-L88
 #[derive(Clone, Debug, ValueEnum)]
-pub enum Verb {
+pub enum NixOsAction {
     Switch,
     Boot,
     Test,
     DryActivate,
 }
 
-impl Display for Verb {
+impl Display for NixOsAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -53,9 +53,9 @@ impl Display for Verb {
 
 // This function enables you to provide simplified paths:
 //
-// fh apply nixos omnicorp/systems/0
+// fh apply nixos omnicorp/systems/0.1
 //
-// Here, `omnicorp/systems/0`` resolves to `omnicorp/systems/0#nixosConfigurations.$(hostname)`.
+// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0.1#nixosConfigurations.$(hostname)`.
 // If you need to apply a configuration at a path that doesn't conform to this pattern, you
 // can still provide an explicit path.
 fn parse_output_ref(path: &str) -> Result<String, FhError> {
@@ -64,7 +64,7 @@ fn parse_output_ref(path: &str) -> Result<String, FhError> {
     Ok(match path.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => parse_release_ref(path)?,
         [release] => format!("{release}#nixosConfigurations.{hostname}"),
-        _ => return Err(FhError::MalformedNixOSConfigPath(path.to_string())),
+        _ => return Err(FhError::MalformedOutputRef(path.to_string())),
     })
 }
 
