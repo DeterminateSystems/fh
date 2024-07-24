@@ -1,3 +1,4 @@
+mod home_manager;
 mod nixos;
 
 use std::{os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
@@ -13,7 +14,10 @@ use crate::{
     path,
 };
 
-use self::nixos::NixOS;
+use self::{
+    home_manager::{HomeManager, HOME_MANAGER_SCRIPT},
+    nixos::{NixOS, NIXOS_PROFILE, NIXOS_SCRIPT},
+};
 
 use super::{CommandExecute, FlakeHubClient};
 
@@ -32,13 +36,17 @@ enum System {
     /// Apply the resolved store path on a NixOS system
     #[clap(name = "nixos")]
     NixOS(NixOS),
+
+    /// Resolve the store path for a Home Manager configuration and run its activate script
+    HomeManager(HomeManager),
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let (profile, script, output_ref) = match &self.system {
-            System::NixOS(nixos) => ("system", "switch-to-configuration", nixos.output_ref()?),
+        let output_ref = match &self.system {
+            System::NixOS(nixos) => nixos.output_ref()?,
+            System::HomeManager(home_manager) => home_manager.output_ref()?,
         };
 
         tracing::info!("Resolving store path for output: {}", output_ref);
@@ -53,28 +61,29 @@ impl CommandExecute for ApplySubcommand {
             &resolved_path.store_path
         );
 
-        let profile_path = apply_path_to_profile(profile, &resolved_path.store_path).await?;
+        match self.system {
+            System::NixOS(NixOS { action, .. }) => {
+                let profile_path =
+                    apply_path_to_profile(NIXOS_PROFILE, &resolved_path.store_path).await?;
 
-        let script_path = path!(&profile_path, "bin", script);
+                let script_path = path!(&profile_path, "bin", NIXOS_SCRIPT);
 
-        tracing::debug!(
-            "Checking for {} script at {}",
-            script,
-            &script_path.display().to_string(),
-        );
+                tracing::debug!(
+                    "Checking for {} script at {}",
+                    NIXOS_SCRIPT,
+                    &script_path.display().to_string(),
+                );
 
-        if script_path.exists() && script_path.is_file() {
-            tracing::debug!(
-                "Found {} script at {}",
-                script,
-                &script_path.display().to_string(),
-            );
+                if script_path.exists() && script_path.is_file() {
+                    tracing::debug!(
+                        "Found {} script at {}",
+                        NIXOS_SCRIPT,
+                        &script_path.display().to_string(),
+                    );
 
-            if let Ok(script_path_metadata) = tokio::fs::metadata(&script_path).await {
-                let permissions = script_path_metadata.permissions();
-                if permissions.mode() & 0o111 != 0 {
-                    match self.system {
-                        System::NixOS(NixOS { ref action, .. }) => {
+                    if let Ok(script_path_metadata) = tokio::fs::metadata(&script_path).await {
+                        let permissions = script_path_metadata.permissions();
+                        if permissions.mode() & 0o111 != 0 {
                             tracing::info!(
                                 "{} {}",
                                 &script_path.display().to_string(),
@@ -86,7 +95,39 @@ impl CommandExecute for ApplySubcommand {
                                 .args([&action.to_string()])
                                 .output()
                                 .await
-                                .wrap_err("failed to run switch-to-configuration")?;
+                                .wrap_err("failed to run switch-to-configuration script")?;
+
+                            println!("{}", String::from_utf8_lossy(&output.stdout));
+                        }
+                    }
+                }
+            }
+            System::HomeManager(_) => {
+                let script_path = path!(&resolved_path.store_path, HOME_MANAGER_SCRIPT);
+
+                tracing::debug!(
+                    "Checking for {} script at {}",
+                    HOME_MANAGER_SCRIPT,
+                    &script_path.display().to_string(),
+                );
+
+                if script_path.exists() && script_path.is_file() {
+                    tracing::debug!(
+                        "Found {} script at {}",
+                        HOME_MANAGER_SCRIPT,
+                        &script_path.display().to_string(),
+                    );
+
+                    if let Ok(script_path_metadata) = tokio::fs::metadata(&script_path).await {
+                        let permissions = script_path_metadata.permissions();
+                        if permissions.mode() & 0o111 != 0 {
+                            tracing::info!("{}", &script_path.display().to_string());
+
+                            // activate
+                            let output = tokio::process::Command::new(&script_path)
+                                .output()
+                                .await
+                                .wrap_err("failed to run activate script")?;
 
                             println!("{}", String::from_utf8_lossy(&output.stdout));
                         }

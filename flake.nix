@@ -76,6 +76,7 @@
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               Security
+              SystemConfiguration
             ]);
 
             postInstall = ''
@@ -115,6 +116,7 @@
             ]
             ++ lib.optionals (stdenv.isDarwin) ([ libiconv ] ++ (with darwin.apple_sdk.frameworks; [
               Security
+              SystemConfiguration
             ]));
 
             env = {

@@ -4,6 +4,9 @@ use clap::{Parser, ValueEnum};
 
 use crate::cli::{cmd::parse_release_ref, error::FhError};
 
+pub(super) const NIXOS_PROFILE: &str = "system";
+pub(super) const NIXOS_SCRIPT: &str = "switch-to-configuration";
+
 #[derive(Parser)]
 pub(super) struct NixOS {
     /// The FlakeHub output reference to apply to the system profile.
@@ -70,7 +73,7 @@ mod tests {
     use crate::cli::cmd::apply::nixos::parse_output_ref;
 
     #[test]
-    fn test_parse_profile_path() {
+    fn test_parse_nixos_output_ref() {
         let hostname = gethostname::gethostname().to_string_lossy().to_string();
 
         let cases: Vec<(&str, String)> = vec![
