@@ -421,17 +421,45 @@ async fn nix_command(args: &[&str]) -> Result<(), FhError> {
     }
 }
 
-fn parse_output_ref(output_ref: String) -> Result<FlakeOutputRef, FhError> {
+fn parse_output_ref(output_ref: &str) -> Result<FlakeOutputRef, FhError> {
     // Ensures that users can use both forms:
     // 1. https://flakehub/f/{org}/{project}/{version_req}#{output}
     // 2. {org}/{project}/{version_req}#{output}
     let output_ref = String::from(
         output_ref
             .strip_prefix("https://flakehub.com/f/")
-            .unwrap_or(&output_ref),
+            .unwrap_or(output_ref),
     );
 
     output_ref.try_into()
+}
+
+// Ensure that release refs are of the form {org}/{project}/{version_req}
+fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
+    match flake_ref.split('/').collect::<Vec<_>>()[..] {
+        [org, project, version_req] => {
+            validate_segment(org)?;
+            validate_segment(project)?;
+            validate_segment(version_req)?;
+
+            Ok(String::from(flake_ref))
+        }
+        _ => Err(FhError::FlakeParse(format!(
+            "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
+        ))),
+    }
+}
+
+// Ensure that orgs, project names, and the like don't contain whitespace
+fn validate_segment(s: &str) -> Result<(), FhError> {
+    if s.chars().any(char::is_whitespace) {
+        return Err(FhError::FlakeParse(format!(
+            "path segment {} contains whitespace",
+            s
+        )));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

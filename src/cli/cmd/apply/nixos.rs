@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use clap::{Parser, ValueEnum};
 
-use crate::cli::error::FhError;
+use crate::cli::{cmd::parse_release_ref, error::FhError};
 
 #[derive(Parser)]
 pub(super) struct NixOS {
@@ -59,7 +59,7 @@ fn parse_output_ref(path: &str) -> Result<String, FhError> {
     let hostname = gethostname::gethostname().to_string_lossy().to_string();
 
     Ok(match path.split('#').collect::<Vec<_>>()[..] {
-        [_release, _output_path] => path.to_string(),
+        [_release, _output_path] => parse_release_ref(path)?,
         [release] => format!("{release}#nixosConfigurations.{hostname}"),
         _ => return Err(FhError::MalformedNixOSConfigPath(path.to_string())),
     })

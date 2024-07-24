@@ -32,7 +32,7 @@ pub(crate) struct ResolvedPath {
 impl CommandExecute for ResolveSubcommand {
     #[tracing::instrument(skip_all)]
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let output_ref = parse_output_ref(self.flake_ref)?;
+        let output_ref = parse_output_ref(&self.flake_ref)?;
 
         let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
 
