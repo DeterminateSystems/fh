@@ -84,9 +84,10 @@ impl CommandExecute for ApplySubcommand {
                     &resolved_path.store_path
                 );
 
+                // nix-store -r {path}
                 fetch_closure(&resolved_path.store_path).await?;
 
-                // /nix/store/{path}/sw/bin/darwin-rebuild
+                // {path}/sw/bin/darwin-rebuild
                 let script_path = path!(&resolved_path.store_path, "sw", "bin", NIX_DARWIN_SCRIPT);
 
                 run_script(
@@ -137,18 +138,20 @@ async fn run_script(
                     tracing::info!("{}", &script_path.display().to_string());
                 }
 
-                let output = if let Some(action) = &action {
-                    tokio::process::Command::new(&script_path)
-                        .arg(action)
-                        .output()
-                        .await
-                        .wrap_err(format!("failed to run {script_name} script"))?
-                } else {
-                    tokio::process::Command::new(&script_path)
-                        .output()
-                        .await
-                        .wrap_err(format!("failed to run {script_name} script"))?
-                };
+                let mut cmd = tokio::process::Command::new(&script_path);
+
+                if let Some(action) = action {
+                    cmd.arg(action);
+                }
+
+                let output = cmd
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .spawn()
+                    .wrap_err("failed to spawn Nix command")?
+                    .wait_with_output()
+                    .await
+                    .wrap_err(format!("failed to run {script_name} script"))?;
 
                 println!("{}", String::from_utf8_lossy(&output.stdout));
             }
