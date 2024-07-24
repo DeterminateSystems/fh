@@ -2,14 +2,18 @@ mod home_manager;
 mod nix_darwin;
 mod nixos;
 
-use std::{os::unix::prelude::PermissionsExt, path::PathBuf, process::ExitCode};
+use std::{
+    os::unix::prelude::PermissionsExt,
+    path::PathBuf,
+    process::{ExitCode, Stdio},
+};
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 
 use crate::{
     cli::{
-        cmd::{nix_command, parse_output_ref},
+        cmd::{init::command_exists, nix_command, parse_output_ref},
         error::FhError,
     },
     path,
@@ -71,11 +75,20 @@ impl CommandExecute for ApplySubcommand {
             System::HomeManager(_) => {
                 // /nix/store/{path}/activate
                 let script_path = path!(&resolved_path.store_path, HOME_MANAGER_SCRIPT);
+
                 run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
             }
             System::NixDarwin(_) => {
+                tracing::info!(
+                    "Using nix-store to fetch closure from path {}",
+                    &resolved_path.store_path
+                );
+
+                fetch_closure(&resolved_path.store_path).await?;
+
                 // /nix/store/{path}/sw/bin/darwin-rebuild
                 let script_path = path!(&resolved_path.store_path, "sw", "bin", NIX_DARWIN_SCRIPT);
+
                 run_script(
                     script_path,
                     Some(NIX_DARWIN_ACTION.to_string()),
@@ -143,6 +156,26 @@ async fn run_script(
     }
 
     Ok(())
+}
+
+async fn fetch_closure(store_path: &str) -> Result<(), FhError> {
+    command_exists("nix-store")?;
+
+    let output = tokio::process::Command::new("nix-store")
+        .args(["--realise", store_path])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .wrap_err("failed to spawn Nix command")?
+        .wait_with_output()
+        .await
+        .wrap_err("failed to wait for Nix command output")?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(FhError::FailedNixCommand)
+    }
 }
 
 async fn apply_path_to_profile(profile: &str, store_path: &str) -> Result<String, FhError> {
