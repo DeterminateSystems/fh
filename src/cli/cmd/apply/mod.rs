@@ -174,17 +174,20 @@ async fn apply_path_to_profile(profile: &str, store_path: &str) -> Result<String
         profile_path
     );
 
-    nix_command(&[
-        "build",
-        "--print-build-logs",
-        // `--max-jobs 0` ensures that `nix build` doesn't really *build* anything
-        // and acts more as a fetch operation
-        "--max-jobs",
-        "0",
-        "--profile",
-        &profile_path,
-        store_path,
-    ])
+    nix_command(
+        &[
+            "build",
+            "--print-build-logs",
+            // `--max-jobs 0` ensures that `nix build` doesn't really *build* anything
+            // and acts more as a fetch operation
+            "--max-jobs",
+            "0",
+            "--profile",
+            &profile_path,
+            store_path,
+        ],
+        true,
+    )
     .await
     .wrap_err("failed to build resolved store path with Nix")?;
 

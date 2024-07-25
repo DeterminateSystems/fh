@@ -395,24 +395,51 @@ macro_rules! path {
     }};
 }
 
-async fn nix_command(args: &[&str]) -> Result<(), FhError> {
+async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhError> {
     command_exists("nix")?;
 
-    tracing::debug!(
-        "Running: nix build --extra-experimental-features 'nix-command-flakes' {}",
-        args.join(" ")
-    );
+    let is_root_user = nix::unistd::getuid().is_root();
+    let use_sudo = sudo_if_necessary && !is_root_user;
 
-    let output = tokio::process::Command::new("nix")
-        .args(["--extra-experimental-features", "nix-command flakes"])
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .wrap_err("failed to spawn Nix command")?
-        .wait_with_output()
-        .await
-        .wrap_err("failed to wait for Nix command output")?;
+    if use_sudo {
+        tracing::warn!(
+            "Current user is {} rather than root; running Nix command using sudo",
+            whoami::username()
+        );
+        tracing::debug!(
+            "Running: sudo nix --extra-experimental-features 'nix-command-flakes' {}",
+            args.join(" ")
+        );
+    } else {
+        tracing::debug!(
+            "Running: nix --extra-experimental-features 'nix-command-flakes' {}",
+            args.join(" ")
+        );
+    }
+
+    let output = if use_sudo {
+        tokio::process::Command::new("sudo")
+            .args(["nix", "--extra-experimental-features", "nix-command flakes"])
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .wrap_err("failed to spawn Nix command")?
+            .wait_with_output()
+            .await
+            .wrap_err("failed to wait for Nix command output")?
+    } else {
+        tokio::process::Command::new("nix")
+            .args(["--extra-experimental-features", "nix-command flakes"])
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .wrap_err("failed to spawn Nix command")?
+            .wait_with_output()
+            .await
+            .wrap_err("failed to wait for Nix command output")?
+    };
 
     if output.status.success() {
         Ok(())

@@ -85,7 +85,7 @@ impl CommandExecute for ConvertSubcommand {
 
             tracing::debug!("Running: nix flake lock");
 
-            nix_command(&["flake", "lock"])
+            nix_command(&["flake", "lock"], false)
                 .await
                 .wrap_err("failed to create missing lock file entries")?;
         }
