@@ -21,13 +21,13 @@ use crate::{
     path,
 };
 
-use self::{
-    home_manager::{HomeManager, HOME_MANAGER_SCRIPT},
-    nix_darwin::{NixDarwin, NIX_DARWIN_ACTION, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT},
-};
+use self::home_manager::{HomeManager, HOME_MANAGER_SCRIPT};
 
 #[cfg(target_os = "linux")]
 use self::nixos::{NixOs, NIXOS_PROFILE, NIXOS_SCRIPT};
+
+#[cfg(target_os = "macos")]
+use self::nix_darwin::{NixDarwin, NIX_DARWIN_ACTION, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT};
 
 use super::{CommandExecute, FlakeHubClient};
 
