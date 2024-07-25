@@ -40,4 +40,4 @@ jobs:
         run: nix develop --command cargo clippy --all-targets --all-features --  -Dwarnings
 
       - name: Test
-        run: cargo test --all-features
+        run: nix develop --command cargo test --all-features
