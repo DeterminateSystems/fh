@@ -217,6 +217,14 @@ fh apply nix-darwin "my-org/macos-configs/0.1#darwinConfigurations.$(scutil --ge
 fh apply nix-darwin "my-org/macos-configs/0.1"
 ```
 
+`fh apply nix-darwin` first resolves the supplied output reference to a store path, builds the `darwin-rebuild` script for that path, and then runs `darwin-rebuild activate` by default.
+You can also supply a [different command][darwin-rebuild] from `activate`.
+Here's an example:
+
+```shell
+fh apply nix-darwin "my-org/macos-configs/0.1" check
+```
+
 ### Searching published flakes
 
 You can search publicly listed flakes using the `fh search` command and passing in a search query.
@@ -394,6 +402,7 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [bash]: https://gnu.org/software/bash
 [cache]: https://determinate.systems/posts/flakehub-cache-beta
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
+[darwin-rebuild]: https://github.com/LnL7/nix-darwin/blob/884f3fe6d9bf056ba0017c132c39c1f0d07d4fec/pkgs/nix-tools/darwin-rebuild.sh#L8-L17
 [elm]: https://elm-lang.org
 [elvish]: https://elv.sh
 [fish]: https://fishshell.com
