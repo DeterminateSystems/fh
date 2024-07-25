@@ -63,7 +63,10 @@ fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
 
     Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => parse_release_ref(output_ref)?,
-        [release] => format!("{release}#nixosConfigurations.{hostname}"),
+        [release] => format!(
+            "{}#nixosConfigurations.{hostname}",
+            parse_release_ref(release)?
+        ),
         _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
     })
 }
