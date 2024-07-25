@@ -27,7 +27,7 @@ use self::home_manager::{HomeManager, HOME_MANAGER_SCRIPT};
 use self::nixos::{NixOs, NIXOS_PROFILE, NIXOS_SCRIPT};
 
 #[cfg(target_os = "macos")]
-use self::nix_darwin::{NixDarwin, NIX_DARWIN_ACTION, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT};
+use self::nix_darwin::{NixDarwin, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT};
 
 use super::{CommandExecute, FlakeHubClient};
 
@@ -87,19 +87,15 @@ impl CommandExecute for ApplySubcommand {
                 run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
             }
             #[cfg(target_os = "macos")]
-            System::NixDarwin(_) => {
+            System::NixDarwin(NixDarwin { command, .. }) => {
                 let profile_path =
                     apply_path_to_profile(NIX_DARWIN_PROFILE, &resolved_path.store_path).await?;
 
                 // {path}/sw/bin/darwin-rebuild
                 let script_path = path!(&profile_path, "sw", "bin", NIX_DARWIN_SCRIPT);
 
-                run_script(
-                    script_path,
-                    Some(NIX_DARWIN_ACTION.to_string()),
-                    NIX_DARWIN_SCRIPT,
-                )
-                .await?;
+                let darwin_rebuild_command = command.join(" ");
+                run_script(script_path, Some(darwin_rebuild_command), NIX_DARWIN_SCRIPT).await?;
             }
             #[cfg(target_os = "linux")]
             System::NixOs(NixOs { action, .. }) => {
