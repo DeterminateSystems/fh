@@ -151,6 +151,72 @@ nix build \
 /nix/var/nix/profiles/system/bin/switch-to-configuration switch
 ```
 
+### Apply configurations to the current system
+
+The `fh apply` command enables you to apply a configuration for one of the following systems to the current host:
+
+- [NixOS](#nixos)
+- [Home Manager](#home-manager)
+- [nix-darwin](#nix-darwin)
+
+For all three systems, you only need to supply a flake output reference for the configuration and `fh` does the rest.
+
+#### NixOS
+
+On a [NixOS] system, you can use `fh apply nixos` to apply a configuration from an output path:
+
+```shell
+fh apply nixos "my-org/system-configs/0.1#nixosConfigurations.staging-box"
+```
+
+If you don't specify a flake output path, `fh apply nixos` defaults to `nixosConfigurations.$(hostname)`.
+These two commands are thus equivalent:
+
+```shell
+fh apply nixos "my-org/system-configs/0.1#nixosConfigurations.$(hostname)"
+fh apply nixos "my-org/system-configs/0.1"
+```
+
+`fh apply nixos` first resolves the supplied output reference to a store path, builds the `switch-to-configuration` script for that path, and then runs `switch-to-configuration switch` by default.
+You can also supply a different command from `switch` (`boot`, `test`, or `dry-activate`).
+Here's an example:
+
+```shell
+fh apply nixos "my-org/system-configs/0.1" boot
+```
+
+#### Home Manager
+
+If you're on a system that uses [Home Manager][hm], you can use `fh apply home-manager` to apply a configuration from an output path:
+
+```shell
+fh apply home-manager "my-org/home-configs/0.1#homeConfigurations.standard-home-config"
+```
+
+If you don't specify a flake output path, `fh apply home-manager` defaults to `homeConfigurations.$(whoami)`.
+These two commands are thus equivalent:
+
+```shell
+fh apply home-manager "my-org/home-configs/0.1#homeConfigurations.$(whoami)"
+fh apply home-manager "my-org/home-configs/0.1"
+```
+
+#### nix-darwin
+
+If you're on a macOS system that uses [nix-darwin], you can use `fh apply nix-darwin` to apply a configuration from an output path:
+
+```shell
+fh apply nix-darwin "my-org/macos-configs/0.1#darwinConfigurations.justme-aarch64-darwin"
+```
+
+If you don't specify a flake output path, `fh apply nix-darwin` defaults to `darwinConfigurations.${devicename}.system`, where `devicename` is the output of `scutil --get LocalHostName`.
+These two commands are thus equivalent:
+
+```shell
+fh apply nix-darwin "my-org/macos-configs/0.1#darwinConfigurations.$(scutil --get LocalHostName)"
+fh apply nix-darwin "my-org/macos-configs/0.1"
+```
+
 ### Searching published flakes
 
 You can search publicly listed flakes using the `fh search` command and passing in a search query.
@@ -336,9 +402,11 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [flakehub-push-params]: https://github.com/determinateSystems/flakehub-push?tab=readme-ov-file#available-parameters
 [flakes]: https://flakehub.com/flakes
 [go]: https://golang.org
+[hm]: https://github.com/nix-community/home-manager
 [inputs]: https://zero-to-nix.com/concepts/flakes#inputs
 [java]: https://java.com
 [javascript]: https://javascript.info
+[nix-darwin]: https://github.com/LnL7/nix-darwin
 [nix-flakes]: https://zero-to-nix.com/concepts/flakes
 [nixos]: https://zero-to-nix.com/concepts/nixos
 [nixpkgs]: https://zero-to-nix.com/concepts/nixpkgs
