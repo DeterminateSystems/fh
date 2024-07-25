@@ -36,9 +36,6 @@ pub(crate) enum FhError {
     #[error("missing from flake output reference: {0}")]
     MissingFromOutputRef(String),
 
-    #[error("Nix profile {0} not found")]
-    MissingProfile(String),
-
     #[error("the flake has no inputs")]
     NoInputs,
 

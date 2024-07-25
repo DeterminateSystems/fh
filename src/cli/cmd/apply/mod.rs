@@ -13,7 +13,7 @@ use color_eyre::eyre::Context;
 
 use crate::{
     cli::{
-        cmd::{init::command_exists, nix_command, parse_flake_output_ref},
+        cmd::{nix_command, parse_flake_output_ref},
         error::FhError,
     },
     path,
@@ -21,7 +21,7 @@ use crate::{
 
 use self::{
     home_manager::{HomeManager, HOME_MANAGER_SCRIPT},
-    nix_darwin::{NixDarwin, NIX_DARWIN_ACTION, NIX_DARWIN_SCRIPT},
+    nix_darwin::{NixDarwin, NIX_DARWIN_ACTION, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT},
     nixos::{NixOs, NIXOS_PROFILE, NIXOS_SCRIPT},
 };
 
@@ -79,16 +79,11 @@ impl CommandExecute for ApplySubcommand {
                 run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
             }
             System::NixDarwin(_) => {
-                tracing::info!(
-                    "Using nix-store to fetch closure from path {}",
-                    &resolved_path.store_path
-                );
-
-                // nix-store -r {path}
-                fetch_closure(&resolved_path.store_path).await?;
+                let profile_path =
+                    apply_path_to_profile(NIX_DARWIN_PROFILE, &resolved_path.store_path).await?;
 
                 // {path}/sw/bin/darwin-rebuild
-                let script_path = path!(&resolved_path.store_path, "sw", "bin", NIX_DARWIN_SCRIPT);
+                let script_path = path!(&profile_path, "sw", "bin", NIX_DARWIN_SCRIPT);
 
                 run_script(
                     script_path,
@@ -139,7 +134,6 @@ async fn run_script(
                 }
 
                 let mut cmd = tokio::process::Command::new(&script_path);
-
                 if let Some(action) = action {
                     cmd.arg(action);
                 }
@@ -161,43 +155,14 @@ async fn run_script(
     Ok(())
 }
 
-async fn fetch_closure(store_path: &str) -> Result<(), FhError> {
-    command_exists("nix-store")?;
-
-    let output = tokio::process::Command::new("nix-store")
-        .args(["--realise", store_path])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .wrap_err("failed to spawn Nix command")?
-        .wait_with_output()
-        .await
-        .wrap_err("failed to wait for Nix command output")?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(FhError::FailedNixCommand)
-    }
-}
-
 async fn apply_path_to_profile(profile: &str, store_path: &str) -> Result<String, FhError> {
     let profile_path = format!("/nix/var/nix/profiles/{profile}");
 
-    tracing::debug!("Successfully located Nix profile at {profile_path}");
-
-    if let Ok(path) = tokio::fs::metadata(&profile_path).await {
-        if !path.is_dir() {
-            tracing::debug!(
-                "Profile path {path:?} exists but isn't a directory; this should never happen"
-            );
-            return Err(FhError::MissingProfile(profile_path.to_string()));
-        }
-    } else {
-        return Err(FhError::MissingProfile(profile_path.to_string()));
-    }
-
-    tracing::info!("Building resolved store path with Nix: {}", store_path);
+    tracing::info!(
+        "Applying resolved store path {} to profile at {}",
+        store_path,
+        profile_path
+    );
 
     nix_command(&[
         "build",

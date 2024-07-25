@@ -4,6 +4,7 @@ use crate::cli::{cmd::parse_release_ref, error::FhError};
 
 pub(super) const NIX_DARWIN_ACTION: &str = "activate";
 pub(super) const NIX_DARWIN_SCRIPT: &str = "darwin-rebuild";
+pub(super) const NIX_DARWIN_PROFILE: &str = "system";
 
 #[derive(Parser)]
 pub(super) struct NixDarwin {
