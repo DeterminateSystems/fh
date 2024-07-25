@@ -1,11 +1,19 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use axum::body::Body;
 use clap::Parser;
+use color_eyre::eyre::eyre;
+use http::Request;
+use hyper::client::conn::http1::SendRequest;
+use hyper::{Method, StatusCode};
+use hyper_util::rt::TokioIo;
 use tokio::io::AsyncWriteExt;
+use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
+use crate::shared::update_netrc_file;
 
 use super::CommandExecute;
 
@@ -29,6 +37,9 @@ pub(crate) struct LoginSubcommand {
 
     #[clap(from_global)]
     frontend_addr: url::Url,
+
+    #[clap(from_global)]
+    dnee_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -40,8 +51,66 @@ impl CommandExecute for LoginSubcommand {
     }
 }
 
+pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
+    let xdg = xdg::BaseDirectories::new()?;
+    let socket_path = xdg.get_runtime_file("flakehub/dnee.socket")?;
+
+    let stream = TokioIo::new(UnixStream::connect(socket_path).await.unwrap());
+    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+    
+    // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
+    let _join_handle = tokio::task::spawn(async move {
+        if let Err(err) = conn.await {
+            println!("Connection failed: {:?}", err);
+        }
+    });
+
+    let request = http::Request::builder()
+        .method(Method::GET)
+        .uri("http://dnee.unix/info")
+        .body(axum::body::Body::empty())
+        .unwrap();
+
+    let response = sender.send_request(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    if response.status() != StatusCode::OK {
+        tracing::error!("failed to connect to DNEE socket");
+        return Err(eyre!("failed to connect to DNEE socket"));
+    }
+
+    return Ok(sender);
+}
+
+fn upsert_netrc_file_uds() -> color_eyre::Result<()> {
+    todo!();
+}
+
+// TODO(colemickens): questions:
+// - uds socket location
+// - can we at least use a unix group to protect the socket?
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
+        // TODO(colemickens): try connect to UDS
+        
+        let dnee_uds = match dnee_uds().await {
+            Ok(socket) => Some(socket),
+            Err(err) => {
+                tracing::error!("failed to connect to DNEE socket, will not attempt to use it: {:?}", err);
+                None
+            }
+        };
+
+        let xdg = xdg::BaseDirectories::new()?;
+        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
+        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
+        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+        let token_path = auth_token_path()?;
+        // we still need this to interpolate into the nix.conf files we write, UDS or not
+        // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
+        let netrc_file_path = xdg.place_data_file("flakehub/netrc")?;
+        let netrc_file_string: String = netrc_file_path.display().to_string();
+
         let mut login_url = self.frontend_addr.clone();
         login_url.set_path("token/create");
         login_url.query_pairs_mut().append_pair(
@@ -69,16 +138,6 @@ impl LoginSubcommand {
             }
         };
 
-        let xdg = xdg::BaseDirectories::new()?;
-
-        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
-        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
-        // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
-        let netrc_file_path = xdg.place_data_file("flakehub/netrc")?;
-        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-        let token_path = auth_token_path()?;
-
-        let netrc_file_string = netrc_file_path.display().to_string();
         // Note the root version uses extra-trusted-substituters, which
         // mean the cache is not enabled until a user (trusted or untrusted)
         // adds it to extra-substituters in their nix.conf.
@@ -126,6 +185,22 @@ impl LoginSubcommand {
                 .ok_or_else(|| color_eyre::eyre::eyre!("cache_addr had no host"))?,
         );
 
+        let mut succeeded = false;
+
+        if let Some(mut uds) = dnee_uds {
+            tracing::info!("trying to update netrc via DNEE");
+
+            let add_req = http::request::Builder::new()
+                .uri("http://dnee.socket")
+                .body(axum::body::Body::empty())?;
+            let response = uds.send_request(add_req).await?;
+
+            succeeded = true;
+        } 
+
+        if !succeeded {
+            update_netrc_file(&netrc_file_path, &netrc_contents).await?;
+        }
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
         // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
         // benefit is that `access-tokens` can be appended to, but `netrc-file` is a one-time thing
@@ -133,7 +208,7 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
-        tokio::fs::write(netrc_file_path, &netrc_contents).await?;
+
         tokio::fs::write(token_path, &token).await?;
 
         upsert_user_nix_config(
