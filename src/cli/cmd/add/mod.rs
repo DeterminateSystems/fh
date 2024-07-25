@@ -112,7 +112,7 @@ pub(crate) async fn load_flake(
 }
 
 #[tracing::instrument(skip_all)]
-async fn infer_flake_input_name_url(
+pub(crate) async fn infer_flake_input_name_url(
     api_addr: url::Url,
     flake_ref: String,
     input_name: Option<String>,
