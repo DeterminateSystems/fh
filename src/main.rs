@@ -1,6 +1,8 @@
 pub(crate) mod cli;
+pub(crate) mod shared;
 
 use std::io::IsTerminal;
+
 
 use clap::Parser;
 
