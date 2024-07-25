@@ -31,7 +31,7 @@ use self::nix_darwin::{NixDarwin, DARWIN_REBUILD_ACTION, NIX_DARWIN_PROFILE, NIX
 
 use super::{CommandExecute, FlakeHubClient};
 
-/// Update the specified Nix profile with the path resolved from a FlakeHub output reference.
+/// Apply the configuration at the specified FlakeHub output reference to the current system
 #[derive(Parser)]
 pub(crate) struct ApplySubcommand {
     #[clap(subcommand)]
