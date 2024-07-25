@@ -4,7 +4,6 @@ use std::process::ExitCode;
 use axum::body::Body;
 use clap::Parser;
 use color_eyre::eyre::eyre;
-use http::Request;
 use hyper::client::conn::http1::SendRequest;
 use hyper::{Method, StatusCode};
 use hyper_util::rt::TokioIo;
@@ -79,11 +78,7 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
         return Err(eyre!("failed to connect to DNEE socket"));
     }
 
-    return Ok(sender);
-}
-
-fn upsert_netrc_file_uds() -> color_eyre::Result<()> {
-    todo!();
+    Ok(sender)
 }
 
 // TODO(colemickens): questions:
@@ -363,6 +358,7 @@ async fn upsert_user_nix_config(
         if update_nix_conf {
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .open(&nix_config_path)
                 .await
@@ -486,7 +482,7 @@ fn merge_nix_configs(
             new_config.push_str(name);
             new_config.push_str(" = ");
 
-            if let Some(merged_value) = merged_nix_config.settings_mut().remove(name) {
+            if let Some(merged_value) = merged_nix_config.settings_mut().shift_remove(name) {
                 new_config.push_str(&merged_value);
                 new_config.push(' ');
             } else {
@@ -510,7 +506,7 @@ fn merge_nix_configs(
         };
 
         if let Some(to_remove) = to_remove {
-            existing_nix_config.settings_mut().remove(&to_remove);
+            existing_nix_config.settings_mut().shift_remove(&to_remove);
         }
     }
 
