@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use axum::body::Body;
 use clap::Parser;
 use color_eyre::eyre::eyre;
+use http_body_util::BodyExt as _;
 use hyper::client::conn::http1::SendRequest;
 use hyper::{Method, StatusCode};
 use hyper_util::rt::TokioIo;
@@ -12,7 +13,7 @@ use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
-use crate::shared::update_netrc_file;
+use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
 
 use super::CommandExecute;
 
@@ -36,9 +37,6 @@ pub(crate) struct LoginSubcommand {
 
     #[clap(from_global)]
     frontend_addr: url::Url,
-
-    #[clap(from_global)]
-    dnee_addr: url::Url,
 }
 
 #[async_trait::async_trait]
@@ -51,12 +49,13 @@ impl CommandExecute for LoginSubcommand {
 }
 
 pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
-    let xdg = xdg::BaseDirectories::new()?;
-    let socket_path = xdg.get_runtime_file("flakehub/dnee.socket")?;
+    let dnee_uds_socket_dir = Path::new("/nix/var/determinate");
+    let dnee_uds_socket_path = dnee_uds_socket_dir.join("determinatenixd.socket");
 
-    let stream = TokioIo::new(UnixStream::connect(socket_path).await.unwrap());
-    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream).await.unwrap();
-    
+    let stream = TokioIo::new(UnixStream::connect(dnee_uds_socket_path).await.unwrap());
+    let (mut sender, conn): (SendRequest<Body>, _) =
+        hyper::client::conn::http1::handshake(stream).await.unwrap();
+
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
         if let Err(err) = conn.await {
@@ -87,11 +86,14 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
         // TODO(colemickens): try connect to UDS
-        
+
         let dnee_uds = match dnee_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
-                tracing::error!("failed to connect to DNEE socket, will not attempt to use it: {:?}", err);
+                tracing::error!(
+                    "failed to connect to DNEE socket, will not attempt to use it: {:?}",
+                    err
+                );
                 None
             }
         };
@@ -185,13 +187,27 @@ impl LoginSubcommand {
         if let Some(mut uds) = dnee_uds {
             tracing::info!("trying to update netrc via DNEE");
 
-            let add_req = http::request::Builder::new()
-                .uri("http://dnee.socket")
-                .body(axum::body::Body::empty())?;
-            let response = uds.send_request(add_req).await?;
+            let add_req = NetrcTokenAddRequest {
+                token: token.clone(),
+                netrc_lines: netrc_contents.clone(),
+            };
+            let add_req_json = serde_json::to_string(&add_req)?;
+            let request = http::request::Builder::new()
+                .uri("http://dnee.socket/enroll-netrc-token")
+                .method(Method::POST)
+                .header("Content-Type", "application/json")
+                .body(Body::from(add_req_json))?;
+            let response = uds.send_request(request).await?;
+
+            let body = response.into_body();
+            let bytes = body.collect().await.unwrap_or_default().to_bytes();
+            let text: String = String::from_utf8_lossy(&bytes).into();
+
+            tracing::info!("sent the add request: {:?}", text);
 
             succeeded = true;
-        } 
+        } else {
+        }
 
         if !succeeded {
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
