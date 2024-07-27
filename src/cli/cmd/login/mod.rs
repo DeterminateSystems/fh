@@ -193,6 +193,7 @@ impl LoginSubcommand {
                 .uri("http://dnee.socket")
                 .body(axum::body::Body::empty())?;
             let response = uds.send_request(add_req).await?;
+            tracing::info!("resp... {:#?}", response);
 
             succeeded = true;
         }
