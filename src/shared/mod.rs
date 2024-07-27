@@ -3,7 +3,6 @@ use std::path::Path;
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Deserialize, Serialize)]
 pub struct NetrcTokenAddRequest {
     pub token: String,

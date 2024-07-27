@@ -55,8 +55,9 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let socket_path = xdg.get_runtime_file("flakehub/dnee.socket")?;
 
     let stream = TokioIo::new(UnixStream::connect(socket_path).await.unwrap());
-    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream).await.unwrap();
-    
+    let (mut sender, conn): (SendRequest<Body>, _) =
+        hyper::client::conn::http1::handshake(stream).await.unwrap();
+
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
         if let Err(err) = conn.await {
@@ -87,11 +88,14 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
         // TODO(colemickens): try connect to UDS
-        
+
         let dnee_uds = match dnee_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
-                tracing::error!("failed to connect to DNEE socket, will not attempt to use it: {:?}", err);
+                tracing::error!(
+                    "failed to connect to DNEE socket, will not attempt to use it: {:?}",
+                    err
+                );
                 None
             }
         };
@@ -191,7 +195,7 @@ impl LoginSubcommand {
             let response = uds.send_request(add_req).await?;
 
             succeeded = true;
-        } 
+        }
 
         if !succeeded {
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
