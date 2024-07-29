@@ -59,7 +59,7 @@ impl CommandExecute for ApplySubcommand {
             System::NixDarwin(nix_darwin) => nix_darwin.output_ref()?,
         };
 
-        tracing::info!("Resolving store path for output: {}", output_ref);
+        tracing::info!("Resolving {}", output_ref);
 
         let output_ref = parse_flake_output_ref(&output_ref)?;
 
