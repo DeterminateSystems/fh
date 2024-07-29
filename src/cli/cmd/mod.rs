@@ -395,11 +395,14 @@ macro_rules! path {
     }};
 }
 
+fn is_root_user() -> bool {
+    nix::unistd::getuid().is_root()
+}
+
 async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhError> {
     command_exists("nix")?;
 
-    let is_root_user = nix::unistd::getuid().is_root();
-    let use_sudo = sudo_if_necessary && !is_root_user;
+    let use_sudo = sudo_if_necessary && !is_root_user();
 
     let mut cmd = if use_sudo {
         tracing::warn!(

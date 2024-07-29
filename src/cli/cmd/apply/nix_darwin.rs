@@ -4,7 +4,6 @@ use crate::cli::{cmd::parse_release_ref, error::FhError};
 
 pub(super) const DARWIN_REBUILD_ACTION: &str = "activate";
 pub(super) const NIX_DARWIN_SCRIPT: &str = "darwin-rebuild";
-pub(super) const NIX_DARWIN_PROFILE: &str = "system";
 
 #[derive(Parser)]
 pub(super) struct NixDarwin {
@@ -13,6 +12,9 @@ pub(super) struct NixDarwin {
     /// If the latter, the attribute path defaults to darwinConfigurations.{devicename}.system, where devicename
     /// is the output of scutil --get LocalHostName.
     pub(super) output_ref: String,
+
+    #[arg(long, short, env = "FH_APPLY_PROFILE", default_value = "system")]
+    pub(super) profile: String,
 }
 
 impl NixDarwin {

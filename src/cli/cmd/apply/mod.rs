@@ -21,7 +21,7 @@ use crate::{
 
 use self::{
     home_manager::{HomeManager, HOME_MANAGER_SCRIPT},
-    nix_darwin::{NixDarwin, DARWIN_REBUILD_ACTION, NIX_DARWIN_PROFILE, NIX_DARWIN_SCRIPT},
+    nix_darwin::{NixDarwin, DARWIN_REBUILD_ACTION, NIX_DARWIN_SCRIPT},
     nixos::{NixOs, NIXOS_PROFILE, NIXOS_SCRIPT},
 };
 
@@ -72,15 +72,26 @@ impl CommandExecute for ApplySubcommand {
         );
 
         match self.system {
-            System::HomeManager(_) => {
+            System::HomeManager(HomeManager { profile, .. }) => {
+                let profile_path = apply_path_to_profile(
+                    &profile,
+                    &resolved_path.store_path,
+                    false, // don't sudo when running `nix build`
+                )
+                .await?;
+
                 // /nix/store/{path}/activate
-                let script_path = path!(&resolved_path.store_path, HOME_MANAGER_SCRIPT);
+                let script_path = path!(&profile_path, HOME_MANAGER_SCRIPT);
 
                 run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
             }
-            System::NixDarwin(_) => {
-                let profile_path =
-                    apply_path_to_profile(NIX_DARWIN_PROFILE, &resolved_path.store_path).await?;
+            System::NixDarwin(NixDarwin { profile, .. }) => {
+                let profile_path = apply_path_to_profile(
+                    &profile,
+                    &resolved_path.store_path,
+                    true, // sudo if necessary when running `nix build`
+                )
+                .await?;
 
                 // {path}/sw/bin/darwin-rebuild
                 let script_path = path!(&profile_path, "sw", "bin", NIX_DARWIN_SCRIPT);
@@ -93,8 +104,12 @@ impl CommandExecute for ApplySubcommand {
                 .await?;
             }
             System::NixOs(NixOs { action, .. }) => {
-                let profile_path =
-                    apply_path_to_profile(NIXOS_PROFILE, &resolved_path.store_path).await?;
+                let profile_path = apply_path_to_profile(
+                    NIXOS_PROFILE,
+                    &resolved_path.store_path,
+                    true, // sudo if necessary when running `nix build`
+                )
+                .await?;
 
                 let script_path = path!(&profile_path, "bin", NIXOS_SCRIPT);
 
@@ -155,7 +170,18 @@ async fn run_script(
     Ok(())
 }
 
-async fn apply_path_to_profile(profile: &str, store_path: &str) -> Result<String, FhError> {
+async fn apply_path_to_profile(
+    profile: &str,
+    store_path: &str,
+    sudo_if_necessary: bool,
+) -> Result<String, FhError> {
+    // Ensure that we support both formats:
+    // 1. some-profile
+    // 2. /nix/var/nix/profiles/some-profile
+    let profile = profile
+        .strip_prefix("h/nix/var/nix/profiles/")
+        .unwrap_or(profile);
+
     let profile_path = format!("/nix/var/nix/profiles/{profile}");
 
     tracing::info!(
@@ -176,7 +202,7 @@ async fn apply_path_to_profile(profile: &str, store_path: &str) -> Result<String
             &profile_path,
             store_path,
         ],
-        true,
+        sudo_if_necessary,
     )
     .await
     .wrap_err("failed to build resolved store path with Nix")?;
