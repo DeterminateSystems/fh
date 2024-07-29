@@ -3,7 +3,6 @@ pub(crate) mod shared;
 
 use std::io::IsTerminal;
 
-
 use clap::Parser;
 
 use crate::cli::{

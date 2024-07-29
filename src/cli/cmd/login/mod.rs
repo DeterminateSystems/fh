@@ -206,7 +206,6 @@ impl LoginSubcommand {
             tracing::info!("sent the add request: {:?}", text);
 
             succeeded = true;
-        } else {
         }
 
         if !succeeded {
