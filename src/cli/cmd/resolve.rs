@@ -13,7 +13,7 @@ pub(crate) struct ResolveSubcommand {
     flake_ref: String,
 
     /// Output the result as JSON displaying the store path plus the original attribute path.
-    #[arg(long, env = "FH_JSON_OUTPUT")]
+    #[arg(long, env = "FH_OUTPUT_JSON")]
     json: bool,
 
     #[clap(from_global)]

@@ -20,7 +20,7 @@ pub(crate) struct SearchSubcommand {
     max_results: usize,
 
     /// Output results as JSON.
-    #[clap(long, env = "FH_JSON_OUTPUT")]
+    #[clap(long, env = "FH_OUTPUT_JSON")]
     json: bool,
 
     #[clap(from_global)]
