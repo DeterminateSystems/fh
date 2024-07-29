@@ -66,7 +66,7 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 
     let request = http::Request::builder()
         .method(Method::GET)
-        .uri("http://dnee.unix/info")
+        .uri("http://localhost/info")
         .body(axum::body::Body::empty())
         .unwrap();
 
@@ -165,10 +165,10 @@ impl LoginSubcommand {
             &token,
         )?;
 
-        let mut succeeded = false;
+        let mut token_updated = false;
 
         if let Some(mut uds) = dnee_uds {
-            tracing::info!("trying to update netrc via DNEE");
+            tracing::debug!("trying to update netrc via determinatenixd");
 
             let add_req = NetrcTokenAddRequest {
                 token: token.clone(),
@@ -176,7 +176,7 @@ impl LoginSubcommand {
             };
             let add_req_json = serde_json::to_string(&add_req)?;
             let request = http::request::Builder::new()
-                .uri("http://dnee.socket/enroll-netrc-token")
+                .uri("http://localhost/enroll-netrc-token")
                 .method(Method::POST)
                 .header("Content-Type", "application/json")
                 .body(Body::from(add_req_json))?;
@@ -186,12 +186,14 @@ impl LoginSubcommand {
             let bytes = body.collect().await.unwrap_or_default().to_bytes();
             let text: String = String::from_utf8_lossy(&bytes).into();
 
-            tracing::info!("sent the add request: {:?}", text);
+            tracing::trace!("sent the add request: {:?}", text);
 
-            succeeded = true;
+            token_updated = true;
         }
 
-        if !succeeded {
+        if !token_updated {
+            tracing::warn!("failed to update netrc via determinatenixd, falling back to local-file approach");
+
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
             // only update user_nix_config if we could use determinatenixd
