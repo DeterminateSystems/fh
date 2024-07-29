@@ -29,13 +29,12 @@ impl NixDarwin {
 // If you need to apply a configuration at a path that doesn't conform to this pattern, you
 // can still provide an explicit path.
 fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
-    let devicename = whoami::devicename();
-
     Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => parse_release_ref(output_ref)?,
         [release] => format!(
-            "{}#darwinConfigurations.{devicename}.system",
-            parse_release_ref(release)?
+            "{}#darwinConfigurations.{}.system",
+            parse_release_ref(release)?,
+            whoami::devicename(),
         ),
         _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
     })

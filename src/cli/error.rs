@@ -51,6 +51,9 @@ pub(crate) enum FhError {
     #[error("a presumably unreachable point was reached: {0}")]
     Unreachable(String),
 
+    #[error("this functionality only supported on {0}")]
+    UnsupportedOs(String),
+
     #[error("url parse error: {0}")]
     Url(#[from] url::ParseError),
 

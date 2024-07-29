@@ -59,12 +59,11 @@ impl Display for NixOsAction {
 // If you need to apply a configuration at a path that doesn't conform to this pattern, you
 // can still provide an explicit path.
 fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
-    let hostname = gethostname::gethostname().to_string_lossy().to_string();
-
     Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => parse_release_ref(output_ref)?,
         [release] => format!(
-            "{}#nixosConfigurations.{hostname}",
+            "{}#nixosConfigurations.{}",
+            gethostname::gethostname().to_string_lossy(),
             parse_release_ref(release)?
         ),
         _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
