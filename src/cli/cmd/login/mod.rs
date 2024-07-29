@@ -165,8 +165,17 @@ impl LoginSubcommand {
             &token,
         )?;
 
-        let mut token_updated = false;
+        tokio::fs::write(token_path, &token).await?;
 
+        // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
+        // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
+        // benefit is that `access-tokens` can be appended to, but `netrc-file` is a one-time thing
+        // so if the user has their own `netrc-file`, Nix will decide which one wins.)
+        // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
+        // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
+        // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
+
+        let mut token_updated = false;
         if let Some(mut uds) = dnee_uds {
             tracing::debug!("trying to update netrc via determinatenixd");
 
@@ -198,7 +207,7 @@ impl LoginSubcommand {
 
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
-            // only update user_nix_config if we could use determinatenixd
+            // only update user_nix_config if we could not use determinatenixd
             upsert_user_nix_config(
                 &nix_config_path,
                 &netrc_file_string,
@@ -207,55 +216,50 @@ impl LoginSubcommand {
                 &self.cache_addr,
             )
             .await?;
-        }
-        // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
-        // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
-        // benefit is that `access-tokens` can be appended to, but `netrc-file` is a one-time thing
-        // so if the user has their own `netrc-file`, Nix will decide which one wins.)
-        // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
-        // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
-        // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
 
-        tokio::fs::write(token_path, &token).await?;
+            let added_nix_config =
+                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
+            let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
+            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
+            let mut root_meaningfully_different = false;
 
-        let added_nix_config =
-            nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
-        let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
-        let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
-        let mut root_meaningfully_different = false;
-
-        for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
-            if let Some(existing_setting_value) =
-                root_nix_config.settings().get(merged_setting_name)
-            {
-                if merged_setting_value != existing_setting_value {
-                    dbg!(&merged_setting_name);
+            for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
+                if let Some(existing_setting_value) =
+                    root_nix_config.settings().get(merged_setting_name)
+                {
+                    if merged_setting_value != existing_setting_value {
+                        dbg!(&merged_setting_name);
+                        root_meaningfully_different = true;
+                    }
+                } else {
                     root_meaningfully_different = true;
                 }
-            } else {
-                root_meaningfully_different = true;
             }
-        }
 
-        if root_meaningfully_different {
-            println!(
-                "Please add the following configuration to {nix_conf_path}:\n\
+            if root_meaningfully_different {
+                println!(
+                    "Please add the following configuration to {nix_conf_path}:\n\
                 {root_nix_config_addition}",
-                nix_conf_path = root_nix_config_path.display()
-            );
+                    nix_conf_path = root_nix_config_path.display()
+                );
 
-            #[cfg(target_os = "macos")]
-            {
-                println!("Then restart the Nix daemon:\n");
-                println!("sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
-                println!("sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
-                println!();
-            }
-            #[cfg(target_os = "linux")]
-            {
-                println!("Then restart the Nix daemon:\n");
-                println!("sudo systemctl restart nix-daemon.service");
-                println!();
+                #[cfg(target_os = "macos")]
+                {
+                    println!("Then restart the Nix daemon:\n");
+                    println!(
+                        "sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+                    );
+                    println!(
+                        "sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+                    );
+                    println!();
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    println!("Then restart the Nix daemon:\n");
+                    println!("sudo systemctl restart nix-daemon.service");
+                    println!();
+                }
             }
         }
 
