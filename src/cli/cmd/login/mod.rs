@@ -192,7 +192,9 @@ impl LoginSubcommand {
         }
 
         if !token_updated {
-            tracing::warn!("failed to update netrc via determinatenixd, falling back to local-file approach");
+            tracing::warn!(
+                "failed to update netrc via determinatenixd, falling back to local-file approach"
+            );
 
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
@@ -359,7 +361,7 @@ async fn upsert_user_nix_config(
         if update_nix_conf {
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
-                .truncate(true)
+                .truncate(false)
                 .write(true)
                 .open(&nix_config_path)
                 .await
