@@ -14,6 +14,7 @@ use tokio::net::UnixStream;
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
+use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -49,8 +50,8 @@ impl CommandExecute for LoginSubcommand {
 }
 
 pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
-    let dnee_uds_socket_dir = Path::new("/nix/var/determinate");
-    let dnee_uds_socket_path = dnee_uds_socket_dir.join("determinatenixd.socket");
+    let dnee_uds_socket_dir = Path::new(&DETERMINATE_STATE_DIR);
+    let dnee_uds_socket_path: PathBuf = dnee_uds_socket_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
     let stream = TokioIo::new(UnixStream::connect(dnee_uds_socket_path).await.unwrap());
     let (mut sender, conn): (SendRequest<Body>, _) =
@@ -80,13 +81,8 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     Ok(sender)
 }
 
-// TODO(colemickens): questions:
-// - uds socket location
-// - can we at least use a unix group to protect the socket?
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
-        // TODO(colemickens): try connect to UDS
-
         let dnee_uds = match dnee_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
@@ -162,25 +158,12 @@ impl LoginSubcommand {
             cache_addr = self.cache_addr,
             keys = CACHE_PUBLIC_KEYS.join(" "),
         );
-        let netrc_contents = format!(
-            "\
-            machine {frontend_host} login flakehub password {token}\n\
-            machine {backend_host} login flakehub password {token}\n\
-            machine {cache_host} login flakehub password {token}\n\
-            ",
-            frontend_host = self
-                .frontend_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("frontend_addr had no host"))?,
-            backend_host = self
-                .api_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("api_addr had no host"))?,
-            cache_host = self
-                .cache_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("cache_addr had no host"))?,
-        );
+        let netrc_contents = crate::shared::netrc_contents(
+            &self.frontend_addr,
+            &self.api_addr,
+            &self.cache_addr,
+            &token,
+        )?;
 
         let mut succeeded = false;
 

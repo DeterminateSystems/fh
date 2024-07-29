@@ -10,6 +10,9 @@ use crate::cli::{
     Cli,
 };
 
+const DETERMINATE_STATE_DIR: &str = "/nix/var/determinate";
+const DETERMINATE_NIXD_SOCKET_NAME: &str = "determinatenixd.socket";
+
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
 #[tokio::main]
