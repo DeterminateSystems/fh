@@ -211,6 +211,16 @@ impl LoginSubcommand {
 
         if !succeeded {
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
+
+            // only update user_nix_config if we could use determinatenixd
+            upsert_user_nix_config(
+                &nix_config_path,
+                &netrc_file_string,
+                &netrc_contents,
+                &user_nix_config_addition,
+                &self.cache_addr,
+            )
+            .await?;
         }
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
         // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
@@ -221,15 +231,6 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
 
         tokio::fs::write(token_path, &token).await?;
-
-        upsert_user_nix_config(
-            &nix_config_path,
-            &netrc_file_string,
-            &netrc_contents,
-            &user_nix_config_addition,
-            &self.cache_addr,
-        )
-        .await?;
 
         let added_nix_config =
             nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
