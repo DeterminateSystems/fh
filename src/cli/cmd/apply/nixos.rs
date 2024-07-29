@@ -63,8 +63,8 @@ fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
         [_release, _output_path] => parse_release_ref(output_ref)?,
         [release] => format!(
             "{}#nixosConfigurations.{}",
+            parse_release_ref(release)?,
             gethostname::gethostname().to_string_lossy(),
-            parse_release_ref(release)?
         ),
         _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
     })

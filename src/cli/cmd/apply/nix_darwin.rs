@@ -47,7 +47,7 @@ mod tests {
     use crate::cli::cmd::apply::nix_darwin::parse_output_ref;
 
     #[test]
-    fn test_parse_nixos_output_ref() {
+    fn test_parse_nix_darwin_output_ref() {
         let devicename = whoami::devicename();
 
         let cases: Vec<(&str, String)> = vec![
