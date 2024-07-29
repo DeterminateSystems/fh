@@ -18,6 +18,9 @@ pub(crate) enum FhError {
     #[error("interactive initializer error: {0}")]
     Interactive(#[from] inquire::InquireError),
 
+    #[error("Profile path is not valid UTF-8")]
+    InvalidProfile,
+
     #[error("json parsing error: {0}")]
     Json(#[from] serde_json::Error),
 

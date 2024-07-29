@@ -4,12 +4,13 @@ mod nixos;
 
 use std::{
     os::unix::prelude::PermissionsExt,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{ExitCode, Stdio},
 };
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
+use tempfile::{tempdir, TempDir};
 
 use crate::{
     cli::{
@@ -72,9 +73,9 @@ impl CommandExecute for ApplySubcommand {
         );
 
         match self.system {
-            System::HomeManager(HomeManager { profile, .. }) => {
-                let profile_path = apply_path_to_profile(
-                    &profile,
+            System::HomeManager(HomeManager { .. }) => {
+                let (profile_path, _tempdir) = apply_path_to_profile(
+                    None,
                     &resolved_path.store_path,
                     false, // don't sudo when running `nix build`
                 )
@@ -86,15 +87,15 @@ impl CommandExecute for ApplySubcommand {
                 run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
             }
             System::NixDarwin(NixDarwin { profile, .. }) => {
-                let profile_path = apply_path_to_profile(
-                    &profile,
+                apply_path_to_profile(
+                    Some(&profile),
                     &resolved_path.store_path,
                     true, // sudo if necessary when running `nix build`
                 )
                 .await?;
 
                 // {path}/sw/bin/darwin-rebuild
-                let script_path = path!(&profile_path, "sw", "bin", NIX_DARWIN_SCRIPT);
+                let script_path = path!(&profile, "sw", "bin", NIX_DARWIN_SCRIPT);
 
                 run_script(
                     script_path,
@@ -104,8 +105,9 @@ impl CommandExecute for ApplySubcommand {
                 .await?;
             }
             System::NixOs(NixOs { action, .. }) => {
-                let profile_path = apply_path_to_profile(
-                    NIXOS_PROFILE,
+                let profile_path = Path::new(NIXOS_PROFILE);
+                apply_path_to_profile(
+                    Some(Path::new(NIXOS_PROFILE)),
                     &resolved_path.store_path,
                     true, // sudo if necessary when running `nix build`
                 )
@@ -171,24 +173,28 @@ async fn run_script(
 }
 
 async fn apply_path_to_profile(
-    profile: &str,
+    input_profile_path: Option<&Path>,
     store_path: &str,
     sudo_if_necessary: bool,
-) -> Result<String, FhError> {
-    // Ensure that we support both formats:
-    // 1. some-profile
-    // 2. /nix/var/nix/profiles/some-profile
-    let profile = profile
-        .strip_prefix("h/nix/var/nix/profiles/")
-        .unwrap_or(profile);
+) -> Result<(PathBuf, Option<TempDir>), FhError> {
+    let temp_handle: Option<TempDir>;
 
-    let profile_path = format!("/nix/var/nix/profiles/{profile}");
+    let profile_path: PathBuf = if let Some(profile_path) = input_profile_path {
+        temp_handle = None;
+        tracing::info!(
+            "Applying resolved store path {} to profile at {}",
+            store_path,
+            profile_path.display()
+        );
 
-    tracing::info!(
-        "Applying resolved store path {} to profile at {}",
-        store_path,
+        profile_path.into()
+    } else {
+        let dir = tempdir()?;
+        let profile_path = dir.path().join("profile");
+
+        temp_handle = Some(dir);
         profile_path
-    );
+    };
 
     nix_command(
         &[
@@ -199,7 +205,7 @@ async fn apply_path_to_profile(
             "--max-jobs",
             "0",
             "--profile",
-            &profile_path,
+            profile_path.to_str().ok_or(FhError::InvalidProfile)?,
             store_path,
         ],
         sudo_if_necessary,
@@ -207,10 +213,13 @@ async fn apply_path_to_profile(
     .await
     .wrap_err("failed to build resolved store path with Nix")?;
 
-    tracing::info!(
-        "Successfully applied resolved path {} to profile at {profile_path}",
-        store_path
-    );
+    if input_profile_path.is_some() {
+        tracing::info!(
+            "Successfully applied resolved path {} to profile at {}",
+            store_path,
+            profile_path.display()
+        );
+    }
 
-    Ok(profile_path)
+    Ok((profile_path, temp_handle))
 }

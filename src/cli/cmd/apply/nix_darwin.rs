@@ -13,8 +13,13 @@ pub(super) struct NixDarwin {
     /// is the output of scutil --get LocalHostName.
     pub(super) output_ref: String,
 
-    #[arg(long, short, env = "FH_APPLY_PROFILE", default_value = "system")]
-    pub(super) profile: String,
+    #[arg(
+        long,
+        short,
+        env = "FH_APPLY_PROFILE",
+        default_value = "/nix/var/nix/profiles/system"
+    )]
+    pub(super) profile: std::path::PathBuf,
 }
 
 impl NixDarwin {

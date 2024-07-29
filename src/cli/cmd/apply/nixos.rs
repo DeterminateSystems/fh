@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 
 use crate::cli::{cmd::parse_release_ref, error::FhError};
 
-pub(super) const NIXOS_PROFILE: &str = "system";
+pub(super) const NIXOS_PROFILE: &str = "/nix/var/nix/profiles/system";
 pub(super) const NIXOS_SCRIPT: &str = "switch-to-configuration";
 
 #[derive(Parser)]

@@ -10,9 +10,6 @@ pub(super) struct HomeManager {
     /// References must take one of two forms: {org}/{flake}/{version_req}#{attr_path} or {org}/{flake}/{version_req}.
     /// If the latter, the attribute path defaults to homeConfigurations.{whoami}.
     pub(super) output_ref: String,
-
-    #[arg(long, short, env = "FH_APPLY_PROFILE", default_value = "system")]
-    pub(super) profile: String,
 }
 
 impl HomeManager {
