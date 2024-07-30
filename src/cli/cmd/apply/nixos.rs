@@ -2,9 +2,6 @@ use std::fmt::Display;
 
 use clap::{Parser, ValueEnum};
 
-pub(super) const NIXOS_PROFILE: &str = "/nix/var/nix/profiles/system";
-pub(super) const NIXOS_SCRIPT: &str = "switch-to-configuration";
-
 #[derive(Parser)]
 pub(super) struct NixOs {
     /// The FlakeHub output reference to apply to the system profile.
@@ -28,6 +25,22 @@ impl super::ApplyType for NixOs {
             "nixosConfigurations.{}",
             gethostname::gethostname().to_string_lossy()
         )
+    }
+
+    fn profile_path(&self) -> Option<&std::path::Path> {
+        Some(std::path::Path::new("/nix/var/nix/profiles/system"))
+    }
+
+    fn requires_root(&self) -> bool {
+        true
+    }
+
+    fn relative_path(&self) -> &std::path::Path {
+        std::path::Path::new("bin/switch-to-configuration")
+    }
+
+    fn action(&self) -> Option<String> {
+        Some(self.action.to_string())
     }
 }
 

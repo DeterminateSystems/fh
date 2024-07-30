@@ -1,8 +1,5 @@
 use clap::Parser;
 
-pub(super) const DARWIN_REBUILD_ACTION: &str = "activate";
-pub(super) const NIX_DARWIN_SCRIPT: &str = "darwin-rebuild";
-
 #[derive(Parser)]
 pub(super) struct NixDarwin {
     /// The FlakeHub output reference for the nix-darwin configuration.
@@ -27,5 +24,21 @@ impl super::ApplyType for NixDarwin {
 
     fn default_ref(&self) -> String {
         format!("darwinConfigurations.{}", whoami::devicename(),)
+    }
+
+    fn profile_path(&self) -> Option<&std::path::Path> {
+        Some(&self.profile)
+    }
+
+    fn requires_root(&self) -> bool {
+        true
+    }
+
+    fn relative_path(&self) -> &std::path::Path {
+        std::path::Path::new("sw/bin/darwin-rebuild")
+    }
+
+    fn action(&self) -> Option<String> {
+        Some("activate".to_string())
     }
 }

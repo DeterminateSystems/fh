@@ -12,16 +12,9 @@ use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 use tempfile::{tempdir, TempDir};
 
-use crate::{
-    cli::{cmd::nix_command, error::FhError},
-    path,
-};
+use crate::cli::{cmd::nix_command, error::FhError};
 
-use self::{
-    home_manager::{HomeManager, HOME_MANAGER_SCRIPT},
-    nix_darwin::{NixDarwin, DARWIN_REBUILD_ACTION, NIX_DARWIN_SCRIPT},
-    nixos::{NixOs, NIXOS_PROFILE, NIXOS_SCRIPT},
-};
+use self::{home_manager::HomeManager, nix_darwin::NixDarwin, nixos::NixOs};
 
 use super::{CommandExecute, FlakeHubClient};
 
@@ -53,19 +46,28 @@ enum System {
 
 pub trait ApplyType {
     fn get_ref(&self) -> &str;
+
     fn default_ref(&self) -> String;
+
+    fn profile_path(&self) -> Option<&Path>;
+
+    fn requires_root(&self) -> bool;
+
+    fn relative_path(&self) -> &Path;
+
+    fn action(&self) -> Option<String>;
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let output_ref = {
-            let applyer: Box<&dyn ApplyType> = match &self.system {
-                System::HomeManager(home_manager) => Box::new(home_manager),
-                System::NixOs(nixos) => Box::new(nixos),
-                System::NixDarwin(nix_darwin) => Box::new(nix_darwin),
-            };
+        let applyer: Box<&(dyn ApplyType + Send + Sync)> = match &self.system {
+            System::HomeManager(home_manager) => Box::new(home_manager),
+            System::NixOs(nixos) => Box::new(nixos),
+            System::NixDarwin(nix_darwin) => Box::new(nix_darwin),
+        };
 
+        let output_ref = {
             parse_output_ref(
                 &self.frontend_addr,
                 applyer.get_ref(),
@@ -83,52 +85,25 @@ impl CommandExecute for ApplySubcommand {
             &resolved_path.store_path
         );
 
-        match self.system {
-            System::HomeManager(HomeManager { .. }) => {
-                let (profile_path, _tempdir) = apply_path_to_profile(
-                    None,
-                    &resolved_path.store_path,
-                    false, // don't sudo when running `nix build`
-                )
-                .await?;
+        let (profile_path, _tempdir) = apply_path_to_profile(
+            applyer.profile_path(),
+            &resolved_path.store_path,
+            applyer.requires_root(),
+        )
+        .await?;
 
-                // /nix/store/{path}/activate
-                let script_path = path!(&profile_path, HOME_MANAGER_SCRIPT);
+        let script_path = profile_path.join(applyer.relative_path());
 
-                run_script(script_path, None, HOME_MANAGER_SCRIPT).await?;
-            }
-            System::NixDarwin(NixDarwin { profile, .. }) => {
-                apply_path_to_profile(
-                    Some(&profile),
-                    &resolved_path.store_path,
-                    true, // sudo if necessary when running `nix build`
-                )
-                .await?;
-
-                // {path}/sw/bin/darwin-rebuild
-                let script_path = path!(&profile, "sw", "bin", NIX_DARWIN_SCRIPT);
-
-                run_script(
-                    script_path,
-                    Some(DARWIN_REBUILD_ACTION.to_string()),
-                    NIX_DARWIN_SCRIPT,
-                )
-                .await?;
-            }
-            System::NixOs(NixOs { action, .. }) => {
-                let profile_path = Path::new(NIXOS_PROFILE);
-                apply_path_to_profile(
-                    Some(Path::new(NIXOS_PROFILE)),
-                    &resolved_path.store_path,
-                    true, // sudo if necessary when running `nix build`
-                )
-                .await?;
-
-                let script_path = path!(&profile_path, "bin", NIXOS_SCRIPT);
-
-                run_script(script_path, Some(action.to_string()), NIXOS_SCRIPT).await?;
-            }
-        }
+        run_script(
+            script_path,
+            applyer.action(),
+            &applyer
+                .relative_path()
+                .file_name()
+                .expect("The apply type should absolutely have a file name.")
+                .to_string_lossy(),
+        )
+        .await?;
 
         Ok(ExitCode::SUCCESS)
     }

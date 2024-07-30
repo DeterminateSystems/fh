@@ -382,19 +382,6 @@ macro_rules! flakehub_url {
     }};
 }
 
-#[macro_export]
-macro_rules! path {
-    ($root:expr, $($segment:expr),+ $(,)?) => {{
-        let mut path = PathBuf::from($root);
-
-        $(
-            path.push($segment);
-        )+
-
-        path
-    }};
-}
-
 fn is_root_user() -> bool {
     nix::unistd::getuid().is_root()
 }

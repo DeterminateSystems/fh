@@ -1,7 +1,5 @@
 use clap::Parser;
 
-pub(super) const HOME_MANAGER_SCRIPT: &str = "activate";
-
 #[derive(Parser)]
 pub(super) struct HomeManager {
     /// The FlakeHub output reference for the Home Manager configuration.
@@ -14,7 +12,24 @@ impl super::ApplyType for HomeManager {
     fn get_ref(&self) -> &str {
         &self.output_ref
     }
+
     fn default_ref(&self) -> String {
         format!("homeConfigurations.{}", whoami::username())
+    }
+
+    fn profile_path(&self) -> Option<&std::path::Path> {
+        None
+    }
+
+    fn requires_root(&self) -> bool {
+        false
+    }
+
+    fn relative_path(&self) -> &std::path::Path {
+        std::path::Path::new("activate")
+    }
+
+    fn action(&self) -> Option<String> {
+        None
     }
 }
