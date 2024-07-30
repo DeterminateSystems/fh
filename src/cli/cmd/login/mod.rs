@@ -139,7 +139,7 @@ impl LoginSubcommand {
         let root_nix_config_addition = format!(
             "\n\
             netrc-file = {netrc}\n\
-            extra-trusted-substituters = {cache_addr}\n\
+            extra-substituters = {cache_addr}\n\
             extra-trusted-public-keys = {keys}\n\
             ",
             netrc = netrc_file_string,
