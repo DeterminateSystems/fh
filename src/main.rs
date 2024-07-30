@@ -1,4 +1,5 @@
 pub(crate) mod cli;
+pub(crate) mod shared;
 
 use std::io::IsTerminal;
 
@@ -8,6 +9,10 @@ use crate::cli::{
     cmd::{CommandExecute, FhSubcommands},
     Cli,
 };
+
+const DETERMINATE_STATE_DIR: &str = "/nix/var/determinate";
+const DETERMINATE_NIXD_SOCKET_NAME: &str = "determinate-nixd.socket";
+const DETERMINATE_NIXD_NETRC_NAME: &str = "netrc";
 
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 

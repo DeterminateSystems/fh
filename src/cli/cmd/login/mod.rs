@@ -1,11 +1,20 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use axum::body::Body;
 use clap::Parser;
+use color_eyre::eyre::eyre;
+use http_body_util::BodyExt as _;
+use hyper::client::conn::http1::SendRequest;
+use hyper::{Method, StatusCode};
+use hyper_util::rt::TokioIo;
 use tokio::io::AsyncWriteExt;
+use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
+use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
+use crate::{DETERMINATE_NIXD_NETRC_NAME, DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -40,8 +49,59 @@ impl CommandExecute for LoginSubcommand {
     }
 }
 
+pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
+    let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
+    let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
+
+    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await?);
+    let (mut sender, conn): (SendRequest<Body>, _) =
+        hyper::client::conn::http1::handshake(stream).await?;
+
+    // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
+    let _join_handle = tokio::task::spawn(async move {
+        if let Err(err) = conn.await {
+            tracing::error!("Connection failed: {:?}", err);
+        }
+    });
+
+    let request = http::Request::builder()
+        .method(Method::GET)
+        .uri("http://localhost/info")
+        .body(axum::body::Body::empty())?;
+
+    let response = sender.send_request(request).await?;
+
+    if response.status() != StatusCode::OK {
+        tracing::error!("failed to connect to determinate-nixd socket");
+        return Err(eyre!("failed to connect to determinate-nixd socket"));
+    }
+
+    Ok(sender)
+}
+
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
+        let dnixd_uds = match dnixd_uds().await {
+            Ok(socket) => Some(socket),
+            Err(err) => {
+                tracing::error!(
+                    "failed to connect to determinate-nixd socket, will not attempt to use it: {:?}",
+                    err
+                );
+                None
+            }
+        };
+
+        let xdg = xdg::BaseDirectories::new()?;
+        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
+        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
+        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+        let token_path = auth_token_path()?;
+
+        let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
+        let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
+        let netrc_file_string: String = netrc_file_path.display().to_string();
+
         let mut login_url = self.frontend_addr.clone();
         login_url.set_path("token/create");
         login_url.query_pairs_mut().append_pair(
@@ -69,16 +129,6 @@ impl LoginSubcommand {
             }
         };
 
-        let xdg = xdg::BaseDirectories::new()?;
-
-        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
-        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
-        // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
-        let netrc_file_path = xdg.place_data_file("flakehub/netrc")?;
-        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-        let token_path = auth_token_path()?;
-
-        let netrc_file_string = netrc_file_path.display().to_string();
         // Note the root version uses extra-trusted-substituters, which
         // mean the cache is not enabled until a user (trusted or untrusted)
         // adds it to extra-substituters in their nix.conf.
@@ -106,25 +156,14 @@ impl LoginSubcommand {
             cache_addr = self.cache_addr,
             keys = CACHE_PUBLIC_KEYS.join(" "),
         );
-        let netrc_contents = format!(
-            "\
-            machine {frontend_host} login flakehub password {token}\n\
-            machine {backend_host} login flakehub password {token}\n\
-            machine {cache_host} login flakehub password {token}\n\
-            ",
-            frontend_host = self
-                .frontend_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("frontend_addr had no host"))?,
-            backend_host = self
-                .api_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("api_addr had no host"))?,
-            cache_host = self
-                .cache_addr
-                .host_str()
-                .ok_or_else(|| color_eyre::eyre::eyre!("cache_addr had no host"))?,
-        );
+        let netrc_contents = crate::shared::netrc_contents(
+            &self.frontend_addr,
+            &self.api_addr,
+            &self.cache_addr,
+            &token,
+        )?;
+
+        tokio::fs::write(token_path, &token).await?;
 
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
         // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
@@ -133,56 +172,91 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/pull/9145 ("WIP: Support access-tokens for fetching tarballs from private sources")
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
-        tokio::fs::write(netrc_file_path, &netrc_contents).await?;
-        tokio::fs::write(token_path, &token).await?;
 
-        upsert_user_nix_config(
-            &nix_config_path,
-            &netrc_file_string,
-            &netrc_contents,
-            &user_nix_config_addition,
-            &self.cache_addr,
-        )
-        .await?;
+        let mut token_updated = false;
+        if let Some(mut uds) = dnixd_uds {
+            tracing::debug!("trying to update netrc via determinatenixd");
 
-        let added_nix_config =
-            nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
-        let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
-        let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
-        let mut root_meaningfully_different = false;
+            let add_req = NetrcTokenAddRequest {
+                token: token.clone(),
+                netrc_lines: netrc_contents.clone(),
+            };
+            let add_req_json = serde_json::to_string(&add_req)?;
+            let request = http::request::Builder::new()
+                .uri("http://localhost/enroll-netrc-token")
+                .method(Method::POST)
+                .header("Content-Type", "application/json")
+                .body(Body::from(add_req_json))?;
+            let response = uds.send_request(request).await?;
 
-        for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
-            if let Some(existing_setting_value) =
-                root_nix_config.settings().get(merged_setting_name)
-            {
-                if merged_setting_value != existing_setting_value {
-                    dbg!(&merged_setting_name);
-                    root_meaningfully_different = true;
-                }
-            } else {
-                root_meaningfully_different = true;
-            }
+            let body = response.into_body();
+            let bytes = body.collect().await.unwrap_or_default().to_bytes();
+            let text: String = String::from_utf8_lossy(&bytes).into();
+
+            tracing::trace!("sent the add request: {:?}", text);
+
+            token_updated = true;
         }
 
-        if root_meaningfully_different {
-            println!(
-                "Please add the following configuration to {nix_conf_path}:\n\
-                {root_nix_config_addition}",
-                nix_conf_path = root_nix_config_path.display()
+        if !token_updated {
+            tracing::warn!(
+                "failed to update netrc via determinatenixd, falling back to local-file approach"
             );
 
-            #[cfg(target_os = "macos")]
-            {
-                println!("Then restart the Nix daemon:\n");
-                println!("sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
-                println!("sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist");
-                println!();
+            update_netrc_file(&netrc_file_path, &netrc_contents).await?;
+
+            // only update user_nix_config if we could not use determinatenixd
+            upsert_user_nix_config(
+                &nix_config_path,
+                &netrc_file_string,
+                &netrc_contents,
+                &user_nix_config_addition,
+                &self.cache_addr,
+            )
+            .await?;
+
+            let added_nix_config =
+                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
+            let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
+            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
+            let mut root_meaningfully_different = false;
+
+            for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
+                if let Some(existing_setting_value) =
+                    root_nix_config.settings().get(merged_setting_name)
+                {
+                    if merged_setting_value != existing_setting_value {
+                        root_meaningfully_different = true;
+                    }
+                } else {
+                    root_meaningfully_different = true;
+                }
             }
-            #[cfg(target_os = "linux")]
-            {
-                println!("Then restart the Nix daemon:\n");
-                println!("sudo systemctl restart nix-daemon.service");
-                println!();
+
+            if root_meaningfully_different {
+                println!(
+                    "Please add the following configuration to {nix_conf_path}:\n\
+                {root_nix_config_addition}",
+                    nix_conf_path = root_nix_config_path.display()
+                );
+
+                #[cfg(target_os = "macos")]
+                {
+                    println!("Then restart the Nix daemon:\n");
+                    println!(
+                        "sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+                    );
+                    println!(
+                        "sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+                    );
+                    println!();
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    println!("Then restart the Nix daemon:\n");
+                    println!("sudo systemctl restart nix-daemon.service");
+                    println!();
+                }
             }
         }
 
@@ -286,14 +360,15 @@ async fn upsert_user_nix_config(
     if were_meaningfully_different {
         let update_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&prompt);
         if update_nix_conf {
+            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .open(&nix_config_path)
                 .await
             {
                 Ok(mut file) => {
-                    let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
                     let nix_config_contents =
                         merge_nix_configs(nix_config, nix_config_contents, merged_nix_config);
                     let write_status = file.write_all(nix_config_contents.as_bytes()).await;
@@ -411,7 +486,7 @@ fn merge_nix_configs(
             new_config.push_str(name);
             new_config.push_str(" = ");
 
-            if let Some(merged_value) = merged_nix_config.settings_mut().remove(name) {
+            if let Some(merged_value) = merged_nix_config.settings_mut().shift_remove(name) {
                 new_config.push_str(&merged_value);
                 new_config.push(' ');
             } else {
@@ -435,7 +510,7 @@ fn merge_nix_configs(
         };
 
         if let Some(to_remove) = to_remove {
-            existing_nix_config.settings_mut().remove(&to_remove);
+            existing_nix_config.settings_mut().shift_remove(&to_remove);
         }
     }
 
