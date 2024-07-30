@@ -71,7 +71,6 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 
     let response = sender.send_request(request).await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
     if response.status() != StatusCode::OK {
         tracing::error!("failed to connect to determinate-nixd socket");
         return Err(eyre!("failed to connect to determinate-nixd socket"));
