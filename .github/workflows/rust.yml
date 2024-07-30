@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  rust-fmt:
+  rust-fmt-and-clippy:
     runs-on: UbuntuLatest32Cores128G
     steps:
       - uses: actions/checkout@v4
@@ -16,25 +16,6 @@ jobs:
 
       - name: Rust formatting
         run: nix develop --command cargo fmt --check
-
-  rust-clippy-and-test:
-    # We need to run the checks on Linux and macOS because there are system-specific
-    # versions of fh (e.g. `fh apply nix-darwin` is only on macOS while `fh apply
-    # nixos` is only on Linux)
-    strategy:
-      matrix:
-        runners:
-          # Linux
-          - UbuntuLatest32Cores128G
-          # macOS
-          - macos-latest-xlarge
-
-    runs-on: ${{ matrix.runners }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: DeterminateSystems/nix-installer-action@v4
-      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Clippy
         run: nix develop --command cargo clippy --all-targets --all-features --  -Dwarnings
