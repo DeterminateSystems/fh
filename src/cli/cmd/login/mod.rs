@@ -14,7 +14,7 @@ use tokio::net::UnixStream;
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
-use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
+use crate::{DETERMINATE_NIXD_NETRC_NAME, DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -50,8 +50,8 @@ impl CommandExecute for LoginSubcommand {
 }
 
 pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
-    let dnee_uds_socket_dir = Path::new(&DETERMINATE_STATE_DIR);
-    let dnee_uds_socket_path: PathBuf = dnee_uds_socket_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
+    let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
+    let dnee_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
     let stream = TokioIo::new(UnixStream::connect(dnee_uds_socket_path).await.unwrap());
     let (mut sender, conn): (SendRequest<Body>, _) =
@@ -99,9 +99,9 @@ impl LoginSubcommand {
         let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
         // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
         let token_path = auth_token_path()?;
-        // we still need this to interpolate into the nix.conf files we write, UDS or not
-        // $XDG_DATA_HOME/fh/netrc; basically ~/.local/share/flakehub/netrc
-        let netrc_file_path = xdg.place_data_file("flakehub/netrc")?;
+
+        let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
+        let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
         let netrc_file_string: String = netrc_file_path.display().to_string();
 
         let mut login_url = self.frontend_addr.clone();
