@@ -1,7 +1,5 @@
 use clap::Parser;
 
-use crate::cli::{cmd::parse_release_ref, error::FhError};
-
 pub(super) const DARWIN_REBUILD_ACTION: &str = "activate";
 pub(super) const NIX_DARWIN_SCRIPT: &str = "darwin-rebuild";
 
@@ -22,60 +20,12 @@ pub(super) struct NixDarwin {
     pub(super) profile: std::path::PathBuf,
 }
 
-impl NixDarwin {
-    pub(super) fn output_ref(&self) -> Result<String, FhError> {
-        parse_output_ref(&self.output_ref)
+impl super::ApplyType for NixDarwin {
+    fn get_ref(&self) -> &str {
+        &self.output_ref
     }
-}
 
-// This function enables you to provide simplified paths:
-//
-// fh apply nix-darwin omnicorp/home/0.1
-//
-// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0#darwinConfigurations.$(devicename)`.
-// If you need to apply a configuration at a path that doesn't conform to this pattern, you
-// can still provide an explicit path.
-fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
-    Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
-        [_release, _output_path] => parse_release_ref(output_ref)?,
-        [release] => format!(
-            "{}#darwinConfigurations.{}.system",
-            parse_release_ref(release)?,
-            whoami::devicename(),
-        ),
-        _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::cli::cmd::apply::nix_darwin::parse_output_ref;
-
-    #[test]
-    fn test_parse_nix_darwin_output_ref() {
-        let devicename = whoami::devicename();
-
-        let cases: Vec<(&str, String)> = vec![
-            (
-                "foo/bar/*",
-                format!("foo/bar/*#darwinConfigurations.{devicename}.system"),
-            ),
-            (
-                "foo/bar/0.1.*",
-                format!("foo/bar/0.1.*#darwinConfigurations.{devicename}.system"),
-            ),
-            (
-                "omnicorp/web/0.1.2#darwinConfigurations.my-config",
-                "omnicorp/web/0.1.2#darwinConfigurations.my-config".to_string(),
-            ),
-            (
-                "omnicorp/web/0.1.2#packages.x86_64-linux.default",
-                "omnicorp/web/0.1.2#packages.x86_64-linux.default".to_string(),
-            ),
-        ];
-
-        for case in cases {
-            assert_eq!(parse_output_ref(case.0).unwrap(), case.1);
-        }
+    fn default_ref(&self) -> String {
+        format!("darwinConfigurations.{}", whoami::devicename(),)
     }
 }

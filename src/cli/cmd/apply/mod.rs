@@ -13,10 +13,7 @@ use color_eyre::eyre::Context;
 use tempfile::{tempdir, TempDir};
 
 use crate::{
-    cli::{
-        cmd::{nix_command, parse_flake_output_ref},
-        error::FhError,
-    },
+    cli::{cmd::nix_command, error::FhError},
     path,
 };
 
@@ -36,6 +33,9 @@ pub(crate) struct ApplySubcommand {
 
     #[clap(from_global)]
     api_addr: url::Url,
+
+    #[clap(from_global)]
+    frontend_addr: url::Url,
 }
 
 #[derive(Subcommand)]
@@ -51,18 +51,29 @@ enum System {
     NixOs(NixOs),
 }
 
+pub trait ApplyType {
+    fn get_ref(&self) -> &str;
+    fn default_ref(&self) -> String;
+}
+
 #[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        let output_ref = match &self.system {
-            System::HomeManager(home_manager) => home_manager.output_ref()?,
-            System::NixOs(nixos) => nixos.output_ref()?,
-            System::NixDarwin(nix_darwin) => nix_darwin.output_ref()?,
+        let output_ref = {
+            let applyer: Box<&dyn ApplyType> = match &self.system {
+                System::HomeManager(home_manager) => Box::new(home_manager),
+                System::NixOs(nixos) => Box::new(nixos),
+                System::NixDarwin(nix_darwin) => Box::new(nix_darwin),
+            };
+
+            parse_output_ref(
+                &self.frontend_addr,
+                applyer.get_ref(),
+                &applyer.default_ref(),
+            )?
         };
 
         tracing::info!("Resolving {}", output_ref);
-
-        let output_ref = parse_flake_output_ref(&output_ref)?;
 
         let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
 
@@ -121,6 +132,32 @@ impl CommandExecute for ApplySubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+// This function enables you to provide simplified paths:
+//
+// fh apply nixos omnicorp/systems/0.1
+//
+// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0.1#nixosConfigurations.$(hostname)`.
+// If you need to apply a configuration at a path that doesn't conform to this pattern, you
+// can still provide an explicit path.
+fn parse_output_ref(
+    frontend_addr: &url::Url,
+    output_ref: &str,
+    default_path: &str,
+) -> Result<super::FlakeOutputRef, FhError> {
+    let with_default_output_path = match output_ref.split('#').collect::<Vec<_>>()[..] {
+        [_release, _output_path] => output_ref.to_string(),
+        [_release] => format!("{}#{}", output_ref, default_path),
+        _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
+    };
+
+    let output_ref =
+        super::parse_flake_output_ref(frontend_addr, &with_default_output_path)?.to_string();
+
+    let parsed = super::parse_release_ref(&output_ref)?;
+
+    parsed.try_into()
 }
 
 async fn run_script(
@@ -222,4 +259,42 @@ async fn apply_path_to_profile(
     }
 
     Ok((profile_path, temp_handle))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_output_ref;
+
+    #[test]
+    fn test_parse_output_ref() {
+        let cases: Vec<(&str, &str)> = vec![
+            ("foo/bar/*", "foo/bar/*#DefaultFooBar"),
+            ("foo/bar/0.1.*", "foo/bar/0.1.*#DefaultFooBar"),
+            (
+                "omnicorp/web/0.1.2#homeConfigurations.my-config",
+                "omnicorp/web/0.1.2#homeConfigurations.my-config",
+            ),
+            (
+                "omnicorp/web/0.1.2#packages.x86_64-linux.default",
+                "omnicorp/web/0.1.2#packages.x86_64-linux.default",
+            ),
+            (
+                "https://flakehub.com/f/omnicorp/web/0.1.2#packages.x86_64-linux.default",
+                "omnicorp/web/0.1.2#packages.x86_64-linux.default",
+            ),
+        ];
+
+        for (input, expect) in cases {
+            assert_eq!(
+                &parse_output_ref(
+                    &url::Url::parse("https://flakehub.com/f").unwrap(),
+                    input,
+                    "DefaultFooBar"
+                )
+                .expect(&format!("failing case: {input}"))
+                .to_string(),
+                expect,
+            );
+        }
+    }
 }

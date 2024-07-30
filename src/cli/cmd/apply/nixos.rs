@@ -2,8 +2,6 @@ use std::fmt::Display;
 
 use clap::{Parser, ValueEnum};
 
-use crate::cli::{cmd::parse_release_ref, error::FhError};
-
 pub(super) const NIXOS_PROFILE: &str = "/nix/var/nix/profiles/system";
 pub(super) const NIXOS_SCRIPT: &str = "switch-to-configuration";
 
@@ -20,9 +18,16 @@ pub(super) struct NixOs {
     pub(super) action: NixOsAction,
 }
 
-impl NixOs {
-    pub(super) fn output_ref(&self) -> Result<String, FhError> {
-        parse_output_ref(&self.output_ref)
+impl super::ApplyType for NixOs {
+    fn get_ref(&self) -> &str {
+        &self.output_ref
+    }
+
+    fn default_ref(&self) -> String {
+        format!(
+            "nixosConfigurations.{}",
+            gethostname::gethostname().to_string_lossy()
+        )
     }
 }
 
@@ -48,57 +53,5 @@ impl Display for NixOsAction {
                 Self::DryActivate => "dry-activate",
             }
         )
-    }
-}
-
-// This function enables you to provide simplified paths:
-//
-// fh apply nixos omnicorp/systems/0.1
-//
-// Here, `omnicorp/systems/0.1` resolves to `omnicorp/systems/0.1#nixosConfigurations.$(hostname)`.
-// If you need to apply a configuration at a path that doesn't conform to this pattern, you
-// can still provide an explicit path.
-fn parse_output_ref(output_ref: &str) -> Result<String, FhError> {
-    Ok(match output_ref.split('#').collect::<Vec<_>>()[..] {
-        [_release, _output_path] => parse_release_ref(output_ref)?,
-        [release] => format!(
-            "{}#nixosConfigurations.{}",
-            parse_release_ref(release)?,
-            gethostname::gethostname().to_string_lossy(),
-        ),
-        _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::cli::cmd::apply::nixos::parse_output_ref;
-
-    #[test]
-    fn test_parse_nixos_output_ref() {
-        let hostname = gethostname::gethostname().to_string_lossy().to_string();
-
-        let cases: Vec<(&str, String)> = vec![
-            (
-                "foo/bar/*",
-                format!("foo/bar/*#nixosConfigurations.{hostname}"),
-            ),
-            (
-                "foo/bar/0.1.*",
-                format!("foo/bar/0.1.*#nixosConfigurations.{hostname}"),
-            ),
-            (
-                "omnicorp/web/0.1.2#nixosConfigurations.auth-server",
-                "omnicorp/web/0.1.2#nixosConfigurations.auth-server".to_string(),
-            ),
-            (
-                "omnicorp/web/0.1.2#packages.x86_64-linux.default",
-                "omnicorp/web/0.1.2#packages.x86_64-linux.default".to_string(),
-            ),
-        ];
-
-        for case in cases {
-            assert_eq!(parse_output_ref(case.0).unwrap(), case.1);
-        }
     }
 }

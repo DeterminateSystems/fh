@@ -444,13 +444,16 @@ async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhErr
     }
 }
 
-fn parse_flake_output_ref(output_ref: &str) -> Result<FlakeOutputRef, FhError> {
+fn parse_flake_output_ref(
+    frontend_addr: &url::Url,
+    output_ref: &str,
+) -> Result<FlakeOutputRef, FhError> {
     // Ensures that users can use both forms:
     // 1. https://flakehub/f/{org}/{project}/{version_req}#{output}
     // 2. {org}/{project}/{version_req}#{output}
     let output_ref = String::from(
         output_ref
-            .strip_prefix("https://flakehub.com/f/")
+            .strip_prefix(frontend_addr.join("f/")?.as_str())
             .unwrap_or(output_ref),
     );
 
@@ -459,13 +462,13 @@ fn parse_flake_output_ref(output_ref: &str) -> Result<FlakeOutputRef, FhError> {
 
 // Ensure that release refs are of the form {org}/{project}/{version_req}
 fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
-    match flake_ref.split('/').collect::<Vec<_>>()[..] {
+    match flake_ref.to_string().split('/').collect::<Vec<_>>()[..] {
         [org, project, version_req] => {
             validate_segment(org)?;
             validate_segment(project)?;
             validate_segment(version_req)?;
 
-            Ok(String::from(flake_ref))
+            Ok(flake_ref.to_string())
         }
         _ => Err(FhError::FlakeParse(format!(
             "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
