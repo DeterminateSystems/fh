@@ -154,8 +154,10 @@ async fn run_script(
         );
 
         if let Ok(script_path_metadata) = tokio::fs::metadata(&script_path).await {
+            // The expected application script exists
             let permissions = script_path_metadata.permissions();
             if permissions.mode() & 0o111 != 0 {
+                // The expected application script is executable
                 if let Some(action) = &action {
                     tracing::info!("{} {}", &script_path.display().to_string(), action);
                 } else {
