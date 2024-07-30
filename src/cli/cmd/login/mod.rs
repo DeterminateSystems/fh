@@ -53,9 +53,9 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
     let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
-    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await.unwrap());
+    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await?);
     let (mut sender, conn): (SendRequest<Body>, _) =
-        hyper::client::conn::http1::handshake(stream).await.unwrap();
+        hyper::client::conn::http1::handshake(stream).await?;
 
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
@@ -67,10 +67,9 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let request = http::Request::builder()
         .method(Method::GET)
         .uri("http://localhost/info")
-        .body(axum::body::Body::empty())
-        .unwrap();
+        .body(axum::body::Body::empty())?;
 
-    let response = sender.send_request(request).await.unwrap();
+    let response = sender.send_request(request).await?;
 
     assert_eq!(response.status(), StatusCode::OK);
     if response.status() != StatusCode::OK {
