@@ -49,18 +49,18 @@ impl CommandExecute for LoginSubcommand {
     }
 }
 
-pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
+pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
-    let dnee_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
+    let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
-    let stream = TokioIo::new(UnixStream::connect(dnee_uds_socket_path).await.unwrap());
+    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await.unwrap());
     let (mut sender, conn): (SendRequest<Body>, _) =
         hyper::client::conn::http1::handshake(stream).await.unwrap();
 
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
         if let Err(err) = conn.await {
-            println!("Connection failed: {:?}", err);
+            tracing::error!("Connection failed: {:?}", err);
         }
     });
 
@@ -74,8 +74,8 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 
     assert_eq!(response.status(), StatusCode::OK);
     if response.status() != StatusCode::OK {
-        tracing::error!("failed to connect to DNEE socket");
-        return Err(eyre!("failed to connect to DNEE socket"));
+        tracing::error!("failed to connect to determinate-nixd socket");
+        return Err(eyre!("failed to connect to determinate-nixd socket"));
     }
 
     Ok(sender)
@@ -83,11 +83,11 @@ pub async fn dnee_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
 
 impl LoginSubcommand {
     async fn manual_login(&self) -> color_eyre::Result<()> {
-        let dnee_uds = match dnee_uds().await {
+        let dnixd_uds = match dnixd_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
                 tracing::error!(
-                    "failed to connect to DNEE socket, will not attempt to use it: {:?}",
+                    "failed to connect to determinate-nixd socket, will not attempt to use it: {:?}",
                     err
                 );
                 None
@@ -176,7 +176,7 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
 
         let mut token_updated = false;
-        if let Some(mut uds) = dnee_uds {
+        if let Some(mut uds) = dnixd_uds {
             tracing::debug!("trying to update netrc via determinatenixd");
 
             let add_req = NetrcTokenAddRequest {
@@ -228,7 +228,6 @@ impl LoginSubcommand {
                     root_nix_config.settings().get(merged_setting_name)
                 {
                     if merged_setting_value != existing_setting_value {
-                        dbg!(&merged_setting_name);
                         root_meaningfully_different = true;
                     }
                 } else {
@@ -363,15 +362,15 @@ async fn upsert_user_nix_config(
     if were_meaningfully_different {
         let update_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&prompt);
         if update_nix_conf {
+            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
-                .truncate(false)
+                .truncate(true)
                 .write(true)
                 .open(&nix_config_path)
                 .await
             {
                 Ok(mut file) => {
-                    let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
                     let nix_config_contents =
                         merge_nix_configs(nix_config, nix_config_contents, merged_nix_config);
                     let write_status = file.write_all(nix_config_contents.as_bytes()).await;

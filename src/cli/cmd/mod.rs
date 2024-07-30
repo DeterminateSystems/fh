@@ -443,7 +443,7 @@ fn parse_flake_output_ref(
 
 // Ensure that release refs are of the form {org}/{project}/{version_req}
 fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
-    match flake_ref.to_string().split('/').collect::<Vec<_>>()[..] {
+    match flake_ref.split('/').collect::<Vec<_>>()[..] {
         [org, project, version_req] => {
             validate_segment(org)?;
             validate_segment(project)?;
