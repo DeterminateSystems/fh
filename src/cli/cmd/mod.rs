@@ -408,7 +408,7 @@ async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhErr
     cmd.args(args);
     cmd.stdout(Stdio::inherit());
     cmd.stderr(Stdio::inherit());
-    let cmd_str = format!("{:?}", cmd);
+    let cmd_str = format!("{:?}", cmd.as_std());
     tracing::debug!("Running: {:?}", cmd_str);
 
     let output = cmd
