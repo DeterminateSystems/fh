@@ -23,7 +23,7 @@ impl super::ApplyType for NixDarwin {
     }
 
     fn default_ref(&self) -> String {
-        format!("darwinConfigurations.{}", whoami::devicename(),)
+        format!("darwinConfigurations.{}", whoami::devicename())
     }
 
     fn profile_path(&self) -> Option<&std::path::Path> {
