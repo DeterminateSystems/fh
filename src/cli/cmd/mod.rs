@@ -1,4 +1,5 @@
 pub(crate) mod add;
+pub(crate) mod apply;
 pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod eject;
@@ -8,6 +9,8 @@ pub(crate) mod login;
 pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
+
+use std::{fmt::Display, process::Stdio};
 
 use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
@@ -23,6 +26,7 @@ use tabled::settings::{
 use url::Url;
 
 use self::{
+    init::command_exists,
     list::{Flake, Org, Release, Version},
     resolve::ResolvedPath,
     search::SearchResult,
@@ -61,15 +65,16 @@ pub trait CommandExecute {
 #[derive(clap::Subcommand)]
 pub(crate) enum FhSubcommands {
     Add(add::AddSubcommand),
+    Apply(apply::ApplySubcommand),
     Completion(completion::CompletionSubcommand),
+    Convert(convert::ConvertSubcommand),
+    Eject(eject::EjectSubcommand),
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
-    Search(search::SearchSubcommand),
-    Convert(convert::ConvertSubcommand),
     Login(login::LoginSubcommand),
-    Status(status::StatusSubcommand),
-    Eject(eject::EjectSubcommand),
     Resolve(resolve::ResolveSubcommand),
+    Search(search::SearchSubcommand),
+    Status(status::StatusSubcommand),
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,13 +157,13 @@ impl FlakeHubClient {
         Ok(res)
     }
 
-    async fn resolve(api_addr: &str, flake_ref: String) -> Result<ResolvedPath, FhError> {
+    async fn resolve(api_addr: &str, output_ref: &FlakeOutputRef) -> Result<ResolvedPath, FhError> {
         let FlakeOutputRef {
             ref org,
-            ref flake,
+            project: ref flake,
             ref version_constraint,
             ref attr_path,
-        } = flake_ref.try_into()?;
+        } = output_ref;
 
         let url = flakehub_url!(
             api_addr,
@@ -257,9 +262,19 @@ pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
 // https://api.flakehub.com/f/{org}/{flake}/{version_constraint}/output/{attr_path}
 struct FlakeOutputRef {
     org: String,
-    flake: String,
+    project: String,
     version_constraint: String,
     attr_path: String,
+}
+
+impl Display for FlakeOutputRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}#{}",
+            self.org, self.project, self.version_constraint, self.attr_path
+        )
+    }
 }
 
 impl TryFrom<String> for FlakeOutputRef {
@@ -299,7 +314,7 @@ impl TryFrom<String> for FlakeOutputRef {
 
             Ok(FlakeOutputRef {
                 org: org.to_string(),
-                flake: flake.to_string(),
+                project: flake.to_string(),
                 version_constraint: version.to_string(),
                 attr_path: attr_path.to_string(),
             })
@@ -365,6 +380,93 @@ macro_rules! flakehub_url {
         }
         url
     }};
+}
+
+fn is_root_user() -> bool {
+    nix::unistd::getuid().is_root()
+}
+
+async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhError> {
+    command_exists("nix")?;
+
+    let use_sudo = sudo_if_necessary && !is_root_user();
+
+    let mut cmd = if use_sudo {
+        tracing::warn!(
+            "Current user is {} rather than root; running Nix command using sudo",
+            whoami::username()
+        );
+
+        let mut cmd = tokio::process::Command::new("sudo");
+        cmd.arg("nix");
+        cmd
+    } else {
+        tokio::process::Command::new("nix")
+    };
+
+    cmd.args(["--extra-experimental-features", "nix-command flakes"]);
+    cmd.args(args);
+    cmd.stdout(Stdio::inherit());
+    cmd.stderr(Stdio::inherit());
+    let cmd_str = format!("{:?}", cmd.as_std());
+    tracing::debug!("Running: {:?}", cmd_str);
+
+    let output = cmd
+        .spawn()
+        .wrap_err("failed to spawn Nix command")?
+        .wait_with_output()
+        .await
+        .wrap_err("failed to wait for Nix command output")?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(FhError::FailedNixCommand(cmd_str))
+    }
+}
+
+fn parse_flake_output_ref(
+    frontend_addr: &url::Url,
+    output_ref: &str,
+) -> Result<FlakeOutputRef, FhError> {
+    // Ensures that users can use both forms:
+    // 1. https://flakehub/f/{org}/{project}/{version_req}#{output}
+    // 2. {org}/{project}/{version_req}#{output}
+    let output_ref = String::from(
+        output_ref
+            .strip_prefix(frontend_addr.join("f/")?.as_str())
+            .unwrap_or(output_ref),
+    );
+
+    output_ref.try_into()
+}
+
+// Ensure that release refs are of the form {org}/{project}/{version_req}
+fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
+    match flake_ref.to_string().split('/').collect::<Vec<_>>()[..] {
+        [org, project, version_req] => {
+            validate_segment(org)?;
+            validate_segment(project)?;
+            validate_segment(version_req)?;
+
+            Ok(flake_ref.to_string())
+        }
+        _ => Err(FhError::FlakeParse(format!(
+            "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
+        ))),
+    }
+}
+
+// Ensure that orgs, project names, and the like don't contain whitespace
+fn validate_segment(s: &str) -> Result<(), FhError> {
+    if s.chars().any(char::is_whitespace) {
+        return Err(FhError::FlakeParse(format!(
+            "path segment {} contains whitespace",
+            s
+        )));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

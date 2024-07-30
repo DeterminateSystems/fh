@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use std::process::{ExitCode, Stdio};
 
 use clap::Parser;
+use color_eyre::eyre::Context;
 use once_cell::sync::Lazy;
 use tracing::{span, Level};
 
-use super::CommandExecute;
+use super::{nix_command, CommandExecute};
 
 // match {nixos,nixpkgs,release}-YY.MM branches
 static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
@@ -81,12 +82,12 @@ impl CommandExecute for ConvertSubcommand {
             println!("{new_flake_contents}");
         } else {
             tokio::fs::write(self.flake_path, new_flake_contents).await?;
-            tokio::process::Command::new("nix")
-                .args(["--extra-experimental-features", "nix-command flakes"])
-                .arg("flake")
-                .arg("lock")
-                .status()
-                .await?;
+
+            tracing::debug!("Running: nix flake lock");
+
+            nix_command(&["flake", "lock"], false)
+                .await
+                .wrap_err("failed to create missing lock file entries")?;
         }
 
         Ok(ExitCode::SUCCESS)

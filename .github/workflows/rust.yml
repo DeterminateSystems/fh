@@ -9,7 +9,7 @@ jobs:
   rust-fmt-and-clippy:
     runs-on: UbuntuLatest32Cores128G
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/nix-installer-action@v4
       - uses: DeterminateSystems/magic-nix-cache-action@main
@@ -19,3 +19,6 @@ jobs:
 
       - name: Clippy
         run: nix develop --command cargo clippy --all-targets --all-features --  -Dwarnings
+
+      - name: Test
+        run: nix develop --command cargo test --all-features

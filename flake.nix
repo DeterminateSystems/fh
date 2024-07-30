@@ -69,6 +69,7 @@
             ]
             ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               Security
+              SystemConfiguration
             ]);
 
             postInstall = ''
@@ -96,6 +97,7 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               (fenixToolchain system)
+              bacon
               cargo-watch
               rust-analyzer
               nixpkgs-fmt
@@ -107,6 +109,7 @@
             ]
             ++ lib.optionals (stdenv.isDarwin) ([ libiconv ] ++ (with darwin.apple_sdk.frameworks; [
               Security
+              SystemConfiguration
             ]));
 
             env = {

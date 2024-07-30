@@ -9,7 +9,7 @@ jobs:
   flake-check:
     runs-on: UbuntuLatest32Cores128G
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/flake-checker-action@main
         with:

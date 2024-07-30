@@ -27,7 +27,7 @@ pub(crate) struct ListSubcommand {
     cmd: Subcommands,
 
     /// Output results as JSON.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, env = "FH_JSON_OUTPUT")]
     json: bool,
 
     #[arg(from_global)]

@@ -1,5 +1,8 @@
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
+    #[error("Nix command `{0}` failed; check prior Nix output for details")]
+    FailedNixCommand(String),
+
     #[error("file error: {0}")]
     Filesystem(#[from] std::io::Error),
 
@@ -15,14 +18,23 @@ pub(crate) enum FhError {
     #[error("interactive initializer error: {0}")]
     Interactive(#[from] inquire::InquireError),
 
+    #[error("Profile path is not valid UTF-8")]
+    InvalidProfile,
+
     #[error("json parsing error: {0}")]
     Json(#[from] serde_json::Error),
 
     #[error("label parsing error: {0}")]
     LabelParse(String),
 
+    #[error("malformed output reference: {0}")]
+    MalformedOutputRef(String),
+
     #[error("malformed flake reference")]
     MalformedFlakeOutputRef,
+
+    #[error("{0} is not installed or not on the PATH")]
+    MissingExecutable(String),
 
     #[error("missing from flake output reference: {0}")]
     MissingFromOutputRef(String),
@@ -32,6 +44,9 @@ pub(crate) enum FhError {
 
     #[error("template error: {0}")]
     Render(#[from] handlebars::RenderError),
+
+    #[error(transparent)]
+    Report(#[from] color_eyre::Report),
 
     #[error("template error: {0}")]
     Template(#[from] Box<handlebars::TemplateError>),
