@@ -266,7 +266,7 @@ mod tests {
                     input,
                     "DefaultFooBar"
                 )
-                .expect(&format!("failing case: {input}"))
+                .unwrap_or_else(|_| panic!("failing case: {input}"))
                 .to_string(),
                 expect,
             );
