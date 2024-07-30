@@ -1,7 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
-    #[error("Nix command failed; check prior Nix output for details")]
-    FailedNixCommand,
+    #[error("Nix command `{0}` failed; check prior Nix output for details")]
+    FailedNixCommand(String),
 
     #[error("file error: {0}")]
     Filesystem(#[from] std::io::Error),

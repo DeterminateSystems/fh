@@ -396,28 +396,22 @@ async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhErr
             "Current user is {} rather than root; running Nix command using sudo",
             whoami::username()
         );
-        tracing::debug!(
-            "Running: sudo nix --extra-experimental-features 'nix-command-flakes' {}",
-            args.join(" ")
-        );
 
         let mut cmd = tokio::process::Command::new("sudo");
         cmd.arg("nix");
         cmd
     } else {
-        tracing::debug!(
-            "Running: nix --extra-experimental-features 'nix-command-flakes' {}",
-            args.join(" ")
-        );
-
         tokio::process::Command::new("nix")
     };
 
+    cmd.args(["--extra-experimental-features", "nix-command flakes"]);
+    cmd.args(args);
+    cmd.stdout(Stdio::inherit());
+    cmd.stderr(Stdio::inherit());
+    let cmd_str = format!("{:?}", cmd);
+    tracing::debug!("Running: {:?}", cmd_str);
+
     let output = cmd
-        .args(["--extra-experimental-features", "nix-command flakes"])
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .spawn()
         .wrap_err("failed to spawn Nix command")?
         .wait_with_output()
@@ -427,7 +421,7 @@ async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhErr
     if output.status.success() {
         Ok(())
     } else {
-        Err(FhError::FailedNixCommand)
+        Err(FhError::FailedNixCommand(cmd_str))
     }
 }
 
