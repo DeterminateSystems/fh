@@ -13,6 +13,7 @@ pub(crate) struct Cli {
         global = true,
         long,
         default_value = "https://api.flakehub.com",
+        env = "FH_API_ADDR",
         hide = true
     )]
     pub api_addr: url::Url,
@@ -24,6 +25,7 @@ pub(crate) struct Cli {
         global = true,
         long,
         default_value = "https://cache.flakehub.com",
+        env = "FH_CACHE_ADDR",
         hide = true
     )]
     pub cache_addr: url::Url,
@@ -35,6 +37,7 @@ pub(crate) struct Cli {
         global = true,
         long,
         default_value = "https://flakehub.com",
+        env = "FH_FRONTEND_ADDR",
         hide = true
     )]
     pub frontend_addr: url::Url,
