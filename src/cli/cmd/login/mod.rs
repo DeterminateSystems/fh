@@ -198,15 +198,13 @@ impl LoginSubcommand {
                 .header("Content-Type", "application/json")
                 .body(Body::from(add_req_json))?;
             let response = uds.send_request(request).await?;
-            
+
             if response.status() != StatusCode::OK {
                 let body = response.into_body();
                 let bytes = body.collect().await.unwrap_or_default().to_bytes();
                 let text: String = String::from_utf8_lossy(&bytes).into();
-         
-                tracing::warn!(
-                    "failed to update netrc via determinatenixd, falling back to local-file approach: {}", &text
-                );
+
+                tracing::warn!("failed to update netrc via determinate-nixd: {}", &text);
             }
 
             token_updated = true;
@@ -214,7 +212,7 @@ impl LoginSubcommand {
 
         if !token_updated {
             tracing::warn!(
-                "failed to update netrc via determinatenixd, falling back to local-file approach"
+                "failed to update netrc via determinate-nixd, falling back to local-file approach"
             );
 
             // check if user is root or not
@@ -224,7 +222,7 @@ impl LoginSubcommand {
 
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
-            // only update user_nix_config if we could not use determinatenixd
+            // only update user_nix_config if we could not use determinate-nixd
             upsert_user_nix_config(
                 &nix_config_path,
                 &netrc_file_string,
