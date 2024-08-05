@@ -78,7 +78,6 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let response = sender.send_request(request).await?;
 
     if response.status() != StatusCode::OK {
-        tracing::error!("failed to connect to determinate-nixd socket");
         return Err(eyre!("failed to connect to determinate-nixd socket"));
     }
 
@@ -90,10 +89,15 @@ impl LoginSubcommand {
         let dnixd_uds = match dnixd_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
-                tracing::error!(
-                    "failed to connect to determinate-nixd socket, will not attempt to use it: {:?}",
-                    err
+                if tracing::enabled!(tracing::Level::DEBUG) {
+                    tracing::debug!(
+                    "failed to connect to determinate-nixd socket, will not attempt to use it: {}", err
                 );
+                } else {
+                    tracing::warn!(
+                        "failed to connect to determinate-nixd socket, will not attempt to use it."
+                    );
+                }
                 None
             }
         };
@@ -194,12 +198,16 @@ impl LoginSubcommand {
                 .header("Content-Type", "application/json")
                 .body(Body::from(add_req_json))?;
             let response = uds.send_request(request).await?;
-
-            let body = response.into_body();
-            let bytes = body.collect().await.unwrap_or_default().to_bytes();
-            let text: String = String::from_utf8_lossy(&bytes).into();
-
-            tracing::trace!("sent the add request: {:?}", text);
+            
+            if response.status() != StatusCode::OK {
+                let body = response.into_body();
+                let bytes = body.collect().await.unwrap_or_default().to_bytes();
+                let text: String = String::from_utf8_lossy(&bytes).into();
+         
+                tracing::warn!(
+                    "failed to update netrc via determinatenixd, falling back to local-file approach: {}", &text
+                );
+            }
 
             token_updated = true;
         }
@@ -208,6 +216,11 @@ impl LoginSubcommand {
             tracing::warn!(
                 "failed to update netrc via determinatenixd, falling back to local-file approach"
             );
+
+            // check if user is root or not
+            if !nix::unistd::Uid::effective().is_root() {
+                return Err(eyre!("`fh login` is attempting to update a file owned by root, please re-run the same command, prefixed with `sudo -i`."));
+            }
 
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
