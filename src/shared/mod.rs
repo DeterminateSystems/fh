@@ -11,7 +11,6 @@ pub struct DaemonInfoReponse {
 #[derive(Deserialize, Serialize)]
 pub struct NetrcTokenAddRequest {
     pub token: String,
-    pub netrc_lines: String,
 }
 
 pub async fn update_netrc_file(
