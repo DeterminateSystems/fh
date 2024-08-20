@@ -1,11 +1,11 @@
 use std::{collections::HashMap, process::ExitCode};
 
 use clap::Parser;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use super::{parse_release_ref, print_json, CommandExecute, FlakeHubClient};
 
-/// TODO
+/// Display all output paths that are derivations in the specified flake release.
 #[derive(Debug, Parser)]
 pub(crate) struct PathsSubcommand {
     /// TODO
@@ -34,9 +34,28 @@ impl CommandExecute for PathsSubcommand {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize)]
 #[serde(untagged)]
 pub(crate) enum PathNode {
     Path(String),
     PathMap(HashMap<String, PathNode>),
+}
+
+// The custom serializer converts empty maps into nulls
+impl Serialize for PathNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            PathNode::Path(s) => s.serialize(serializer),
+            PathNode::PathMap(map) => {
+                if map.is_empty() {
+                    serializer.serialize_none()
+                } else {
+                    map.serialize(serializer)
+                }
+            }
+        }
+    }
 }

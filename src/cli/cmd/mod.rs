@@ -206,9 +206,9 @@ impl FlakeHubClient {
             return Err(e).wrap_err(err_text)?;
         };
 
-        let res = res.json::<HashMap<String, PathNode>>().await?;
+        let paths = res.json::<HashMap<String, PathNode>>().await?;
 
-        Ok(res)
+        Ok(paths)
     }
 
     async fn project_and_url(
@@ -517,6 +517,16 @@ fn parse_release_ref(release_ref: &str) -> Result<ReleaseRef, FhError> {
                 org: org.to_string(),
                 project: project.to_string(),
                 version_constraint: version_constraint.to_string(),
+            })
+        }
+        [org, project] => {
+            validate_segment(org)?;
+            validate_segment(project)?;
+
+            Ok(ReleaseRef {
+                org: org.to_string(),
+                project: project.to_string(),
+                version_constraint: "*".to_string(),
             })
         }
         _ => Err(FhError::ReleaseRefParse(format!(
