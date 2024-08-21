@@ -1,7 +1,7 @@
 use std::{collections::HashMap, process::ExitCode};
 
 use clap::Parser;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use super::{parse_release_ref, print_json, CommandExecute, FlakeHubClient};
 
@@ -29,36 +29,20 @@ impl CommandExecute for PathsSubcommand {
             "Successfully fetched output paths for release"
         );
 
-        print_json(paths)?;
+        if paths.is_empty() {
+            tracing::warn!("Flake release provides no output paths");
+        }
 
+        print_json(paths)?;
         Ok(ExitCode::SUCCESS)
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(untagged)]
 pub(crate) enum PathNode {
     Path(String),
     PathMap(HashMap<String, PathNode>),
-}
-
-// The custom serializer converts empty maps into nulls
-impl Serialize for PathNode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            PathNode::Path(s) => s.serialize(serializer),
-            PathNode::PathMap(map) => {
-                if map.is_empty() {
-                    serializer.serialize_none()
-                } else {
-                    map.serialize(serializer)
-                }
-            }
-        }
-    }
 }
 
 // Recursively removes any nulls from the output path tree
