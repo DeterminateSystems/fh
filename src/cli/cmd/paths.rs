@@ -21,7 +21,8 @@ impl CommandExecute for PathsSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let release_ref = parse_release_ref(&self.release_ref)?;
 
-        let paths = FlakeHubClient::paths(self.api_addr.as_ref(), &release_ref).await?;
+        let mut paths = FlakeHubClient::paths(self.api_addr.as_ref(), &release_ref).await?;
+        clear_nulls(&mut paths);
 
         tracing::debug!(
             r#ref = release_ref.to_string(),
@@ -57,5 +58,27 @@ impl Serialize for PathNode {
                 }
             }
         }
+    }
+}
+
+// Recursively removes any nulls from the output path tree
+fn clear_nulls(map: &mut HashMap<String, PathNode>) {
+    let keys_to_remove: Vec<String> = map
+        .iter_mut()
+        .filter_map(|(key, value)| match value {
+            PathNode::PathMap(ref mut inner_map) => {
+                clear_nulls(inner_map);
+                if inner_map.is_empty() {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .collect();
+
+    for key in keys_to_remove {
+        map.remove(&key);
     }
 }
