@@ -24,7 +24,7 @@ jobs:
       - name: Create the artifacts directory
         run: rm -rf ./artifacts && mkdir ./artifacts
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: fh-X64-macOS
           path: cache-binary-X64-macOS
@@ -32,7 +32,7 @@ jobs:
       - name: Persist the cache binary
         run: cp ./cache-binary-X64-macOS/fh ./artifacts/fh-X64-macOS
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: fh-X64-Linux
           path: cache-binary-X64-Linux
