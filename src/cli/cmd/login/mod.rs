@@ -411,18 +411,23 @@ pub async fn upsert_user_nix_config(
 pub(crate) async fn user_auth_token_read_path() -> Result<PathBuf, FhError> {
     let write_path = user_auth_token_write_path();
 
+    // If the user's personal token file exists, we use that first.
     if let Ok(ref path) = write_path {
         if tokio::fs::metadata(&path).await.is_ok() {
             return Ok(path.to_path_buf());
         }
     }
 
+    // Either XDG failed to give us a path, or the user's token doesn't exist, so fall back
+    // to the global token if that exists.
     let global_path =
         Path::new(crate::DETERMINATE_STATE_DIR).join(crate::DETERMINATE_NIXD_TOKEN_NAME);
     if tokio::fs::metadata(&global_path).await.is_ok() {
         return Ok(global_path);
     }
 
+    // The global token didn't exist, and the user's token didn't exist,
+    // let them now write to their own personal token file.
     write_path
 }
 
