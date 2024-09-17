@@ -20,7 +20,7 @@ jobs:
             runner: "macos-latest-xlarge"
             artifact: "fh-ARM64-macOS"
           - nix-system: "x86_64-darwin"
-            runner: "macos-12"
+            runner: "macos-14-large"
             artifact: "fh-X64-macOS"
           - nix-system: "aarch64-linux"
             runner: "namespace-profile-default-arm64"

@@ -2,7 +2,7 @@
   description = "The official CLI for FlakeHub: search for flakes, and add new inputs to your Nix flake.";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.650378.tar.gz";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.650378.tar.gz";
 
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";

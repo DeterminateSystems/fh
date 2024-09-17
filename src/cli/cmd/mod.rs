@@ -144,7 +144,7 @@ impl FlakeHubClient {
         let url = flakehub_url!(api_addr, "version", org, project, version);
         let client = make_base_client(true).await?;
 
-        let res = client.get(&url.to_string()).send().await?;
+        let res = client.get(url.to_string()).send().await?;
 
         // Enrich the CLI error text with the error returned by FlakeHub
         if let Err(e) = res.error_for_status_ref() {
@@ -189,7 +189,7 @@ impl FlakeHubClient {
             None => flakehub_url!(api_addr, "f", org, project),
         };
         let client = make_base_client(true).await?;
-        let res = client.get(&url.to_string()).send().await?;
+        let res = client.get(url.to_string()).send().await?;
 
         // Enrich the CLI error text with the error returned by FlakeHub
         if let Err(e) = res.error_for_status_ref() {
