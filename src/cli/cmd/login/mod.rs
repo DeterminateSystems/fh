@@ -102,7 +102,7 @@ impl LoginSubcommand {
         // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
         let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
         // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-        let token_path = user_auth_token_path()?;
+        let token_path = user_auth_token_write_path()?;
 
         let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
         let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
@@ -408,7 +408,30 @@ pub async fn upsert_user_nix_config(
     Ok(())
 }
 
-pub(crate) fn user_auth_token_path() -> Result<PathBuf, FhError> {
+pub(crate) async fn user_auth_token_read_path() -> Result<PathBuf, FhError> {
+    let write_path = user_auth_token_write_path();
+
+    // If the user's personal token file exists, we use that first.
+    if let Ok(ref path) = write_path {
+        if tokio::fs::metadata(&path).await.is_ok() {
+            return Ok(path.to_path_buf());
+        }
+    }
+
+    // Either XDG failed to give us a path, or the user's token doesn't exist, so fall back
+    // to the global token if that exists.
+    let global_path =
+        Path::new(crate::DETERMINATE_STATE_DIR).join(crate::DETERMINATE_NIXD_TOKEN_NAME);
+    if tokio::fs::metadata(&global_path).await.is_ok() {
+        return Ok(global_path);
+    }
+
+    // The global token didn't exist, and the user's token didn't exist,
+    // let them now write to their own personal token file.
+    write_path
+}
+
+pub(crate) fn user_auth_token_write_path() -> Result<PathBuf, FhError> {
     let xdg = xdg::BaseDirectories::new()?;
     // $XDG_CONFIG_HOME/flakehub/auth; basically ~/.config/flakehub/auth
     let token_path = xdg.place_config_file("flakehub/auth")?;

@@ -341,13 +341,13 @@ async fn make_base_client(_authenticated: bool) -> Result<Client, FhError> {
 
 #[cfg(not(test))]
 async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
-    use self::login::user_auth_token_path;
+    use self::login::user_auth_token_read_path;
 
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
     if authenticated {
-        if let Ok(token) = tokio::fs::read_to_string(user_auth_token_path()?).await {
+        if let Ok(token) = tokio::fs::read_to_string(user_auth_token_read_path().await?).await {
             if !token.is_empty() {
                 headers.insert(
                     AUTHORIZATION,
