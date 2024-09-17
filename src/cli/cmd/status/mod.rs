@@ -72,7 +72,7 @@ impl CommandExecute for StatusSubcommand {
 pub(crate) async fn get_status_from_auth_file(
     api_addr: url::Url,
 ) -> color_eyre::Result<TokenStatus> {
-    let auth_token_path = crate::cli::cmd::login::user_auth_token_path()?;
+    let auth_token_path = crate::cli::cmd::login::user_auth_token_read_path().await?;
     let token = tokio::fs::read_to_string(&auth_token_path)
         .await
         .wrap_err_with(|| format!("Could not open {}", auth_token_path.display()))?;
