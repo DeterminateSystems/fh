@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use axum::body::Body;
 use clap::Parser;
 use color_eyre::eyre::eyre;
+use color_eyre::eyre::WrapErr;
 use http_body_util::BodyExt as _;
 use hyper::client::conn::http1::SendRequest;
 use hyper::{Method, StatusCode};
@@ -12,6 +13,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
+use crate::cli::cmd::TokenStatus;
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
 use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
@@ -32,6 +34,10 @@ const CACHE_PUBLIC_KEYS: &[&str] = &[
 /// Log in to FlakeHub in order to allow authenticated fetching of flakes.
 #[derive(Debug, Parser)]
 pub(crate) struct LoginSubcommand {
+    /// Read the FlakeHub token from a file.
+    #[clap(long)]
+    token_file: Option<std::path::PathBuf>,
+
     /// Skip following up a successful login with `fh status`.
     #[clap(long)]
     skip_status: bool,
@@ -108,12 +114,20 @@ impl LoginSubcommand {
             ),
         );
 
-        println!("Log in to FlakeHub: {}", login_url);
-        println!("And then follow the prompts below:");
-        println!();
+        let mut token: Option<String> = if let Some(ref token_file) = self.token_file {
+            Some(
+                tokio::fs::read_to_string(token_file)
+                    .await
+                    .wrap_err("Reading the provided token file")?,
+            )
+        } else {
+            println!("Log in to FlakeHub: {}", login_url);
+            println!("And then follow the prompts below:");
+            println!();
+            crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:")
+        };
 
-        let token = crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:");
-        let (token, status) = match token {
+        let (token, status): (String, TokenStatus) = match token.take() {
             Some(token) => {
                 // This serves as validating that provided token is actually a JWT, and is valid.
                 let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token).await?;
