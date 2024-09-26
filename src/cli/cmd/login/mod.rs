@@ -90,23 +90,13 @@ impl LoginSubcommand {
         let dnixd_uds = match dnixd_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
-                tracing::error!(
+                tracing::debug!(
                     "failed to connect to determinate-nixd socket, will not attempt to use it: {:?}",
                     err
                 );
                 None
             }
         };
-
-        let xdg = xdg::BaseDirectories::new()?;
-        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
-        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
-        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-        let token_path = user_auth_token_write_path()?;
-
-        let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
-        let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
-        let netrc_file_string: String = netrc_file_path.display().to_string();
 
         let mut login_url = self.frontend_addr.clone();
         login_url.set_path("token/create");
@@ -135,42 +125,6 @@ impl LoginSubcommand {
             }
         };
 
-        // Note the root version uses extra-trusted-substituters, which
-        // mean the cache is not enabled until a user (trusted or untrusted)
-        // adds it to extra-substituters in their nix.conf.
-        //
-        // Note the root version sets netrc-file until the user authentication
-        // patches (https://github.com/NixOS/nix/pull/9857) land.
-        let root_nix_config_addition = format!(
-            "\n\
-            netrc-file = {netrc}\n\
-            extra-substituters = {cache_addr}\n\
-            extra-trusted-public-keys = {keys}\n\
-            ",
-            netrc = netrc_file_string,
-            cache_addr = self.cache_addr,
-            keys = CACHE_PUBLIC_KEYS.join(" "),
-        );
-
-        let user_nix_config_addition = format!(
-            "\n\
-            netrc-file = {netrc}\n\
-            extra-substituters = {cache_addr}\n\
-            extra-trusted-public-keys = {keys}\n\
-            ",
-            netrc = netrc_file_string,
-            cache_addr = self.cache_addr,
-            keys = CACHE_PUBLIC_KEYS.join(" "),
-        );
-        let netrc_contents = crate::shared::netrc_contents(
-            &self.frontend_addr,
-            &self.api_addr,
-            &self.cache_addr,
-            &token,
-        )?;
-
-        tokio::fs::write(token_path, &token).await?;
-
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
         // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
         // benefit is that `access-tokens` can be appended to, but `netrc-file` is a one-time thing
@@ -179,13 +133,11 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
 
-        let mut token_updated = false;
         if let Some(mut uds) = dnixd_uds {
             tracing::debug!("trying to update netrc via determinatenixd");
 
             let add_req = NetrcTokenAddRequest {
                 token: token.clone(),
-                netrc_lines: netrc_contents.clone(),
             };
             let add_req_json = serde_json::to_string(&add_req)?;
             let request = http::request::Builder::new()
@@ -200,14 +152,56 @@ impl LoginSubcommand {
             let text: String = String::from_utf8_lossy(&bytes).into();
 
             tracing::trace!("sent the add request: {:?}", text);
-
-            token_updated = true;
-        }
-
-        if !token_updated {
-            tracing::warn!(
+        } else {
+            tracing::debug!(
                 "failed to update netrc via determinatenixd, falling back to local-file approach"
             );
+
+            // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+            tokio::fs::write(user_auth_token_write_path()?, &token).await?;
+
+            let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
+            let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
+            let netrc_file_string: String = netrc_file_path.display().to_string();
+
+            let xdg = xdg::BaseDirectories::new()?;
+
+            // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
+            let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
+
+            // Note the root version uses extra-trusted-substituters, which
+            // mean the cache is not enabled until a user (trusted or untrusted)
+            // adds it to extra-substituters in their nix.conf.
+            //
+            // Note the root version sets netrc-file until the user authentication
+            // patches (https://github.com/NixOS/nix/pull/9857) land.
+            let root_nix_config_addition = format!(
+                "\n\
+                netrc-file = {netrc}\n\
+                extra-substituters = {cache_addr}\n\
+                extra-trusted-public-keys = {keys}\n\
+                ",
+                netrc = netrc_file_string,
+                cache_addr = self.cache_addr,
+                keys = CACHE_PUBLIC_KEYS.join(" "),
+            );
+
+            let user_nix_config_addition = format!(
+                "\n\
+                netrc-file = {netrc}\n\
+                extra-substituters = {cache_addr}\n\
+                extra-trusted-public-keys = {keys}\n\
+                ",
+                netrc = netrc_file_string,
+                cache_addr = self.cache_addr,
+                keys = CACHE_PUBLIC_KEYS.join(" "),
+            );
+            let netrc_contents = crate::shared::netrc_contents(
+                &self.frontend_addr,
+                &self.api_addr,
+                &self.cache_addr,
+                &token,
+            )?;
 
             update_netrc_file(&netrc_file_path, &netrc_contents).await?;
 
