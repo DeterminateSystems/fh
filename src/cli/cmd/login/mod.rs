@@ -14,7 +14,7 @@ use tokio::net::UnixStream;
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
-use crate::{DETERMINATE_NIXD_NETRC_NAME, DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
+use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -160,11 +160,9 @@ impl LoginSubcommand {
             // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
             tokio::fs::write(user_auth_token_write_path()?, &token).await?;
 
-            let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
-            let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
-            let netrc_file_string: String = netrc_file_path.display().to_string();
-
             let xdg = xdg::BaseDirectories::new()?;
+
+            let netrc_path = xdg.place_config_file("nix/netrc")?;
 
             // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
             let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
@@ -178,10 +176,10 @@ impl LoginSubcommand {
             let root_nix_config_addition = format!(
                 "\n\
                 netrc-file = {netrc}\n\
-                extra-substituters = {cache_addr}\n\
+                extra-trusted-substituters = {cache_addr}\n\
                 extra-trusted-public-keys = {keys}\n\
                 ",
-                netrc = netrc_file_string,
+                netrc = netrc_path.display(),
                 cache_addr = self.cache_addr,
                 keys = CACHE_PUBLIC_KEYS.join(" "),
             );
@@ -192,7 +190,7 @@ impl LoginSubcommand {
                 extra-substituters = {cache_addr}\n\
                 extra-trusted-public-keys = {keys}\n\
                 ",
-                netrc = netrc_file_string,
+                netrc = netrc_path.display(),
                 cache_addr = self.cache_addr,
                 keys = CACHE_PUBLIC_KEYS.join(" "),
             );
@@ -203,12 +201,12 @@ impl LoginSubcommand {
                 &token,
             )?;
 
-            update_netrc_file(&netrc_file_path, &netrc_contents).await?;
+            update_netrc_file(&netrc_path, &netrc_contents).await?;
 
             // only update user_nix_config if we could not use determinatenixd
             upsert_user_nix_config(
                 &nix_config_path,
-                &netrc_file_string,
+                &netrc_path,
                 &netrc_contents,
                 &user_nix_config_addition,
                 &self.cache_addr,
@@ -272,7 +270,7 @@ impl LoginSubcommand {
 // on that, then move it back if all is good
 pub async fn upsert_user_nix_config(
     nix_config_path: &Path,
-    netrc_file_string: &str,
+    netrc_path: &Path,
     netrc_contents: &str,
     user_nix_config_addition: &str,
     cache_addr: &url::Url,
@@ -281,7 +279,7 @@ pub async fn upsert_user_nix_config(
     let mut merged_nix_config = nix_config_parser::NixConfig::new();
     merged_nix_config
         .settings_mut()
-        .insert("netrc-file".to_string(), netrc_file_string.to_string());
+        .insert("netrc-file".to_string(), netrc_path.display().to_string());
 
     let setting = "extra-trusted-public-keys".to_string();
     if let Some(existing) = nix_config.settings().get(&setting) {
