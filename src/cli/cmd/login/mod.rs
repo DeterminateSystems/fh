@@ -118,7 +118,9 @@ impl LoginSubcommand {
             Some(
                 tokio::fs::read_to_string(token_file)
                     .await
-                    .wrap_err("Reading the provided token file")?,
+                    .wrap_err("Reading the provided token file")?
+                    .trim()
+                    .to_string(),
             )
         } else {
             println!("Log in to FlakeHub: {}", login_url);
