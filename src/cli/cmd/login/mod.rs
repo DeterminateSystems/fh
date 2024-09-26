@@ -393,6 +393,13 @@ pub async fn upsert_user_nix_config(
         if update_nix_conf {
             let nix_config_contents = tokio::fs::read_to_string(&nix_config_path)
                 .await
+                .or_else(|e| {
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        Ok("".to_string())
+                    } else {
+                        Err(e)
+                    }
+                })
                 .wrap_err_with(|| {
                     format!("Reading the Nix configuration file {:?}", &nix_config_path)
                 })?;
