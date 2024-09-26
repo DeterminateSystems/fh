@@ -65,9 +65,14 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
     let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
-    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await?);
-    let (mut sender, conn): (SendRequest<Body>, _) =
-        hyper::client::conn::http1::handshake(stream).await?;
+    let stream = TokioIo::new(
+        UnixStream::connect(dnixd_uds_socket_path)
+            .await
+            .wrap_err("Connecting to the determinate-nixd socket")?,
+    );
+    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream)
+        .await
+        .wrap_err("Çompleting the http1 handshake with determinate-nixd")?;
 
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
@@ -81,7 +86,10 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
         .uri("http://localhost/info")
         .body(axum::body::Body::empty())?;
 
-    let response = sender.send_request(request).await?;
+    let response = sender
+        .send_request(request)
+        .await
+        .wrap_err("Querying information about determinate-nixd")?;
 
     if response.status() != StatusCode::OK {
         tracing::error!("failed to connect to determinate-nixd socket");
@@ -132,7 +140,9 @@ impl LoginSubcommand {
         let (token, status): (String, TokenStatus) = match token.take() {
             Some(token) => {
                 // This serves as validating that provided token is actually a JWT, and is valid.
-                let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token).await?;
+                let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token)
+                    .await
+                    .wrap_err("Checking the validity of the provided token")?;
                 (token, status)
             }
             None => {
@@ -161,7 +171,10 @@ impl LoginSubcommand {
                 .method(Method::POST)
                 .header("Content-Type", "application/json")
                 .body(Body::from(add_req_json))?;
-            let response = uds.send_request(request).await?;
+            let response = uds
+                .send_request(request)
+                .await
+                .wrap_err("Performing the enrollment request with determinate-nixd")?;
 
             let body = response.into_body();
             let bytes = body.collect().await.unwrap_or_default().to_bytes();
@@ -217,7 +230,9 @@ impl LoginSubcommand {
                 &token,
             )?;
 
-            update_netrc_file(&netrc_path, &netrc_contents).await?;
+            update_netrc_file(&netrc_path, &netrc_contents)
+                .await
+                .wrap_err("Writing out the netrc")?;
 
             // only update user_nix_config if we could not use determinatenixd
             upsert_user_nix_config(
@@ -230,9 +245,11 @@ impl LoginSubcommand {
             .await?;
 
             let added_nix_config =
-                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
+                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)
+                    .wrap_err("Parsing the Nix configuration additions")?;
             let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
-            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
+            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)
+                .wrap_err("Parsing the existing global Nix configuration")?;
             let mut root_meaningfully_different = false;
 
             for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
@@ -374,7 +391,11 @@ pub async fn upsert_user_nix_config(
     if were_meaningfully_different {
         let update_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&prompt);
         if update_nix_conf {
-            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
+            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path)
+                .await
+                .wrap_err_with(|| {
+                    format!("Reading the Nix configuration file {:?}", &nix_config_path)
+                })?;
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
                 .truncate(true)
