@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use axum::body::Body;
 use clap::Parser;
 use color_eyre::eyre::eyre;
+use color_eyre::eyre::WrapErr;
 use http_body_util::BodyExt as _;
 use hyper::client::conn::http1::SendRequest;
 use hyper::{Method, StatusCode};
@@ -12,9 +13,10 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
+use crate::cli::cmd::TokenStatus;
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
-use crate::{DETERMINATE_NIXD_NETRC_NAME, DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
+use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -32,6 +34,10 @@ const CACHE_PUBLIC_KEYS: &[&str] = &[
 /// Log in to FlakeHub in order to allow authenticated fetching of flakes.
 #[derive(Debug, Parser)]
 pub(crate) struct LoginSubcommand {
+    /// Read the FlakeHub token from a file.
+    #[clap(long)]
+    token_file: Option<std::path::PathBuf>,
+
     /// Skip following up a successful login with `fh status`.
     #[clap(long)]
     skip_status: bool,
@@ -59,9 +65,14 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
     let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
     let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
 
-    let stream = TokioIo::new(UnixStream::connect(dnixd_uds_socket_path).await?);
-    let (mut sender, conn): (SendRequest<Body>, _) =
-        hyper::client::conn::http1::handshake(stream).await?;
+    let stream = TokioIo::new(
+        UnixStream::connect(dnixd_uds_socket_path)
+            .await
+            .wrap_err("Connecting to the determinate-nixd socket")?,
+    );
+    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream)
+        .await
+        .wrap_err("Çompleting the http1 handshake with determinate-nixd")?;
 
     // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
     let _join_handle = tokio::task::spawn(async move {
@@ -75,7 +86,10 @@ pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
         .uri("http://localhost/info")
         .body(axum::body::Body::empty())?;
 
-    let response = sender.send_request(request).await?;
+    let response = sender
+        .send_request(request)
+        .await
+        .wrap_err("Querying information about determinate-nixd")?;
 
     if response.status() != StatusCode::OK {
         tracing::error!("failed to connect to determinate-nixd socket");
@@ -90,23 +104,13 @@ impl LoginSubcommand {
         let dnixd_uds = match dnixd_uds().await {
             Ok(socket) => Some(socket),
             Err(err) => {
-                tracing::error!(
+                tracing::debug!(
                     "failed to connect to determinate-nixd socket, will not attempt to use it: {:?}",
                     err
                 );
                 None
             }
         };
-
-        let xdg = xdg::BaseDirectories::new()?;
-        // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
-        let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
-        // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
-        let token_path = user_auth_token_write_path()?;
-
-        let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
-        let netrc_file_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_NETRC_NAME);
-        let netrc_file_string: String = netrc_file_path.display().to_string();
 
         let mut login_url = self.frontend_addr.clone();
         login_url.set_path("token/create");
@@ -118,15 +122,27 @@ impl LoginSubcommand {
             ),
         );
 
-        println!("Log in to FlakeHub: {}", login_url);
-        println!("And then follow the prompts below:");
-        println!();
+        let mut token: Option<String> = if let Some(ref token_file) = self.token_file {
+            Some(
+                tokio::fs::read_to_string(token_file)
+                    .await
+                    .wrap_err("Reading the provided token file")?
+                    .trim()
+                    .to_string(),
+            )
+        } else {
+            println!("Log in to FlakeHub: {}", login_url);
+            println!("And then follow the prompts below:");
+            println!();
+            crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:")
+        };
 
-        let token = crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:");
-        let (token, status) = match token {
+        let (token, status): (String, TokenStatus) = match token.take() {
             Some(token) => {
                 // This serves as validating that provided token is actually a JWT, and is valid.
-                let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token).await?;
+                let status = FlakeHubClient::auth_status(self.api_addr.as_ref(), &token)
+                    .await
+                    .wrap_err("Checking the validity of the provided token")?;
                 (token, status)
             }
             None => {
@@ -134,42 +150,6 @@ impl LoginSubcommand {
                 std::process::exit(1);
             }
         };
-
-        // Note the root version uses extra-trusted-substituters, which
-        // mean the cache is not enabled until a user (trusted or untrusted)
-        // adds it to extra-substituters in their nix.conf.
-        //
-        // Note the root version sets netrc-file until the user authentication
-        // patches (https://github.com/NixOS/nix/pull/9857) land.
-        let root_nix_config_addition = format!(
-            "\n\
-            netrc-file = {netrc}\n\
-            extra-substituters = {cache_addr}\n\
-            extra-trusted-public-keys = {keys}\n\
-            ",
-            netrc = netrc_file_string,
-            cache_addr = self.cache_addr,
-            keys = CACHE_PUBLIC_KEYS.join(" "),
-        );
-
-        let user_nix_config_addition = format!(
-            "\n\
-            netrc-file = {netrc}\n\
-            extra-substituters = {cache_addr}\n\
-            extra-trusted-public-keys = {keys}\n\
-            ",
-            netrc = netrc_file_string,
-            cache_addr = self.cache_addr,
-            keys = CACHE_PUBLIC_KEYS.join(" "),
-        );
-        let netrc_contents = crate::shared::netrc_contents(
-            &self.frontend_addr,
-            &self.api_addr,
-            &self.cache_addr,
-            &token,
-        )?;
-
-        tokio::fs::write(token_path, &token).await?;
 
         // NOTE: Keep an eye on any movement in the following issues / PRs. Them being resolved
         // means we may be able to ditch setting `netrc-file` in favor of `access-tokens`. (The
@@ -179,13 +159,11 @@ impl LoginSubcommand {
         // https://github.com/NixOS/nix/issues/8635 ("Credentials provider support for builtins.fetch*")
         // https://github.com/NixOS/nix/issues/8439 ("--access-tokens option does nothing")
 
-        let mut token_updated = false;
         if let Some(mut uds) = dnixd_uds {
             tracing::debug!("trying to update netrc via determinatenixd");
 
             let add_req = NetrcTokenAddRequest {
                 token: token.clone(),
-                netrc_lines: netrc_contents.clone(),
             };
             let add_req_json = serde_json::to_string(&add_req)?;
             let request = http::request::Builder::new()
@@ -193,28 +171,73 @@ impl LoginSubcommand {
                 .method(Method::POST)
                 .header("Content-Type", "application/json")
                 .body(Body::from(add_req_json))?;
-            let response = uds.send_request(request).await?;
+            let response = uds
+                .send_request(request)
+                .await
+                .wrap_err("Performing the enrollment request with determinate-nixd")?;
 
             let body = response.into_body();
             let bytes = body.collect().await.unwrap_or_default().to_bytes();
             let text: String = String::from_utf8_lossy(&bytes).into();
 
             tracing::trace!("sent the add request: {:?}", text);
-
-            token_updated = true;
-        }
-
-        if !token_updated {
-            tracing::warn!(
+        } else {
+            tracing::debug!(
                 "failed to update netrc via determinatenixd, falling back to local-file approach"
             );
 
-            update_netrc_file(&netrc_file_path, &netrc_contents).await?;
+            // $XDG_CONFIG_HOME/fh/auth; basically ~/.config/fh/auth
+            tokio::fs::write(user_auth_token_write_path()?, &token).await?;
+
+            let xdg = xdg::BaseDirectories::new()?;
+
+            let netrc_path = xdg.place_config_file("nix/netrc")?;
+
+            // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
+            let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
+
+            // Note the root version uses extra-trusted-substituters, which
+            // mean the cache is not enabled until a user (trusted or untrusted)
+            // adds it to extra-substituters in their nix.conf.
+            //
+            // Note the root version sets netrc-file until the user authentication
+            // patches (https://github.com/NixOS/nix/pull/9857) land.
+            let root_nix_config_addition = format!(
+                "\n\
+                netrc-file = {netrc}\n\
+                extra-trusted-substituters = {cache_addr}\n\
+                extra-trusted-public-keys = {keys}\n\
+                ",
+                netrc = netrc_path.display(),
+                cache_addr = self.cache_addr,
+                keys = CACHE_PUBLIC_KEYS.join(" "),
+            );
+
+            let user_nix_config_addition = format!(
+                "\n\
+                netrc-file = {netrc}\n\
+                extra-substituters = {cache_addr}\n\
+                extra-trusted-public-keys = {keys}\n\
+                ",
+                netrc = netrc_path.display(),
+                cache_addr = self.cache_addr,
+                keys = CACHE_PUBLIC_KEYS.join(" "),
+            );
+            let netrc_contents = crate::shared::netrc_contents(
+                &self.frontend_addr,
+                &self.api_addr,
+                &self.cache_addr,
+                &token,
+            )?;
+
+            update_netrc_file(&netrc_path, &netrc_contents)
+                .await
+                .wrap_err("Writing out the netrc")?;
 
             // only update user_nix_config if we could not use determinatenixd
             upsert_user_nix_config(
                 &nix_config_path,
-                &netrc_file_string,
+                &netrc_path,
                 &netrc_contents,
                 &user_nix_config_addition,
                 &self.cache_addr,
@@ -222,9 +245,11 @@ impl LoginSubcommand {
             .await?;
 
             let added_nix_config =
-                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)?;
+                nix_config_parser::NixConfig::parse_string(root_nix_config_addition.clone(), None)
+                    .wrap_err("Parsing the Nix configuration additions")?;
             let root_nix_config_path = PathBuf::from("/etc/nix/nix.conf");
-            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)?;
+            let root_nix_config = nix_config_parser::NixConfig::parse_file(&root_nix_config_path)
+                .wrap_err("Parsing the existing global Nix configuration")?;
             let mut root_meaningfully_different = false;
 
             for (merged_setting_name, merged_setting_value) in added_nix_config.settings() {
@@ -278,7 +303,7 @@ impl LoginSubcommand {
 // on that, then move it back if all is good
 pub async fn upsert_user_nix_config(
     nix_config_path: &Path,
-    netrc_file_string: &str,
+    netrc_path: &Path,
     netrc_contents: &str,
     user_nix_config_addition: &str,
     cache_addr: &url::Url,
@@ -287,7 +312,7 @@ pub async fn upsert_user_nix_config(
     let mut merged_nix_config = nix_config_parser::NixConfig::new();
     merged_nix_config
         .settings_mut()
-        .insert("netrc-file".to_string(), netrc_file_string.to_string());
+        .insert("netrc-file".to_string(), netrc_path.display().to_string());
 
     let setting = "extra-trusted-public-keys".to_string();
     if let Some(existing) = nix_config.settings().get(&setting) {
@@ -366,7 +391,18 @@ pub async fn upsert_user_nix_config(
     if were_meaningfully_different {
         let update_nix_conf = crate::cli::cmd::init::prompt::Prompt::bool(&prompt);
         if update_nix_conf {
-            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path).await?;
+            let nix_config_contents = tokio::fs::read_to_string(&nix_config_path)
+                .await
+                .or_else(|e| {
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        Ok("".to_string())
+                    } else {
+                        Err(e)
+                    }
+                })
+                .wrap_err_with(|| {
+                    format!("Reading the Nix configuration file {:?}", &nix_config_path)
+                })?;
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
                 .truncate(true)

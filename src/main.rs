@@ -12,7 +12,6 @@ use crate::cli::{
 
 const DETERMINATE_STATE_DIR: &str = "/nix/var/determinate";
 const DETERMINATE_NIXD_SOCKET_NAME: &str = "determinate-nixd.socket";
-const DETERMINATE_NIXD_NETRC_NAME: &str = "netrc";
 const DETERMINATE_NIXD_TOKEN_NAME: &str = "token";
 
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
