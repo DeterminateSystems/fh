@@ -213,6 +213,9 @@ async fn apply_path_to_profile(
     nix_command(
         &[
             "build",
+            // Don't create a result symlink in the current directory for the profile being installed.
+            // This is verified to not introduce a race condition against an eager garbage collection.
+            "--no-link",
             "--print-build-logs",
             // `--max-jobs 0` ensures that `nix build` doesn't really *build* anything
             // and acts more as a fetch operation
