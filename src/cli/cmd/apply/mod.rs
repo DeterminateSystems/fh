@@ -130,7 +130,7 @@ fn parse_output_ref(
     let output_ref =
         super::parse_flake_output_ref(frontend_addr, &with_default_output_path)?.to_string();
 
-    let parsed = super::parse_release_ref(&output_ref)?;
+    let parsed = super::validate_release_ref(&output_ref)?;
 
     parsed.try_into()
 }
