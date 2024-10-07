@@ -11,6 +11,7 @@ use std::{
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 use tempfile::{tempdir, TempDir};
+use tokio::io::AsyncWriteExt as _;
 
 use crate::cli::{cmd::nix_command, error::FhError};
 
@@ -24,11 +25,20 @@ pub(crate) struct ApplySubcommand {
     #[clap(subcommand)]
     system: System,
 
+    #[clap(long)]
+    profile_path: Option<PathBuf>,
+
+    #[clap(long, default_value_t = false)]
+    request_restricted_token: bool,
+
     #[clap(from_global)]
     api_addr: url::Url,
 
     #[clap(from_global)]
     frontend_addr: url::Url,
+
+    #[clap(from_global)]
+    cache_addr: url::Url,
 }
 
 #[derive(Subcommand)]
@@ -77,7 +87,12 @@ impl CommandExecute for ApplySubcommand {
 
         tracing::info!("Resolving {}", output_ref);
 
-        let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
+        let resolved_path = FlakeHubClient::resolve(
+            self.api_addr.as_ref(),
+            &output_ref,
+            self.request_restricted_token,
+        )
+        .await?;
 
         tracing::debug!(
             "Successfully resolved reference {} to path {}",
@@ -85,8 +100,64 @@ impl CommandExecute for ApplySubcommand {
             &resolved_path.store_path
         );
 
+        let profile_path = match &self.profile_path {
+            Some(path) => Some(path.to_owned()),
+            None => applyer.profile_path().map(ToOwned::to_owned),
+        };
+
+        match resolved_path.token {
+            Some(token) if self.request_restricted_token => {
+                let mut nix_args = vec![
+                    "copy".to_string(),
+                    "--from".to_string(),
+                    self.cache_addr.to_string(),
+                    resolved_path.store_path.clone(),
+                ];
+
+                let dir = tempdir()?;
+                let temp_netrc_path = dir.path().join("netrc");
+
+                let mut f = tokio::fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .mode(0o600)
+                    .open(&temp_netrc_path)
+                    .await?;
+
+                let cache_netrc_contents = format!(
+                    "machine {} login flakehub password {}\n",
+                    self.cache_addr.host_str().expect("valid host"),
+                    token
+                );
+                f.write_all(cache_netrc_contents.as_bytes())
+                    .await
+                    .wrap_err("writing restricted netrc file")?;
+
+                let display = temp_netrc_path.display().to_string();
+                nix_args.extend_from_slice(&["--netrc-file".to_string(), display]);
+
+                nix_command(&nix_args, false)
+                    .await
+                    .wrap_err("failed to copy resolved store path with Nix")?;
+
+                dir.close()?;
+            }
+            None if self.request_restricted_token => {
+                return Err(color_eyre::eyre::eyre!(
+                    "FlakeHub did not return a restricted token!"
+                ));
+            }
+            Some(_) if !self.request_restricted_token => {
+                tracing::warn!(
+                    "Received a restricted token from FlakeHub, but we didn't request one! Ignoring."
+                );
+            }
+            _ => (),
+        }
+
         let (profile_path, _tempdir) = apply_path_to_profile(
-            applyer.profile_path(),
+            profile_path.as_deref(),
             &resolved_path.store_path,
             applyer.requires_root(),
         )
@@ -212,18 +283,21 @@ async fn apply_path_to_profile(
 
     nix_command(
         &[
-            "build",
+            "build".to_string(),
             // Don't create a result symlink in the current directory for the profile being installed.
             // This is verified to not introduce a race condition against an eager garbage collection.
-            "--no-link",
-            "--print-build-logs",
+            "--no-link".to_string(),
+            "--print-build-logs".to_string(),
             // `--max-jobs 0` ensures that `nix build` doesn't really *build* anything
             // and acts more as a fetch operation
-            "--max-jobs",
-            "0",
-            "--profile",
-            profile_path.to_str().ok_or(FhError::InvalidProfile)?,
-            store_path,
+            "--max-jobs".to_string(),
+            "0".to_string(),
+            "--profile".to_string(),
+            profile_path
+                .to_str()
+                .ok_or(FhError::InvalidProfile)?
+                .to_string(),
+            store_path.to_string(),
         ],
         sudo_if_necessary,
     )
