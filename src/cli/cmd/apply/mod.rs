@@ -25,9 +25,6 @@ pub(crate) struct ApplySubcommand {
     #[clap(subcommand)]
     system: System,
 
-    #[clap(long)]
-    profile_path: Option<PathBuf>,
-
     #[clap(long, default_value_t = false)]
     request_restricted_token: bool,
 
@@ -100,10 +97,7 @@ impl CommandExecute for ApplySubcommand {
             &resolved_path.store_path
         );
 
-        let profile_path = match &self.profile_path {
-            Some(path) => Some(path.to_owned()),
-            None => applyer.profile_path().map(ToOwned::to_owned),
-        };
+        let profile_path = applyer.profile_path();
 
         match resolved_path.token {
             Some(token) if self.request_restricted_token => {
@@ -157,7 +151,7 @@ impl CommandExecute for ApplySubcommand {
         }
 
         let (profile_path, _tempdir) = apply_path_to_profile(
-            profile_path.as_deref(),
+            profile_path,
             &resolved_path.store_path,
             applyer.requires_root(),
         )
