@@ -129,6 +129,29 @@ impl CommandExecute for ApplySubcommand {
                 let display = temp_netrc_path.display().to_string();
                 nix_args.extend_from_slice(&["--netrc-file".to_string(), display]);
 
+                // NOTE(cole-h): Theoretically, this could be garbage collected immediately after we
+                // copy it. There's no good way to prevent this at this point in time because:
+                //
+                // 0. We want to be able to use the scoped token to talk to FlakeHub Cache, which we
+                // do via `--netrc-file`, and we want to be able to run this on any user -- trusted
+                // or otherwise
+                //
+                // 1. `nix copy` substitutes on the client, so `--netrc-file` works just fine (it
+                // won't be sent to the daemon, which will say "no" if you're not a trusted user),
+                // but it doesn't have a `--profile` or `--out-link` argument, so we can't GC
+                // root it that way
+                //
+                // 2. `nix build --max-jobs 0` does have `--profile` and `--out-link`, but passing
+                // `--netrc-file` will send it to the daemon which doesn't work if you're not a
+                // trusted user
+                //
+                // 3. Manually making a symlink somewhere doesn't work because adding that symlink
+                // to gcroots/auto requires root, stashing it in a process's environment is so ugly
+                // I will not entertain it, and holding a handle to it requires it to exist in the
+                // first place (so there's still a small window of time where it can be GC'd)
+                //
+                // This will be resolved when https://github.com/NixOS/nix/pull/11657 makes it into
+                // a Nix release.
                 nix_command(&nix_args, false)
                     .await
                     .wrap_err("failed to copy resolved store path with Nix")?;
