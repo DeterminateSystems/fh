@@ -29,6 +29,8 @@ pub(crate) struct ResolvedPath {
     attribute_path: String,
     // The resolved store path
     pub(crate) store_path: String,
+    // A JWT that can only substitute the closure of this store path
+    pub(crate) token: Option<String>,
 }
 
 #[async_trait::async_trait]
@@ -37,7 +39,8 @@ impl CommandExecute for ResolveSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let output_ref = parse_flake_output_ref(&self.frontend_addr, &self.flake_ref)?;
 
-        let resolved_path = FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref).await?;
+        let resolved_path =
+            FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref, false).await?;
 
         tracing::debug!(
             "Successfully resolved reference {} to path {}",

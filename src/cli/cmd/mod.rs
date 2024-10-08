@@ -157,7 +157,11 @@ impl FlakeHubClient {
         Ok(res)
     }
 
-    async fn resolve(api_addr: &str, output_ref: &FlakeOutputRef) -> Result<ResolvedPath, FhError> {
+    async fn resolve(
+        api_addr: &str,
+        output_ref: &FlakeOutputRef,
+        include_token: bool,
+    ) -> Result<ResolvedPath, FhError> {
         let FlakeOutputRef {
             ref org,
             project: ref flake,
@@ -165,7 +169,7 @@ impl FlakeHubClient {
             ref attr_path,
         } = output_ref;
 
-        let url = flakehub_url!(
+        let mut url = flakehub_url!(
             api_addr,
             "f",
             org,
@@ -174,6 +178,10 @@ impl FlakeHubClient {
             "output",
             attr_path
         );
+
+        if include_token {
+            url.set_query(Some("include_token=true"));
+        }
 
         get(url, true).await
     }
@@ -386,7 +394,7 @@ fn is_root_user() -> bool {
     nix::unistd::getuid().is_root()
 }
 
-async fn nix_command(args: &[&str], sudo_if_necessary: bool) -> Result<(), FhError> {
+async fn nix_command(args: &[String], sudo_if_necessary: bool) -> Result<(), FhError> {
     command_exists("nix")?;
 
     let use_sudo = sudo_if_necessary && !is_root_user();
