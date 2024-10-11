@@ -6,14 +6,16 @@ pub(crate) mod eject;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
+pub(crate) mod paths;
 pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
-use std::{fmt::Display, process::Stdio};
+use std::{collections::HashMap, fmt::Display, process::Stdio};
 
 use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
+use paths::PathNode;
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
     Client,
@@ -72,6 +74,7 @@ pub(crate) enum FhSubcommands {
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
     Login(login::LoginSubcommand),
+    Paths(paths::PathsSubcommand),
     Resolve(resolve::ResolveSubcommand),
     Search(search::SearchSubcommand),
     Status(status::StatusSubcommand),
@@ -186,6 +189,36 @@ impl FlakeHubClient {
         get(url, true).await
     }
 
+    async fn paths(
+        api_addr: &str,
+        release_ref: &ReleaseRef,
+    ) -> Result<HashMap<String, PathNode>, FhError> {
+        let ReleaseRef {
+            org,
+            project,
+            version_constraint,
+        } = release_ref;
+
+        let url = flakehub_url!(api_addr, "f", org, project, version_constraint, "outputs");
+        tracing::debug!(
+            url = url.to_string(),
+            r#ref = release_ref.to_string(),
+            "Fetching all output paths for flake release"
+        );
+        let client = make_base_client(true).await?;
+        let res = client.get(url.to_string()).send().await?;
+
+        // Enrich the CLI error text with the error returned by FlakeHub
+        if let Err(e) = res.error_for_status_ref() {
+            let err_text = res.text().await?;
+            return Err(e).wrap_err(err_text)?;
+        };
+
+        let paths = res.json::<HashMap<String, PathNode>>().await?;
+
+        Ok(paths)
+    }
+
     async fn project_and_url(
         api_addr: &str,
         org: &str,
@@ -281,6 +314,22 @@ impl Display for FlakeOutputRef {
             f,
             "{}/{}/{}#{}",
             self.org, self.project, self.version_constraint, self.attr_path
+        )
+    }
+}
+
+struct ReleaseRef {
+    org: String,
+    project: String,
+    version_constraint: String,
+}
+
+impl Display for ReleaseRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}",
+            self.org, self.project, self.version_constraint
         )
     }
 }
@@ -450,17 +499,46 @@ fn parse_flake_output_ref(
 }
 
 // Ensure that release refs are of the form {org}/{project}/{version_req}
-fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
-    match flake_ref.split('/').collect::<Vec<_>>()[..] {
+fn validate_release_ref(release_ref: &str) -> Result<String, FhError> {
+    match release_ref.split('/').collect::<Vec<_>>()[..] {
         [org, project, version_req] => {
             validate_segment(org)?;
             validate_segment(project)?;
             validate_segment(version_req)?;
 
-            Ok(flake_ref.to_string())
+            Ok(release_ref.to_string())
         }
         _ => Err(FhError::FlakeParse(format!(
-            "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
+            "release ref {release_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
+        ))),
+    }
+}
+
+fn parse_release_ref(release_ref: &str) -> Result<ReleaseRef, FhError> {
+    match release_ref.split('/').collect::<Vec<_>>()[..] {
+        [org, project, version_constraint] => {
+            validate_segment(org)?;
+            validate_segment(project)?;
+            validate_segment(version_constraint)?;
+
+            Ok(ReleaseRef {
+                org: org.to_string(),
+                project: project.to_string(),
+                version_constraint: version_constraint.to_string(),
+            })
+        }
+        [org, project] => {
+            validate_segment(org)?;
+            validate_segment(project)?;
+
+            Ok(ReleaseRef {
+                org: org.to_string(),
+                project: project.to_string(),
+                version_constraint: "*".to_string(),
+            })
+        }
+        _ => Err(FhError::ReleaseRefParse(format!(
+            "release ref {release_ref} invalid; must be of the form {{org}}/{{project}}/{{version_req}}"
         ))),
     }
 }

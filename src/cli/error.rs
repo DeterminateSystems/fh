@@ -42,6 +42,9 @@ pub(crate) enum FhError {
     #[error("the flake has no inputs")]
     NoInputs,
 
+    #[error("release ref parse error: {0}")]
+    ReleaseRefParse(String),
+
     #[error("template error: {0}")]
     Render(#[from] handlebars::RenderError),
 
