@@ -10,7 +10,7 @@ pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
 
-use std::{fmt::Display, process::Stdio};
+use std::{fmt::Display, path::PathBuf, process::Stdio};
 
 use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
@@ -23,7 +23,9 @@ use tabled::settings::{
     style::{HorizontalLine, On, VerticalLineIter},
     Style,
 };
+use tokio::fs::try_exists;
 use url::Url;
+use xdg::BaseDirectories;
 
 use self::{
     init::command_exists,
@@ -35,6 +37,8 @@ use self::{
 use crate::{flakehub_url, APP_USER_AGENT};
 
 use super::error::FhError;
+
+const DET_NIX_NETRC_PATH: &str = "/nix/var/determinate/netrc";
 
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
@@ -475,6 +479,23 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
     }
 
     Ok(())
+}
+
+// See if the netrc exists at the /nix/var/determinate/netrc and, if not, try
+// to find it via XDG path.
+async fn get_netrc_path(xdg: BaseDirectories) -> Result<PathBuf, FhError> {
+    match try_exists(DET_NIX_NETRC_PATH).await {
+        Ok(exists) if exists => Ok(PathBuf::from(DET_NIX_NETRC_PATH)),
+        Ok(_) => Err(FhError::NetrcNotFound(DET_NIX_NETRC_PATH.to_string())),
+        Err(_) => {
+            let xdg_path = xdg.place_config_file("nix/netrc")?;
+
+            match try_exists(&xdg_path).await {
+                Ok(_) => Ok(xdg_path.to_path_buf()),
+                Err(_) => Err(FhError::NetrcNotFound(xdg_path.display().to_string())),
+            }
+        }
+    }
 }
 
 #[cfg(test)]

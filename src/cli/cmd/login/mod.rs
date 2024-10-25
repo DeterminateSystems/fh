@@ -12,8 +12,8 @@ use hyper_util::rt::TokioIo;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 
-use crate::cli::cmd::FlakeHubClient;
 use crate::cli::cmd::TokenStatus;
+use crate::cli::cmd::{get_netrc_path, FlakeHubClient};
 use crate::cli::error::FhError;
 use crate::shared::{update_netrc_file, NetrcTokenAddRequest};
 use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
@@ -191,7 +191,7 @@ impl LoginSubcommand {
 
             let xdg = xdg::BaseDirectories::new()?;
 
-            let netrc_path = xdg.place_config_file("nix/netrc")?;
+            let netrc_path = get_netrc_path(xdg.clone()).await?;
 
             // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
             let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
