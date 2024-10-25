@@ -1,3 +1,5 @@
+use reqwest::StatusCode;
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FhError {
     #[error("Nix command `{0}` failed; check prior Nix output for details")]
@@ -33,6 +35,9 @@ pub(crate) enum FhError {
     #[error("malformed flake reference")]
     MalformedFlakeOutputRef,
 
+    #[error("http call returned error code {0}")]
+    MiscHttp(StatusCode),
+
     #[error("{0} is not installed or not on the PATH")]
     MissingExecutable(String),
 
@@ -41,6 +46,12 @@ pub(crate) enum FhError {
 
     #[error("the flake has no inputs")]
     NoInputs,
+
+    #[error("access to this {0} is not authorized")]
+    NotAuthorized(String),
+
+    #[error("{0} {1} not found")]
+    NotFound(String, String),
 
     #[error("template error: {0}")]
     Render(#[from] handlebars::RenderError),

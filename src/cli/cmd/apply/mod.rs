@@ -83,7 +83,7 @@ impl CommandExecute for ApplySubcommand {
             )?
         };
 
-        tracing::info!("Resolving {}", output_ref);
+        tracing::info!(%output_ref, "Resolving output reference");
 
         let resolved_path =
             FlakeHubClient::resolve(self.api_addr.as_ref(), &output_ref, self.use_scoped_token)
