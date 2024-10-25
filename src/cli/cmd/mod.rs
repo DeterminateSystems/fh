@@ -486,13 +486,12 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
 async fn get_netrc_path(xdg: BaseDirectories) -> Result<PathBuf, FhError> {
     match try_exists(DET_NIX_NETRC_PATH).await {
         Ok(exists) if exists => Ok(PathBuf::from(DET_NIX_NETRC_PATH)),
-        Ok(_) => Err(FhError::NetrcNotFound(DET_NIX_NETRC_PATH.to_string())),
-        Err(_) => {
+        _ => {
             let xdg_path = xdg.place_config_file("nix/netrc")?;
 
             match try_exists(&xdg_path).await {
-                Ok(_) => Ok(xdg_path.to_path_buf()),
-                Err(_) => Err(FhError::NetrcNotFound(xdg_path.display().to_string())),
+                Ok(exists) if exists => Ok(xdg_path.to_path_buf()),
+                _ => Err(FhError::NetrcNotFound(xdg_path.display().to_string())),
             }
         }
     }
