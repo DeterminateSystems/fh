@@ -483,7 +483,7 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
 
 // See if the netrc exists at the /nix/var/determinate/netrc and, if not, try
 // to find it via XDG path.
-async fn get_netrc_path(xdg: BaseDirectories) -> Result<PathBuf, FhError> {
+async fn get_netrc_path(xdg: &BaseDirectories) -> Result<PathBuf, FhError> {
     match try_exists(DET_NIX_NETRC_PATH).await {
         Ok(exists) if exists => Ok(PathBuf::from(DET_NIX_NETRC_PATH)),
         _ => {

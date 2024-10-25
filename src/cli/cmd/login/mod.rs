@@ -191,7 +191,7 @@ impl LoginSubcommand {
 
             let xdg = xdg::BaseDirectories::new()?;
 
-            let netrc_path = get_netrc_path(xdg.clone()).await?;
+            let netrc_path = get_netrc_path(&xdg).await?;
 
             // $XDG_CONFIG_HOME/nix/nix.conf; basically ~/.config/nix/nix.conf
             let nix_config_path = xdg.place_config_file("nix/nix.conf")?;
