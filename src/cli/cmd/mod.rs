@@ -491,7 +491,7 @@ async fn get_netrc_path(xdg: &BaseDirectories) -> Result<PathBuf, FhError> {
             let xdg_path = xdg.place_config_file(XDG_NIX_NETRC_SUFFIX)?;
 
             match try_exists(&xdg_path).await {
-                Ok(exists) if exists => Ok(xdg_path.into()),
+                Ok(exists) if exists => Ok(xdg_path),
                 _ => Err(FhError::NetrcNotFound(xdg_path.display().to_string())),
             }
         }
