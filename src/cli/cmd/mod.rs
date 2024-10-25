@@ -38,7 +38,8 @@ use crate::{flakehub_url, APP_USER_AGENT};
 
 use super::error::FhError;
 
-const DET_NIX_NETRC_PATH: &str = "/nix/var/determinate/netrc";
+const DETERMINATE_NIX_NETRC_PATH: &str = "/nix/var/determinate/netrc";
+const XDG_NIX_NETRC_SUFFIX: &str = "nix/netrc";
 
 #[allow(clippy::type_complexity)]
 static DEFAULT_STYLE: Lazy<
@@ -484,10 +485,10 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
 // See if the netrc exists at the /nix/var/determinate/netrc and, if not, try
 // to find it via XDG path.
 async fn get_netrc_path(xdg: &BaseDirectories) -> Result<PathBuf, FhError> {
-    match try_exists(DET_NIX_NETRC_PATH).await {
-        Ok(exists) if exists => Ok(PathBuf::from(DET_NIX_NETRC_PATH)),
+    match try_exists(DETERMINATE_NIX_NETRC_PATH).await {
+        Ok(exists) if exists => Ok(PathBuf::from(DETERMINATE_NIX_NETRC_PATH)),
         _ => {
-            let xdg_path = xdg.place_config_file("nix/netrc")?;
+            let xdg_path = xdg.place_config_file(XDG_NIX_NETRC_SUFFIX)?;
 
             match try_exists(&xdg_path).await {
                 Ok(exists) if exists => Ok(xdg_path.to_path_buf()),
