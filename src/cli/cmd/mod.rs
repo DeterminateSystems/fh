@@ -16,7 +16,7 @@ use color_eyre::eyre::WrapErr;
 use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
-    Client,
+    Client, StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use tabled::settings::{
@@ -183,7 +183,22 @@ impl FlakeHubClient {
             url.set_query(Some("include_token=true"));
         }
 
-        get(url, true).await
+        let client = make_base_client(true).await?;
+
+        match client.get(url).send().await {
+            Ok(res) => match res.status() {
+                StatusCode::OK => Ok(res.json().await?),
+                StatusCode::NOT_FOUND => Err(FhError::NotFound(
+                    "output reference".to_string(),
+                    output_ref.to_string(),
+                )),
+                StatusCode::UNAUTHORIZED => {
+                    Err(FhError::NotAuthorized("output reference".to_string()))
+                }
+                status => Err(FhError::MiscHttp(status)),
+            },
+            Err(e) => Err(e.into()),
+        }
     }
 
     async fn project_and_url(
