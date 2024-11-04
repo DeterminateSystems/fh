@@ -1,26 +1,26 @@
-# `fh`, the official FlakeHub CLI
+# fh, the official FlakeHub CLI
 
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/DeterminateSystems/fh/badge)](https://flakehub.com/flake/DeterminateSystems/fh)
 
-`fh` is a scrappy CLI for searching [FlakeHub] and adding new [inputs] to your [Nix flakes][nix-flakes].
+**fh** is a scrappy CLI for searching [FlakeHub] and adding new [inputs] to your [Nix flakes][nix-flakes].
 
 ## Usage
 
-Using `fh` from FlakeHub:
+Using fh from FlakeHub:
 
 ```shell
 nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
 > [!NOTE]
-> This builds `fh` locally on your computer.
+> This builds fh locally on your computer.
 > Pre-built binaries aren't yet available.
 
 ## Installation
 
 ### NixOS
 
-To make the `fh` CLI readily available on a [NixOS] system:
+To make the fh CLI readily available on a [NixOS] system:
 
 ```nix
 {
@@ -44,9 +44,9 @@ To make the `fh` CLI readily available on a [NixOS] system:
 }
 ```
 
-## Using `fh`
+## Using fh
 
-You can use `fh` to:
+You can use fh to:
 
 - [Log into FlakeHub](#log-into-flakehub)
 - [Check FlakeHub login status](#check-flakehub-login-status)
@@ -62,7 +62,7 @@ You can use `fh` to:
 
 ### Log into FlakeHub
 
-`fh` is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
+fh is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
 
 ```shell
 fh login
@@ -95,7 +95,7 @@ Token expires at: 2025-01-22 14:41:48 -08:00
 1. The contents of the repository in which you run the command.
 
 To create a `flake.nix`, navigate to the directory where you want to create it and run `fh init` (or specify a different directory using the `--root` option).
-Respond to the prompts it provides you and at the end `fh` will write a `flake.nix` to disk.
+Respond to the prompts it provides you and at the end fh will write a `flake.nix` to disk.
 
 `fh init` has built-in support for the following languages:
 
@@ -179,7 +179,7 @@ The `fh apply` command enables you to apply a configuration for one of the follo
 - [Home Manager](#home-manager)
 - [nix-darwin](#nix-darwin)
 
-For all three systems, you only need to supply a flake output reference for the configuration and `fh` does the rest.
+For all three systems, you only need to supply a flake output reference for the configuration and fh does the rest.
 
 #### NixOS
 
