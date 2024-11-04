@@ -49,9 +49,13 @@ To make the `fh` CLI readily available on a [NixOS] system:
 You can use `fh` to:
 
 - [Log into FlakeHub](#log-into-flakehub)
+- [Check FlakeHub login status](#check-flakehub-login-status)
 - [Initialize a new `flake.nix`](#initialize-a-new-flakenix-from-scratch)
 - [Add flake inputs to your `flake.nix`](#add-a-flake-published-to-flakehub-to-your-flakenix)
 - [Resolve flake references to store paths](#resolve-flake-references-to-store-paths)
+- [Apply NixOS, Home Manager, and nix-darwin configurations to the current system](#apply-configurations-to-the-current-system)
+- [Convert flake inputs to use FlakeHub](#convert-flake-inputs-to-use-flakehub)
+- [Eject flake inputs](#eject-flake-inputs)
 - [Search FlakeHub flakes](#searching-published-flakes)
 - List available [releases](#listing-releases) and [flakes, organizations, and versions](#listing-flakes-organizations-and-versions)
 - List flakes by [label](#list-by-label)
