@@ -221,6 +221,28 @@ fh apply nix-darwin "my-org/macos-configs/0.1"
 
 `fh apply nix-darwin` first resolves the supplied output reference to a store path, builds the `darwin-rebuild` script for that path, and then runs `darwin-rebuild activate`.
 
+### Convert flake inputs to use FlakeHub
+
+Convert a [flake][flakes]'s flake inputs into [FlakeHub] inputs when possible.
+
+```shell
+fh convert
+```
+
+If you had a `github:NixOS/nixpkgs` flake input in a `flake.nix`, for example, this command would automatically convert it into a `https://flakehub.com/f/NixOS/nixpkgs/*` input.
+
+By default, `fh convert` converts the inputs in the `flake.nix` in the same directory but you can specify a different path using the `--flake-path` option:
+
+```shell
+fh convert --flake-path /my-project/flake.nix
+```
+
+To see which inputs would be converted without writing the results to the specified `flake.nix`, you can apply the `--dry-run` flag, which prints a list to stdout:
+
+```shell
+fh convert --dry-run
+```
+
 ### Searching published flakes
 
 You can search publicly listed flakes using the `fh search` command and passing in a search query.
