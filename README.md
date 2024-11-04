@@ -259,6 +259,28 @@ To see which inputs would be converted without writing the results to the specif
 fh convert --dry-run
 ```
 
+### Eject flake inputs
+
+Convert a [flake][flakes]'s flake inputs from [FlakeHub] back to GitHub when possible.
+
+```shell
+fh eject
+```
+
+If you had a `https://flakehub.com/f/NixOS/nixpkgs` flake input in a `flake.nix`, for example, this command would automatically convert it into a `github:NixOS/nixpkgs` input.
+
+By default, `fh eject` converts the inputs in the `flake.nix` in the same directory but you can specify a different path using the `--flake-path` option:
+
+```shell
+fh eject --flake-path /my-project/flake.nix
+```
+
+To see which inputs would be converted without writing the results to the specified `flake.nix`, you can apply the `--dry-run` flag, which prints a list to stdout:
+
+```shell
+fh eject --dry-run
+```
+
 ### Searching published flakes
 
 You can search publicly listed flakes using the `fh search` command and passing in a search query.
