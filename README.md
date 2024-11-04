@@ -67,6 +67,22 @@ fh login
 This will prompt you for a FlakeHub token that you can obtain under [**Tokens**][tokens] on your [user settings page][settings].
 Click **New** to create a new token, provide your desired configuration, copy the token, paste it into the prompt, and follow the remaining instructions.
 
+### Check FlakeHub login status
+
+You can check your current login status vis-à-vis [FlakeHub] using the `fh status` command:
+
+```shell
+fh status
+```
+
+If you are currently logged in, the command returns information like this:
+
+```
+Logged in: true
+GitHub user name: my-github-username
+Token expires at: 2025-01-22 14:41:48 -08:00
+```
+
 ### Initialize a new `flake.nix` from scratch
 
 `fh init` generates a new [`flake.nix`][flakes] file for you using a combination of:
