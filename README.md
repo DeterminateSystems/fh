@@ -1,26 +1,26 @@
-# `fh`, the official FlakeHub CLI
+# fh, the official FlakeHub CLI
 
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/DeterminateSystems/fh/badge)](https://flakehub.com/flake/DeterminateSystems/fh)
 
-`fh` is a scrappy CLI for searching [FlakeHub] and adding new [inputs] to your [Nix flakes][nix-flakes].
+**fh** is a scrappy CLI for searching [FlakeHub] and adding new [inputs] to your [Nix flakes][nix-flakes].
 
 ## Usage
 
-Using `fh` from FlakeHub:
+Using fh from FlakeHub:
 
 ```shell
 nix shell "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz"
 ```
 
 > [!NOTE]
-> This builds `fh` locally on your computer.
+> This builds fh locally on your computer.
 > Pre-built binaries aren't yet available.
 
 ## Installation
 
 ### NixOS
 
-To make the `fh` CLI readily available on a [NixOS] system:
+To make the fh CLI readily available on a [NixOS] system:
 
 ```nix
 {
@@ -44,21 +44,25 @@ To make the `fh` CLI readily available on a [NixOS] system:
 }
 ```
 
-## Using `fh`
+## Using fh
 
-You can use `fh` to:
+You can use fh to:
 
 - [Log into FlakeHub](#log-into-flakehub)
+- [Check FlakeHub login status](#check-flakehub-login-status)
 - [Initialize a new `flake.nix`](#initialize-a-new-flakenix-from-scratch)
 - [Add flake inputs to your `flake.nix`](#add-a-flake-published-to-flakehub-to-your-flakenix)
 - [Resolve flake references to store paths](#resolve-flake-references-to-store-paths)
+- [Apply NixOS, Home Manager, and nix-darwin configurations to the current system](#apply-configurations-to-the-current-system)
+- [Convert flake inputs to use FlakeHub](#convert-flake-inputs-to-use-flakehub)
+- [Eject flake inputs](#eject-flake-inputs)
 - [Search FlakeHub flakes](#searching-published-flakes)
 - List available [releases](#listing-releases) and [flakes, organizations, and versions](#listing-flakes-organizations-and-versions)
 - List flakes by [label](#list-by-label)
 
 ### Log into FlakeHub
 
-`fh` is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
+fh is the standard way to set up your local Nix to use [FlakeHub]'s advanced features like [FlakeHub Cache][cache] and private flakes:
 
 ```shell
 fh login
@@ -66,6 +70,22 @@ fh login
 
 This will prompt you for a FlakeHub token that you can obtain under [**Tokens**][tokens] on your [user settings page][settings].
 Click **New** to create a new token, provide your desired configuration, copy the token, paste it into the prompt, and follow the remaining instructions.
+
+### Check FlakeHub login status
+
+You can check your current login status vis-à-vis [FlakeHub] using the `fh status` command:
+
+```shell
+fh status
+```
+
+If you are currently logged in, the command returns information like this:
+
+```
+Logged in: true
+GitHub user name: my-github-username
+Token expires at: 2025-01-22 14:41:48 -08:00
+```
 
 ### Initialize a new `flake.nix` from scratch
 
@@ -75,7 +95,7 @@ Click **New** to create a new token, provide your desired configuration, copy th
 1. The contents of the repository in which you run the command.
 
 To create a `flake.nix`, navigate to the directory where you want to create it and run `fh init` (or specify a different directory using the `--root` option).
-Respond to the prompts it provides you and at the end `fh` will write a `flake.nix` to disk.
+Respond to the prompts it provides you and at the end fh will write a `flake.nix` to disk.
 
 `fh init` has built-in support for the following languages:
 
@@ -159,7 +179,7 @@ The `fh apply` command enables you to apply a configuration for one of the follo
 - [Home Manager](#home-manager)
 - [nix-darwin](#nix-darwin)
 
-For all three systems, you only need to supply a flake output reference for the configuration and `fh` does the rest.
+For all three systems, you only need to supply a flake output reference for the configuration and fh does the rest.
 
 #### NixOS
 
@@ -220,6 +240,50 @@ fh apply nix-darwin "my-org/macos-configs/0.1"
 ```
 
 `fh apply nix-darwin` first resolves the supplied output reference to a store path, builds the `darwin-rebuild` script for that path, and then runs `darwin-rebuild activate`.
+
+### Convert flake inputs to use FlakeHub
+
+Convert a [flake][flakes]'s flake inputs into [FlakeHub] inputs when possible.
+
+```shell
+fh convert
+```
+
+If you had a `github:NixOS/nixpkgs` flake input in a `flake.nix`, for example, this command would automatically convert it into a `https://flakehub.com/f/NixOS/nixpkgs/*` input.
+
+By default, `fh convert` converts the inputs in the `flake.nix` in the same directory but you can specify a different path using the `--flake-path` option:
+
+```shell
+fh convert --flake-path /my-project/flake.nix
+```
+
+To see which inputs would be converted without writing the results to the specified `flake.nix`, you can apply the `--dry-run` flag, which prints a list to stdout:
+
+```shell
+fh convert --dry-run
+```
+
+### Eject flake inputs
+
+Convert a [flake][flakes]'s flake inputs from [FlakeHub] back to GitHub when possible.
+
+```shell
+fh eject
+```
+
+If you had a `https://flakehub.com/f/NixOS/nixpkgs` flake input in a `flake.nix`, for example, this command would automatically convert it into a `github:NixOS/nixpkgs` input.
+
+By default, `fh eject` converts the inputs in the `flake.nix` in the same directory but you can specify a different path using the `--flake-path` option:
+
+```shell
+fh eject --flake-path /my-project/flake.nix
+```
+
+To see which inputs would be converted without writing the results to the specified `flake.nix`, you can apply the `--dry-run` flag, which prints a list to stdout:
+
+```shell
+fh eject --dry-run
+```
 
 ### Searching published flakes
 
