@@ -310,6 +310,9 @@ async fn apply_path_to_profile(
             "--max-jobs".to_string(),
             "0".to_string(),
             "--profile".to_string(),
+            "--option".to_string(),
+            "narinfo-cache-negative-ttl".to_string(),
+            "0".to_string(),
             profile_path
                 .to_str()
                 .ok_or(FhError::InvalidProfile)?
