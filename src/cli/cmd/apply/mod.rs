@@ -102,6 +102,9 @@ impl CommandExecute for ApplySubcommand {
                 if self.use_scoped_token {
                     let mut nix_args = vec![
                         "copy".to_string(),
+                        "--option".to_string(),
+                        "narinfo-cache-negative-ttl".to_string(),
+                        "0".to_string(),
                         "--from".to_string(),
                         self.cache_addr.to_string(),
                         resolved_path.store_path.clone(),
@@ -310,6 +313,9 @@ async fn apply_path_to_profile(
             "--max-jobs".to_string(),
             "0".to_string(),
             "--profile".to_string(),
+            "--option".to_string(),
+            "narinfo-cache-negative-ttl".to_string(),
+            "0".to_string(),
             profile_path
                 .to_str()
                 .ok_or(FhError::InvalidProfile)?
