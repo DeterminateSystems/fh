@@ -410,7 +410,9 @@ fn is_root_user() -> bool {
 }
 
 async fn nix_command(args: &[String], sudo_if_necessary: bool) -> Result<(), FhError> {
-    command_exists("nix")?;
+    if !command_exists("nix") {
+        return Err(FhError::MissingExecutable("nix".to_string()));
+    }
 
     let use_sudo = sudo_if_necessary && !is_root_user();
 
