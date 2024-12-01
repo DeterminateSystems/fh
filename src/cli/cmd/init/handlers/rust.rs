@@ -1,4 +1,7 @@
-use crate::cli::cmd::init::prompt::Prompt;
+use crate::{
+    cli::cmd::{init::prompt::Prompt, list::FLAKEHUB_WEB_ROOT},
+    flakehub_url,
+};
 
 use super::{Flake, Handler, Input, Project};
 
@@ -11,7 +14,11 @@ impl Handler for Rust {
         if project.has_file("Cargo.toml") && Prompt::for_language("Rust") {
             flake.inputs.insert(
                 String::from("rust-overlay"),
-                Input::new("github:oxalica/rust-overlay", Some("nixpkgs")),
+                Input::new(
+                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "oxalica", "rust-overlay", "0.1.*")
+                        .as_str(),
+                    Some("nixpkgs"),
+                ),
             );
 
             flake

@@ -95,7 +95,7 @@ impl CommandExecute for InitSubcommand {
                 // MAYBE: find an enum-based approach to this
                 NIXPKGS_LATEST => flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "*"),
                 NIXPKGS_24_05 => {
-                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.2405.*")
+                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.2411.*")
                 }
                 NIXPKGS_UNSTABLE => {
                     flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.1.*")

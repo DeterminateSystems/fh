@@ -1,15 +1,15 @@
 [package]
 name = "fh"
-version = "0.1.19"
+version = "0.1.20"
 authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
 license = "Apache 2.0"
 repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
-async-trait = "0.1.73"
+async-trait = { version = "0.1.73", default-features = false }
 axum = { version = "0.7.5", features = ["macros"] }
-chrono = "0.4.31"
+chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
 clap = { version = "4.3.2", default-features = false, features = [
   "color",
   "derive",
@@ -18,48 +18,53 @@ clap = { version = "4.3.2", default-features = false, features = [
   "std",
   "error-context",
 ] }
-clap_complete = "4.4.0"
+clap_complete = { version = "4.4.0", default-features = false }
 color-eyre = { version = "0.6.2", default-features = false, features = [
   "issue-url",
 ] }
-csv = "1.3.0"
+csv = { version = "1.3.0", default-features = false }
 gethostname = { version = "0.4.3", default-features = false }
-handlebars = "4.4.0"
-http = "1.0"
-http-body-util = "0.1" # TODO(colemickens): revisit/remove
+handlebars = { version = "4.4.0", default-features = false }
+http = { version = "1.0", default-features = false }
+http-body-util = { version = "0.1", default-features = false } # TODO(colemickens): revisit/remove
 hyper = { version = "1.0.0", features = ["full"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
 indicatif = { version = "0.17.6", default-features = false }
-inquire = "0.6.2"
+inquire = { version = "0.6.2", default-features = false, features = [
+  "console",
+] }
 nix = { version = "0.29.0", default-features = false, features = ["user"] }
-nix-config-parser = "0.2.0"
-nixel = "5.2.0"
-once_cell = "1.18.0"
-owo-colors = "3.5.0"
-regex = "1.9.4"
+nix-config-parser = { version = "0.2.0", default-features = false }
+nixel = { version = "5.2.0", default-features = false }
+once_cell = { version = "1.18.0", default-features = false }
+owo-colors = { version = "3.5.0", default-features = false }
+regex = { version = "1.9.4", default-features = false }
 reqwest = { version = "0.11", default-features = false, features = [
   "json",
   "rustls-tls-native-roots",
 ] }
 semver = { version = "1.0.18", default-features = false, features = ["serde"] }
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
-serde_json = "1.0.105"
+serde_json = { version = "1.0.105", default-features = false }
 tabled = { version = "0.14.0", features = ["color"] }
-tempfile = "3.10.1"
+tempfile = { version = "3.10.1", default-features = false }
 thiserror = { version = "1.0.44", default-features = false }
 tokio = { version = "1.39.1", default-features = false, features = ["full"] }
-tracing = "0.1.37"
-tracing-error = "0.2.0"
+tracing = { version = "0.1.37", default-features = false, features = [
+  "attributes",
+  "std",
+] }
+tracing-error = { version = "0.2.0", default-features = false }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = [
   "ansi",
   "env-filter",
   "json",
 ] }
 url = { version = "2.4.0", default-features = false, features = ["serde"] }
-urlencoding = "2.1.3"
+urlencoding = { version = "2.1.3", default-features = false }
 whoami = { version = "1.5.1", default-features = false }
-xdg = "2.5.2"
+xdg = { version = "2.5.2", default-features = false }
 
 [dev-dependencies]
 axum = { version = "0.7.5", features = ["macros"] }
-axum-test = "15.3.0"
+axum-test = { version = "15.3.0", default-features = false }
