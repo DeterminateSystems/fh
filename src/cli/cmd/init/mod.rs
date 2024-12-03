@@ -38,8 +38,8 @@ use self::{
 use super::CommandExecute;
 
 // Nixpkgs references
-const NIXPKGS_LATEST: &str = "latest stable (currently 24.05)";
-const NIXPKGS_24_05: &str = "24.05";
+const NIXPKGS_LATEST: &str = "latest stable (currently 24.11)";
+const NIXPKGS_24_11: &str = "24.11";
 const NIXPKGS_UNSTABLE: &str = "unstable";
 const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
@@ -85,7 +85,7 @@ impl CommandExecute for InitSubcommand {
                 "Which Nixpkgs version would you like to include?",
                 &[
                     NIXPKGS_LATEST,
-                    NIXPKGS_24_05,
+                    NIXPKGS_24_11,
                     NIXPKGS_UNSTABLE,
                     NIXPKGS_SPECIFIC,
                 ],
@@ -94,7 +94,7 @@ impl CommandExecute for InitSubcommand {
             {
                 // MAYBE: find an enum-based approach to this
                 NIXPKGS_LATEST => flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "*"),
-                NIXPKGS_24_05 => {
+                NIXPKGS_24_11 => {
                     flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.2411.*")
                 }
                 NIXPKGS_UNSTABLE => {
