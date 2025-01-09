@@ -43,7 +43,7 @@ pub struct Instrumentation {
     pub log_directives: Vec<Directive>,
 }
 
-impl<'a> Instrumentation {
+impl Instrumentation {
     pub fn log_level(&self) -> String {
         match self.verbose {
             0 => "info",
