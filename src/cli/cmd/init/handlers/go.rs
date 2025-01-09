@@ -2,7 +2,7 @@ use crate::cli::cmd::init::prompt::Prompt;
 
 use super::{Flake, Handler, Project};
 
-const GO_VERSIONS: &[&str] = &["1.22"];
+const GO_VERSIONS: &[&str] = &["1.22", "1.23"];
 
 pub(crate) struct Go;
 
