@@ -13,7 +13,7 @@ pub(crate) mod status;
 
 use std::{fmt::Display, process::Stdio};
 
-use color_eyre::eyre::WrapErr;
+use color_eyre::eyre::{self, WrapErr};
 use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
@@ -613,19 +613,22 @@ async fn copy_closure_with_realise(
     // First, copy the closure down into the user's Nix store
     copy_closure(cache_host, &store_path, &token_path).await?;
 
-    // Now we can use a plain `nix-store --realise` on it (but see below)
-    let realise = vec![
-        "nix-store".into(),
-        "realise".into(),
-        store_path.clone(),
-        "--add-root".into(),
-        out_path.clone(),
-    ];
+    // Now we can use a plain `nix-store --realise` on it
+    let mut command = Command::new("nix-store");
+    let output = command
+        .arg("--realise")
+        .arg(&store_path)
+        .arg("--add-root")
+        .arg(&out_path)
+        .spawn()
+        .wrap_err("Failed to spawn nix-store command")?
+        .wait_with_output()
+        .await?;
 
-    // The most likely scenario for this failing is losing the race between us
-    // trying to create this GC root and some other `nix store gc` run cleaning
-    // it out, so indicate to the user this is out of our hands.
-    nix_command(&realise, false).await.wrap_err_with(|| format!("Could not create a GC root at {out_path} for {store_path}; consider upgrading to Nix version 2.26 or greater which is immune to this problem"))?;
+    eyre::ensure!(
+        output.status.success(),
+        "Could not use nix-store --realise to copy {store_path} to {out_path}; consider upgrading to Nix version 2.26 or greater which is immune to this problem"
+    );
 
     Ok(())
 }
