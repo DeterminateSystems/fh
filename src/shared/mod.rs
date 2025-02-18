@@ -1,7 +1,9 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
+use tokio::fs::OpenOptions;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Deserialize, Serialize)]
 pub struct DaemonInfoReponse {
@@ -180,4 +182,22 @@ pub fn merge_nix_configs(
         .strip_prefix('\n')
         .unwrap_or(&new_config)
         .to_owned()
+}
+
+pub async fn create_temp_netrc(dir: &Path, host: &str, token: &str) -> color_eyre::Result<PathBuf> {
+    let path = dir.join("netrc");
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .mode(0o600)
+        .open(&path)
+        .await?;
+
+    let contents = format!("machine {host} login flakehub password {token}\n");
+
+    file.write_all(contents.as_bytes()).await?;
+
+    Ok(path)
 }

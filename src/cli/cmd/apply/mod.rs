@@ -11,9 +11,11 @@ use std::{
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 use tempfile::{tempdir, TempDir};
-use tokio::io::AsyncWriteExt as _;
 
-use crate::cli::{cmd::nix_command, error::FhError};
+use crate::{
+    cli::{cmd::nix_command, error::FhError},
+    shared::create_temp_netrc,
+};
 
 use self::{home_manager::HomeManager, nix_darwin::NixDarwin, nixos::NixOs};
 
@@ -133,24 +135,13 @@ impl CommandExecute for ApplySubcommand {
                     ];
 
                     let dir = tempdir()?;
-                    let temp_netrc_path = dir.path().join("netrc");
 
-                    let mut f = tokio::fs::OpenOptions::new()
-                        .create(true)
-                        .truncate(true)
-                        .write(true)
-                        .mode(0o600)
-                        .open(&temp_netrc_path)
-                        .await?;
-
-                    let cache_netrc_contents = format!(
-                        "machine {} login flakehub password {}\n",
+                    let temp_netrc_path = create_temp_netrc(
+                        dir.path(),
                         self.cache_addr.host_str().expect("valid host"),
-                        token
-                    );
-                    f.write_all(cache_netrc_contents.as_bytes())
-                        .await
-                        .wrap_err("writing restricted netrc file")?;
+                        &token,
+                    )
+                    .await?;
 
                     let display = temp_netrc_path.display().to_string();
                     nix_args.extend_from_slice(&["--netrc-file".to_string(), display]);

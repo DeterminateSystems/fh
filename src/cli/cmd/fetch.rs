@@ -1,4 +1,3 @@
-use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -6,9 +5,9 @@ use color_eyre::eyre::{self, WrapErr as _};
 use color_eyre::Result;
 use tokio::fs;
 use tokio::process::Command;
-use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 
 use crate::cli::cmd::nix_command;
+use crate::shared::create_temp_netrc;
 
 use super::{CommandExecute, FlakeHubClient};
 
@@ -84,24 +83,6 @@ impl CommandExecute for FetchSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-async fn create_temp_netrc(dir: &Path, host: &str, token: &str) -> Result<PathBuf> {
-    let path = dir.join("netrc");
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .mode(0o600)
-        .open(&path)
-        .await?;
-
-    let contents = format!("machine {host} login flakehub password {token}\n");
-
-    file.write_all(contents.as_bytes()).await?;
-
-    Ok(path)
 }
 
 #[tracing::instrument(skip_all)]
