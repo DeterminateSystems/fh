@@ -522,7 +522,6 @@ mod tests {
     }
 }
 
-
 /// Copy a Nix closure from a given host into the store.
 pub async fn copy_closure(
     cache_host: impl Into<String>,
