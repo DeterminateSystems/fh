@@ -3,6 +3,7 @@ pub(crate) mod apply;
 pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod eject;
+pub(crate) mod fetch;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
@@ -69,6 +70,7 @@ pub(crate) enum FhSubcommands {
     Completion(completion::CompletionSubcommand),
     Convert(convert::ConvertSubcommand),
     Eject(eject::EjectSubcommand),
+    Fetch(fetch::FetchSubcommand),
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
     Login(login::LoginSubcommand),
