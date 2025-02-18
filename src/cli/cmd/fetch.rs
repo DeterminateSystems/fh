@@ -4,7 +4,7 @@ use clap::Parser;
 use color_eyre::eyre;
 use color_eyre::Result;
 
-use crate::cli::cmd::copy_closure_with_root;
+use crate::cli::cmd::copy_closure_with_gc_root;
 use crate::shared::create_temp_netrc;
 
 use super::{CommandExecute, FlakeHubClient};
@@ -57,7 +57,7 @@ impl CommandExecute for FetchSubcommand {
         let netrc_path = create_temp_netrc(dir.path(), &self.cache_addr, &token).await?;
         let token_path = netrc_path.display().to_string();
 
-        copy_closure_with_root(
+        copy_closure_with_gc_root(
             self.cache_addr.as_str(),
             &resolved_path.store_path,
             token_path,
