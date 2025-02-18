@@ -20,9 +20,8 @@ pub(crate) struct FetchSubcommand {
     /// References must be of this form: {org}/{flake}/{version_req}#{attr_path}
     flake_ref: String,
 
-    /// Output link to store paths in, a la Nix's `--out-link` option.
-    #[clap(long)]
-    out_link: Option<String>,
+    /// Target link to use as a Nix garbage collector root
+    target: String,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -63,13 +62,11 @@ impl CommandExecute for FetchSubcommand {
         let netrc_path = create_temp_netrc(dir.path(), &self.cache_addr, &token).await?;
         let token_path = netrc_path.display().to_string();
 
-        let out_link = self.out_link.as_deref();
-
         copy(
             self.cache_addr.as_str(),
             &resolved_path.store_path,
             token_path,
-            out_link,
+            Some(&self.target),
         )
         .await?;
 
