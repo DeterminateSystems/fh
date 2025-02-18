@@ -497,31 +497,6 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn flakehub_url_macro() {
-        let root = "https://flakehub.com";
-
-        for (provided, expected) in vec![
-            (
-                flakehub_url!(root, "flake", "DeterminateSystems", "fh"),
-                "https://flakehub.com/flake/DeterminateSystems/fh",
-            ),
-            (
-                flakehub_url!(root, "flake", "NixOS", "nixpkgs", "*"),
-                "https://flakehub.com/flake/NixOS/nixpkgs/*",
-            ),
-            (
-                flakehub_url!(root, "flake", "nix-community", "home-manager", "releases"),
-                "https://flakehub.com/flake/nix-community/home-manager/releases",
-            ),
-        ] {
-            assert_eq!(provided.as_ref(), expected);
-        }
-    }
-}
-
 /// Copy a Nix closure from a given host into the store.
 pub async fn copy_closure(
     cache_host: impl Into<String>,
@@ -650,4 +625,29 @@ pub async fn copy_closure_with_gc_root(
     }
 
     Ok(use_out_link)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn flakehub_url_macro() {
+        let root = "https://flakehub.com";
+
+        for (provided, expected) in vec![
+            (
+                flakehub_url!(root, "flake", "DeterminateSystems", "fh"),
+                "https://flakehub.com/flake/DeterminateSystems/fh",
+            ),
+            (
+                flakehub_url!(root, "flake", "NixOS", "nixpkgs", "*"),
+                "https://flakehub.com/flake/NixOS/nixpkgs/*",
+            ),
+            (
+                flakehub_url!(root, "flake", "nix-community", "home-manager", "releases"),
+                "https://flakehub.com/flake/nix-community/home-manager/releases",
+            ),
+        ] {
+            assert_eq!(provided.as_ref(), expected);
+        }
+    }
 }
