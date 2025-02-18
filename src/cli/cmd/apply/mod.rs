@@ -136,12 +136,8 @@ impl CommandExecute for ApplySubcommand {
 
                     let dir = tempdir()?;
 
-                    let temp_netrc_path = create_temp_netrc(
-                        dir.path(),
-                        self.cache_addr.host_str().expect("valid host"),
-                        &token,
-                    )
-                    .await?;
+                    let temp_netrc_path =
+                        create_temp_netrc(dir.path(), &self.cache_addr, &token).await?;
 
                     let display = temp_netrc_path.display().to_string();
                     nix_args.extend_from_slice(&["--netrc-file".to_string(), display]);

@@ -61,12 +61,7 @@ impl CommandExecute for FetchSubcommand {
 
         let dir = tempfile::tempdir()?;
 
-        let cache_host = self
-            .cache_addr
-            .host_str()
-            .expect("malformed URL: missing host");
-
-        let netrc_path = create_temp_netrc(dir.path(), cache_host, &token).await?;
+        let netrc_path = create_temp_netrc(dir.path(), &self.cache_addr, &token).await?;
         let token_path = netrc_path.display().to_string();
 
         let out_link = self.out_link.as_deref();

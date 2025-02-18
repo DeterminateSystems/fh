@@ -4,6 +4,7 @@ use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
+use url::Url;
 
 #[derive(Deserialize, Serialize)]
 pub struct DaemonInfoReponse {
@@ -184,7 +185,13 @@ pub fn merge_nix_configs(
         .to_owned()
 }
 
-pub async fn create_temp_netrc(dir: &Path, host: &str, token: &str) -> color_eyre::Result<PathBuf> {
+pub async fn create_temp_netrc(
+    dir: &Path,
+    host_url: &Url,
+    token: &str,
+) -> color_eyre::Result<PathBuf> {
+    let host = host_url.host_str().expect("Malformed URL: missing host");
+
     let path = dir.join("netrc");
 
     let mut file = OpenOptions::new()
