@@ -70,7 +70,7 @@ impl CommandExecute for FetchSubcommand {
         let netrc_path = create_temp_netrc(dir.path(), cache_host, &token).await?;
         let token_path = netrc_path.display().to_string();
 
-        let out_link = self.out_link.as_ref().map(String::as_str);
+        let out_link = self.out_link.as_deref();
 
         copy(
             self.cache_addr.as_str(),
