@@ -633,7 +633,7 @@ async fn copy_closure_with_realise(
 /// Copy a Nix closure like [`copy_closure`], but with a GC root. The bool that
 /// is returned indicates if `nix copy --out-link` (supported with version 2.26)
 /// was used.
-pub async fn copy_closure_with_root(
+pub async fn copy_closure_with_gc_root(
     cache_host: impl Into<String>,
     store_path: impl Into<String>,
     token_path: impl Into<String>,
