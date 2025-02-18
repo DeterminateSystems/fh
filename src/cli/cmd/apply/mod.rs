@@ -11,9 +11,14 @@ use std::{
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
 use tempfile::{tempdir, TempDir};
-use tokio::io::AsyncWriteExt as _;
 
-use crate::cli::{cmd::nix_command, error::FhError};
+use crate::{
+    cli::{
+        cmd::{copy_closure, nix_command},
+        error::FhError,
+    },
+    shared::create_temp_netrc,
+};
 
 use self::{home_manager::HomeManager, nix_darwin::NixDarwin, nixos::NixOs};
 
@@ -122,63 +127,14 @@ impl CommandExecute for ApplySubcommand {
         match resolved_path.token {
             Some(token) => {
                 if self.use_scoped_token == TokenChoice::Always {
-                    let mut nix_args = vec![
-                        "copy".to_string(),
-                        "--option".to_string(),
-                        "narinfo-cache-negative-ttl".to_string(),
-                        "0".to_string(),
-                        "--from".to_string(),
-                        self.cache_addr.to_string(),
-                        resolved_path.store_path.clone(),
-                    ];
-
                     let dir = tempdir()?;
-                    let temp_netrc_path = dir.path().join("netrc");
 
-                    let mut f = tokio::fs::OpenOptions::new()
-                        .create(true)
-                        .truncate(true)
-                        .write(true)
-                        .mode(0o600)
-                        .open(&temp_netrc_path)
-                        .await?;
-
-                    let cache_netrc_contents = format!(
-                        "machine {} login flakehub password {}\n",
-                        self.cache_addr.host_str().expect("valid host"),
-                        token
-                    );
-                    f.write_all(cache_netrc_contents.as_bytes())
-                        .await
-                        .wrap_err("writing restricted netrc file")?;
+                    let temp_netrc_path =
+                        create_temp_netrc(dir.path(), &self.cache_addr, &token).await?;
 
                     let display = temp_netrc_path.display().to_string();
-                    nix_args.extend_from_slice(&["--netrc-file".to_string(), display]);
 
-                    // NOTE(cole-h): Theoretically, this could be garbage collected immediately after we
-                    // copy it. There's no good way to prevent this at this point in time because:
-                    //
-                    // 0. We want to be able to use the scoped token to talk to FlakeHub Cache, which we
-                    // do via `--netrc-file`, and we want to be able to run this on any user -- trusted
-                    // or otherwise
-                    //
-                    // 1. `nix copy` substitutes on the client, so `--netrc-file` works just fine (it
-                    // won't be sent to the daemon, which will say "no" if you're not a trusted user),
-                    // but it doesn't have a `--profile` or `--out-link` argument, so we can't GC
-                    // root it that way
-                    //
-                    // 2. `nix build --max-jobs 0` does have `--profile` and `--out-link`, but passing
-                    // `--netrc-file` will send it to the daemon which doesn't work if you're not a
-                    // trusted user
-                    //
-                    // 3. Manually making a symlink somewhere doesn't work because adding that symlink
-                    // to gcroots/auto requires root, stashing it in a process's environment is so ugly
-                    // I will not entertain it, and holding a handle to it requires it to exist in the
-                    // first place (so there's still a small window of time where it can be GC'd)
-                    //
-                    // This will be resolved when https://github.com/NixOS/nix/pull/11657 makes it into
-                    // a Nix release.
-                    nix_command(&nix_args, false)
+                    copy_closure(self.cache_addr.as_str(), &resolved_path.store_path, display)
                         .await
                         .wrap_err("failed to copy resolved store path with Nix")?;
 

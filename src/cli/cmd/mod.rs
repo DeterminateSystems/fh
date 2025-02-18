@@ -3,6 +3,7 @@ pub(crate) mod apply;
 pub(crate) mod completion;
 pub(crate) mod convert;
 pub(crate) mod eject;
+pub(crate) mod fetch;
 pub(crate) mod init;
 pub(crate) mod list;
 pub(crate) mod login;
@@ -12,7 +13,7 @@ pub(crate) mod status;
 
 use std::{fmt::Display, process::Stdio};
 
-use color_eyre::eyre::WrapErr;
+use color_eyre::eyre::{self, WrapErr};
 use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
@@ -23,6 +24,7 @@ use tabled::settings::{
     style::{HorizontalLine, On, VerticalLineIter},
     Style,
 };
+use tokio::process::Command;
 use url::Url;
 
 use self::{
@@ -69,6 +71,7 @@ pub(crate) enum FhSubcommands {
     Completion(completion::CompletionSubcommand),
     Convert(convert::ConvertSubcommand),
     Eject(eject::EjectSubcommand),
+    Fetch(fetch::FetchSubcommand),
     Init(init::InitSubcommand),
     List(list::ListSubcommand),
     Login(login::LoginSubcommand),
@@ -492,6 +495,136 @@ fn validate_segment(s: &str) -> Result<(), FhError> {
     }
 
     Ok(())
+}
+
+/// Copy a Nix closure from a given host into the store.
+pub async fn copy_closure(
+    cache_host: impl Into<String>,
+    store_path: impl Into<String>,
+    token_path: impl Into<String>,
+) -> color_eyre::Result<()> {
+    let args = vec![
+        "copy".into(),
+        "--option".into(),
+        "narinfo-cache-negative-ttl".into(),
+        "0".into(),
+        "--from".into(),
+        cache_host.into(),
+        store_path.into(),
+        "--netrc-file".into(),
+        token_path.into(),
+    ];
+
+    nix_command(&args, false)
+        .await
+        .wrap_err("Failed to copy resolved store path with Nix")?;
+
+    Ok(())
+}
+
+async fn copy_supports_out_link() -> color_eyre::Result<bool> {
+    const OUT_LINK_NOT_SUPPORTED: &[u8] = b"error: unrecognised flag '--out-link'";
+
+    // Not using nix_command() here because we need to read the stderr of the resulting command
+    let output = Command::new("nix")
+        .args(["copy", "--out-link"])
+        .output()
+        .await
+        .wrap_err("Could not run nix")?;
+
+    // Grab only the first line of output from nix since it's the one we care about (the problem it encountered)
+    let error_line = output.stderr.split(|&c| c == b'\n').next();
+    let error_line = match error_line {
+        Some(line) => line,
+        None => {
+            tracing::warn!("Could not determine if `nix copy` supports --out-link; falling back to manual links");
+            return Ok(false);
+        }
+    };
+
+    let supported = error_line != OUT_LINK_NOT_SUPPORTED;
+    tracing::debug!(supported, "Setting support for nix copy --out-link");
+
+    Ok(supported)
+}
+
+async fn copy_closure_with_out_link(
+    cache_host: impl Into<String>,
+    store_path: impl Into<String>,
+    token_path: impl Into<String>,
+    out_path: impl Into<String>,
+) -> color_eyre::Result<()> {
+    let args = vec![
+        "copy".into(),
+        "--option".into(),
+        "narinfo-cache-negative-ttl".into(),
+        "0".into(),
+        "--from".into(),
+        cache_host.into(),
+        store_path.into(),
+        "--out-link".into(),
+        out_path.into(),
+        "--netrc-file".into(),
+        token_path.into(),
+    ];
+
+    nix_command(&args, false)
+        .await
+        .wrap_err("Failed to copy resolved store path with Nix")
+}
+
+async fn copy_closure_with_realise(
+    cache_host: impl Into<String>,
+    store_path: impl Into<String>,
+    token_path: impl Into<String>,
+    out_path: impl Into<String>,
+) -> color_eyre::Result<()> {
+    let cache_host = cache_host.into();
+    let store_path = store_path.into();
+    let token_path = token_path.into();
+    let out_path = out_path.into();
+
+    // First, copy the closure down into the user's Nix store
+    copy_closure(cache_host, &store_path, &token_path).await?;
+
+    // Now we can use a plain `nix-store --realise` on it
+    let mut command = Command::new("nix-store");
+    let output = command
+        .arg("--realise")
+        .arg(&store_path)
+        .arg("--add-root")
+        .arg(&out_path)
+        .spawn()
+        .wrap_err("Failed to spawn nix-store command")?
+        .wait_with_output()
+        .await?;
+
+    eyre::ensure!(
+        output.status.success(),
+        "Could not use nix-store --realise to copy {store_path} to {out_path}; consider upgrading to Nix version 2.26 or greater which is immune to this problem"
+    );
+
+    Ok(())
+}
+
+/// Copy a Nix closure like [`copy_closure`], but with a GC root. The bool that
+/// is returned indicates if `nix copy --out-link` (supported with version 2.26)
+/// was used.
+pub async fn copy_closure_with_gc_root(
+    cache_host: impl Into<String>,
+    store_path: impl Into<String>,
+    token_path: impl Into<String>,
+    out_path: impl Into<String>,
+) -> color_eyre::Result<bool> {
+    let use_out_link = copy_supports_out_link().await?;
+
+    if use_out_link {
+        copy_closure_with_out_link(cache_host, store_path, token_path, out_path).await?;
+    } else {
+        copy_closure_with_realise(cache_host, store_path, token_path, out_path).await?;
+    }
+
+    Ok(use_out_link)
 }
 
 #[cfg(test)]
