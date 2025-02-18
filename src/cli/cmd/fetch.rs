@@ -3,7 +3,6 @@ use std::process::ExitCode;
 use clap::Parser;
 use color_eyre::eyre::{self, WrapErr as _};
 use color_eyre::Result;
-use tokio::fs;
 use tokio::process::Command;
 
 use crate::cli::cmd::nix_command;
@@ -93,7 +92,7 @@ async fn copy(
             if copy_supports_out_link().await? {
                 copy_with_out_link(cache_host, store_path, token_path, out).await
             } else {
-                copy_with_manual_symlink(cache_host, store_path, token_path, out).await
+                copy_with_nix_realise(cache_host, store_path, token_path, out).await
             }
         }
     }
@@ -176,7 +175,7 @@ async fn copy_with_out_link(
     Ok(())
 }
 
-async fn copy_with_manual_symlink(
+async fn copy_with_nix_realise(
     cache_host: &str,
     store_path: &str,
     token_path: String,
@@ -184,11 +183,20 @@ async fn copy_with_manual_symlink(
 ) -> Result<()> {
     copy_without_out_link(cache_host, store_path, token_path).await?;
 
-    // TODO: figure out how to make this a GC root
-    fs::symlink(store_path, out)
-        .await
-        .wrap_err_with(|| format!("Could not create symbolic link from {store_path} to {out}"))?;
+    // Now that the flake is on the host machine, we can use a plain `nix-store --realise` on it (but see below)
+    let realise = vec![
+        "nix-store".into(),
+        "realise".into(),
+        store_path.into(),
+        "--add-root".into(),
+        out.into(),
+    ];
 
-    tracing::info!("Created manual symbolic link from {store_path} to {out}");
+    // The most likely scenario for this failing is losing the race between us
+    // trying to create this GC root and some other `nix store gc` run cleaning
+    // it out, so indicate to the user this is out of our hands.
+    nix_command(&realise, false).await.wrap_err_with(|| format!("Could not create a GC root at {out} for {store_path}; consider upgrading to Nix version 2.26 or greater which is immune to this problem"))?;
+
+    tracing::info!("Copied from {store_path} to {out}");
     Ok(())
 }
