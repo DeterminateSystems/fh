@@ -136,21 +136,24 @@ The resulting `flake.nix` would look something like this:
 }
 ```
 
-### Fetch artifacts directly
+### Fetch flake outputs directly
 
-You can fetch artifacts directly from FlakeHub using the `fh fetch` command.
-You need to specify both a [flake output][outputs] and the target link to which fh should write the symlink to the [Nix store path][store-paths].
+You can fetch [flake outputs][outputs] directly from FlakeHub using the `fh fetch` command.
+You need to specify both a [flake reference][flakeref] and the target link to which fh should write the symlink to the output's [Nix store path][store-paths].
 
 Here's an example:
 
 ```shell
+# Fetch the output for the current system
 SYSTEM="$(nix eval --impure --expr 'builtins.currentSystem' --raw)"
 fh fetch "DeterminateSystems/fh/*#packages.${SYSTEM}.default" ./out
+
+# Run the fh executable using the target link
 ./out/bin/fh --help
 ```
 
 `fh fetch` is most useful when used in conjunction with [FlakeHub Cache][cache], which is available on FlakeHub [paid plans][signup].
-If the flake output is stored in the cache, `fh fetch` can fetch the cached artifact without needing to evaluate the store path, which is [already stored][resolved-store-paths] in FlakeHub.
+If the flake output is stored in the cache, `fh fetch` can fetch the cached output without needing to evaluate the store path, which is [also stored][resolved-store-paths] in the cache.
 
 ### Resolve flake references to store paths
 
@@ -484,6 +487,7 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [flakehub]: https://flakehub.com
 [flakehub-push]: https://github.com/determinateSystems/flakehub-push
 [flakehub-push-params]: https://github.com/determinateSystems/flakehub-push?tab=readme-ov-file#available-parameters
+[flakeref]: https://zero-to-nix.com/concepts/flakes#references
 [flakes]: https://flakehub.com/flakes
 [go]: https://golang.org
 [hm]: https://github.com/nix-community/home-manager

@@ -9,10 +9,10 @@ use crate::shared::create_temp_netrc;
 
 use super::{CommandExecute, FlakeHubClient};
 
-/// Fetch a flake output and write a symlink for the Nix store path to the target path
+/// Fetch a flake output and write a symlink for the Nix store path to the target link
 #[derive(Parser)]
 pub(crate) struct FetchSubcommand {
-    /// The FlakeHub flake reference to fetch.
+    /// The flake reference for the FlakeHub flake output to fetch.
     /// References must be of this form: {org}/{flake}/{version_req}#{attr_path}
     flake_ref: String,
 
