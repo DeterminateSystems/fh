@@ -136,6 +136,22 @@ The resulting `flake.nix` would look something like this:
 }
 ```
 
+### Fetch artifacts directly
+
+You can fetch artifacts directly from FlakeHub using the `fh fetch` command.
+You need to specify both a [flake output][outputs] and the target link to which fh should write the symlink to the [Nix store path][store-paths].
+
+Here's an example:
+
+```shell
+SYSTEM=$(nix eval --raw --impure --expr 'builtins.currentSystem')
+fh fetch "DeterminateSystems/fh/*#packages.${SYSTEM}.default" ./out
+./out/bin/fh --help
+```
+
+`fh fetch` is most useful when used in conjunction with [FlakeHub Cache][cache], which is available on FlakeHub [paid plans][signup].
+If the flake output is stored in the cache, `fh fetch` can fetch the cached artifact without needing to evaluate the store path, which is [already stored][resolved-store-paths] in FlakeHub.
+
 ### Resolve flake references to store paths
 
 You can resolve flake references on FlakeHub to Nix store paths using the `fh resolve` command:
@@ -460,7 +476,7 @@ You can apply the `--json` flag to each list command to produce JSON output.
 For support, email support@flakehub.com or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
 
 [bash]: https://gnu.org/software/bash
-[cache]: https://determinate.systems/posts/flakehub-cache-beta
+[cache]: https://flakehub.com/cache
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
 [elm]: https://elm-lang.org
 [elvish]: https://elv.sh
@@ -479,13 +495,17 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [nixos]: https://zero-to-nix.com/concepts/nixos
 [nixpkgs]: https://zero-to-nix.com/concepts/nixpkgs
 [orgs]: https://flakehub.com/orgs
+[outputs]: https://zero-to-nix.com/concepts/flakes#outputs
 [php]: https://php.net
 [powershell]: https://learn.microsoft.com/powershell
 [python]: https://python.org
+[resolved-store-paths]: https://docs.determinate.systems/flakehub/store-paths
 [ruby]: https://ruby-lang.org
 [rust]: https://rust-lang.org
 [semver]: https://flakehub.com/docs/concepts/semver
 [settings]: https://flakehub.com/user/settings
+[signup]: https://flakehub.com/signup
+[store-paths]: https://zero-to-nix.com/concepts/nix-store#store-paths
 [tokens]: https://flakehub.com/user/settings?editview=tokens
 [zig]: https://ziglang.org
 [zsh]: https://zsh.org
