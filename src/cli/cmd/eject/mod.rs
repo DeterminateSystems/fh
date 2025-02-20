@@ -29,7 +29,6 @@ pub(crate) struct EjectSubcommand {
     api_addr: url::Url,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for EjectSubcommand {
     #[tracing::instrument(skip_all)]
     async fn execute(self) -> color_eyre::Result<ExitCode> {

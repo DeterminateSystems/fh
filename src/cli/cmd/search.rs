@@ -58,7 +58,6 @@ impl From<SearchResult> for SearchResultRow {
     }
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for SearchSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let pb = ProgressBar::new_spinner();

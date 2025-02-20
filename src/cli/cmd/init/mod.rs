@@ -56,7 +56,6 @@ pub(crate) struct InitSubcommand {
     api_addr: url::Url,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for InitSubcommand {
     async fn execute(self) -> Result<ExitCode> {
         if !std::io::stdout().is_terminal() {
