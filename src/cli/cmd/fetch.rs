@@ -9,14 +9,15 @@ use crate::shared::create_temp_netrc;
 
 use super::{CommandExecute, FlakeHubClient};
 
+/// Fetch a flake output and write a symlink for the Nix store path to the target path
 #[derive(Parser)]
 pub(crate) struct FetchSubcommand {
     /// The FlakeHub flake reference to fetch.
     /// References must be of this form: {org}/{flake}/{version_req}#{attr_path}
     flake_ref: String,
 
-    /// Target link to use as a Nix garbage collector root
-    target: String,
+    /// The target link to use as a Nix garbage collector root
+    target_link: String,
 
     #[clap(from_global)]
     api_addr: url::Url,
@@ -60,11 +61,15 @@ impl CommandExecute for FetchSubcommand {
             self.cache_addr.as_str(),
             &resolved_path.store_path,
             token_path,
-            &self.target,
+            &self.target_link,
         )
         .await?;
 
-        tracing::info!("Copied {} to {}", resolved_path.store_path, self.target);
+        tracing::info!(
+            "Copied {} to {}",
+            resolved_path.store_path,
+            self.target_link
+        );
 
         dir.close()?;
 
