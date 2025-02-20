@@ -52,6 +52,7 @@ You can use fh to:
 - [Check FlakeHub login status](#check-flakehub-login-status)
 - [Initialize a new `flake.nix`](#initialize-a-new-flakenix-from-scratch)
 - [Add flake inputs to your `flake.nix`](#add-a-flake-published-to-flakehub-to-your-flakenix)
+- [Fetch flake outputs directly from FlakeHub Cache](#fetch-flake-outputs-directly)
 - [Resolve flake references to store paths](#resolve-flake-references-to-store-paths)
 - [Apply NixOS, Home Manager, and nix-darwin configurations to the current system](#apply-configurations-to-the-current-system)
 - [Convert flake inputs to use FlakeHub](#convert-flake-inputs-to-use-flakehub)
@@ -135,6 +136,25 @@ The resulting `flake.nix` would look something like this:
   };
 }
 ```
+
+### Fetch flake outputs directly
+
+You can fetch [flake outputs][outputs] directly from FlakeHub using the `fh fetch` command.
+You need to specify both a [flake reference][flakeref] and the target link to which fh should write the symlink to the output's [Nix store path][store-paths].
+
+Here's an example:
+
+```shell
+# Fetch the output for the current system
+SYSTEM="$(nix eval --impure --expr 'builtins.currentSystem' --raw)"
+fh fetch "DeterminateSystems/fh/*#packages.${SYSTEM}.default" ./out
+
+# Run the fh executable using the target link
+./out/bin/fh --help
+```
+
+`fh fetch` is most useful when used in conjunction with [FlakeHub Cache][cache], which is available on FlakeHub [paid plans][signup].
+If the flake output is stored in the cache, `fh fetch` can fetch the cached output without needing to evaluate the store path, which is [also stored][resolved-store-paths] in the cache.
 
 ### Resolve flake references to store paths
 
@@ -460,7 +480,7 @@ You can apply the `--json` flag to each list command to produce JSON output.
 For support, email support@flakehub.com or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
 
 [bash]: https://gnu.org/software/bash
-[cache]: https://determinate.systems/posts/flakehub-cache-beta
+[cache]: https://flakehub.com/cache
 [csv]: https://en.wikipedia.org/wiki/Comma-separated_values
 [elm]: https://elm-lang.org
 [elvish]: https://elv.sh
@@ -468,6 +488,7 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [flakehub]: https://flakehub.com
 [flakehub-push]: https://github.com/determinateSystems/flakehub-push
 [flakehub-push-params]: https://github.com/determinateSystems/flakehub-push?tab=readme-ov-file#available-parameters
+[flakeref]: https://zero-to-nix.com/concepts/flakes#references
 [flakes]: https://flakehub.com/flakes
 [go]: https://golang.org
 [hm]: https://github.com/nix-community/home-manager
@@ -479,13 +500,17 @@ For support, email support@flakehub.com or [join our Discord](https://discord.gg
 [nixos]: https://zero-to-nix.com/concepts/nixos
 [nixpkgs]: https://zero-to-nix.com/concepts/nixpkgs
 [orgs]: https://flakehub.com/orgs
+[outputs]: https://zero-to-nix.com/concepts/flakes#outputs
 [php]: https://php.net
 [powershell]: https://learn.microsoft.com/powershell
 [python]: https://python.org
+[resolved-store-paths]: https://docs.determinate.systems/flakehub/store-paths
 [ruby]: https://ruby-lang.org
 [rust]: https://rust-lang.org
 [semver]: https://flakehub.com/docs/concepts/semver
 [settings]: https://flakehub.com/user/settings
+[signup]: https://flakehub.com/signup
+[store-paths]: https://zero-to-nix.com/concepts/nix-store#store-paths
 [tokens]: https://flakehub.com/user/settings?editview=tokens
 [zig]: https://ziglang.org
 [zsh]: https://zsh.org
