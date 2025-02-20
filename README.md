@@ -144,7 +144,7 @@ You need to specify both a [flake output][outputs] and the target link to which 
 Here's an example:
 
 ```shell
-SYSTEM=$(nix eval --raw --impure --expr 'builtins.currentSystem')
+SYSTEM=$(nix eval --impure --expr 'builtins.currentSystem' | tr -d '"')
 fh fetch "DeterminateSystems/fh/*#packages.${SYSTEM}.default" ./out
 ./out/bin/fh --help
 ```
