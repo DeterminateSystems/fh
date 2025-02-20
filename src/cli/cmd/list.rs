@@ -108,7 +108,6 @@ enum Subcommands {
     },
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for ListSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         use Subcommands::*;

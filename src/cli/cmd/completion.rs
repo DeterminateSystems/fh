@@ -14,7 +14,6 @@ pub(crate) struct CompletionSubcommand {
     shell: Shell,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for CompletionSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let cli = &mut Cli::command();

@@ -33,7 +33,6 @@ pub(crate) struct ResolvedPath {
     pub(crate) token: Option<String>,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for ResolveSubcommand {
     #[tracing::instrument(skip_all)]
     async fn execute(self) -> color_eyre::Result<ExitCode> {

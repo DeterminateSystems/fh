@@ -91,7 +91,6 @@ pub trait ApplyType {
     fn action(&self) -> Option<String>;
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for ApplySubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let applyer: Box<&(dyn ApplyType + Send + Sync)> = match &self.system {

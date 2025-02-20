@@ -7,7 +7,6 @@ license = "Apache 2.0"
 repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
-async-trait = { version = "0.1.73", default-features = false }
 axum = { version = "0.7.5", features = ["macros"] }
 chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
 clap = { version = "4.3.2", default-features = false, features = [

@@ -28,7 +28,6 @@ pub(crate) struct FetchSubcommand {
     frontend_addr: url::Url,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for FetchSubcommand {
     #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<ExitCode> {

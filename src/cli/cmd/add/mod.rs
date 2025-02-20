@@ -46,7 +46,6 @@ pub(crate) struct AddSubcommand {
     api_addr: url::Url,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for AddSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         let (flake_contents, parsed) = load_flake(&self.flake_path).await?;

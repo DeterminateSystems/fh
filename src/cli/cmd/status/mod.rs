@@ -48,7 +48,6 @@ where
     Ok(expires_at)
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for StatusSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         match get_status_from_auth_file(self.api_addr).await {

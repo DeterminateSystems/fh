@@ -52,7 +52,6 @@ pub(crate) struct LoginSubcommand {
     frontend_addr: url::Url,
 }
 
-#[async_trait::async_trait]
 impl CommandExecute for LoginSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         self.manual_login().await?;
