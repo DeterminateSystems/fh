@@ -52,6 +52,7 @@ You can use fh to:
 - [Check FlakeHub login status](#check-flakehub-login-status)
 - [Initialize a new `flake.nix`](#initialize-a-new-flakenix-from-scratch)
 - [Add flake inputs to your `flake.nix`](#add-a-flake-published-to-flakehub-to-your-flakenix)
+- [Fetch flake outputs directly from FlakeHub Cache](#fetch-flake-outputs-directly)
 - [Resolve flake references to store paths](#resolve-flake-references-to-store-paths)
 - [Apply NixOS, Home Manager, and nix-darwin configurations to the current system](#apply-configurations-to-the-current-system)
 - [Convert flake inputs to use FlakeHub](#convert-flake-inputs-to-use-flakehub)
