@@ -8,16 +8,16 @@
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
-        "lastModified": 1735713283,
-        "narHash": "sha256-xC6X49L55xo7AV+pAYclOj5UNWtBo/xx5aB5IehJD0M=",
-        "rev": "bfba822a4220b0e2c4dc7f36a35e4c8450cd9a9c",
-        "revCount": 2125,
+        "lastModified": 1738391509,
+        "narHash": "sha256-TC3xA++KgprECm/WPsLUd+a77MObZPElCW6eAsjVW1k=",
+        "rev": "de3ea31eb651b663449361f77d9c1e8835290470",
+        "revCount": 2156,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.2125%2Brev-bfba822a4220b0e2c4dc7f36a35e4c8450cd9a9c/019420f1-c64f-7176-bdf5-3f4f4fe2bac6/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.2156%2Brev-de3ea31eb651b663449361f77d9c1e8835290470/0194c095-0041-7b9c-b19e-cf1c4a2adaad/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz"
+        "url": "https://flakehub.com/f/nix-community/fenix/0.1.%2A"
       }
     },
     "naersk": {
@@ -27,30 +27,30 @@
         ]
       },
       "locked": {
-        "lastModified": 1736429049,
-        "narHash": "sha256-np2K6lbTOq7yugwS0IsEmy+02vxTAF62bp8APnBHsE4=",
-        "rev": "5891bae1b7fbd8d3a138773fd751e7a532f914aa",
-        "revCount": 352,
+        "lastModified": 1739824009,
+        "narHash": "sha256-fcNrCMUWVLMG3gKC5M9CBqVOAnJtyRvGPxptQFl5mVg=",
+        "rev": "e5130d37369bfa600144c2424270c96f0ef0e11d",
+        "revCount": 353,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/nix-community/naersk/0.1.352%2Brev-5891bae1b7fbd8d3a138773fd751e7a532f914aa/01944b3d-93aa-7d30-8c2b-bd5902521c73/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/nix-community/naersk/0.1.353%2Brev-e5130d37369bfa600144c2424270c96f0ef0e11d/01951598-92fa-764c-8408-f0d9553cc05e/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/nix-community/naersk/0.1.345.tar.gz"
+        "url": "https://flakehub.com/f/nix-community/naersk/0.1.%2A"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1739758141,
-        "narHash": "sha256-uq6A2L7o1/tR6VfmYhZWoVAwb3gTy7j4Jx30MIrH0rE=",
-        "rev": "c618e28f70257593de75a7044438efc1c1fc0791",
-        "revCount": 714614,
+        "lastModified": 1739923778,
+        "narHash": "sha256-BqUY8tz0AQ4to2Z4+uaKczh81zsGZSYxjgvtw+fvIfM=",
+        "rev": "36864ed72f234b9540da4cf7a0c49e351d30d3f1",
+        "revCount": 714685,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2411.714614%2Brev-c618e28f70257593de75a7044438efc1c1fc0791/0195155d-20df-7b25-ad70-45871483b8d2/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2411.714685%2Brev-36864ed72f234b9540da4cf7a0c49e351d30d3f1/0195205f-25a8-794d-a512-571fe4b78602/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.2411.%2A.tar.gz"
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.2411.%2A"
       }
     },
     "root": {
@@ -63,11 +63,11 @@
     "rust-analyzer-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1735659655,
-        "narHash": "sha256-DQgwi3pwaasWWDfNtXIX0lW5KvxQ+qVhxO1J7l68Qcc=",
+        "lastModified": 1738224931,
+        "narHash": "sha256-1zhfA5NBqin0Z79Se85juvqQteq7uClJMEb7l2pdDUY=",
         "owner": "rust-lang",
         "repo": "rust-analyzer",
-        "rev": "085ad107943996c344633d58f26467b05f8e2ff0",
+        "rev": "3c2aca1e5e9fbabb4e05fc4baa62e807aadc476a",
         "type": "github"
       },
       "original": {
