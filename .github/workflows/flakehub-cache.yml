@@ -23,8 +23,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/flakehub-cache-action@main
-        with:
-          use-flakehub: true
       - name: Build dev shell for ${{ matrix.systems.nix-system }} on ${{ matrix.systems.runner }}
         run: |
           nix build .#devShells.${{ matrix.systems.nix-system }}.default
