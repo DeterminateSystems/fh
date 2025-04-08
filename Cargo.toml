@@ -48,7 +48,7 @@ serde_json = { version = "1.0.105", default-features = false }
 tabled = { version = "0.14.0", features = ["color"] }
 tempfile = { version = "3.10.1", default-features = false }
 thiserror = { version = "1.0.44", default-features = false }
-tokio = { version = "1.39.1", default-features = false, features = ["full"] }
+tokio = { version = "1.44.2", default-features = false, features = ["full"] }
 tracing = { version = "0.1.37", default-features = false, features = [
   "attributes",
   "std",
