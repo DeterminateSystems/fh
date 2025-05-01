@@ -1,22 +1,16 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use axum::body::Body;
 use clap::Parser;
-use color_eyre::eyre::eyre;
 use color_eyre::eyre::WrapErr;
-use hyper::client::conn::http1::SendRequest;
-use hyper::{Method, StatusCode};
-use hyper_util::rt::TokioIo;
 use owo_colors::OwoColorize;
 use tokio::io::AsyncWriteExt;
-use tokio::net::UnixStream;
 
 use crate::cli::cmd::FlakeHubClient;
 use crate::cli::cmd::TokenStatus;
 use crate::cli::error::FhError;
+use crate::dnixd::dnixd_uds;
 use crate::shared::update_netrc_file;
-use crate::{DETERMINATE_NIXD_SOCKET_NAME, DETERMINATE_STATE_DIR};
 
 use super::CommandExecute;
 
@@ -58,44 +52,6 @@ impl CommandExecute for LoginSubcommand {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-pub async fn dnixd_uds() -> color_eyre::Result<SendRequest<axum::body::Body>> {
-    let dnixd_state_dir = Path::new(&DETERMINATE_STATE_DIR);
-    let dnixd_uds_socket_path: PathBuf = dnixd_state_dir.join(DETERMINATE_NIXD_SOCKET_NAME);
-
-    let stream = TokioIo::new(
-        UnixStream::connect(dnixd_uds_socket_path)
-            .await
-            .wrap_err("Connecting to the determinate-nixd socket")?,
-    );
-    let (mut sender, conn): (SendRequest<Body>, _) = hyper::client::conn::http1::handshake(stream)
-        .await
-        .wrap_err("Completing the http1 handshake with determinate-nixd")?;
-
-    // NOTE(colemickens): for now we just drop the joinhandle and let it keep running
-    let _join_handle = tokio::task::spawn(async move {
-        if let Err(err) = conn.await {
-            tracing::error!("Connection failed: {:?}", err);
-        }
-    });
-
-    let request = http::Request::builder()
-        .method(Method::GET)
-        .uri("http://localhost/info")
-        .body(axum::body::Body::empty())?;
-
-    let response = sender
-        .send_request(request)
-        .await
-        .wrap_err("Querying information about determinate-nixd")?;
-
-    if response.status() != StatusCode::OK {
-        tracing::error!("failed to connect to determinate-nixd socket");
-        return Err(eyre!("failed to connect to determinate-nixd socket"));
-    }
-
-    Ok(sender)
 }
 
 impl LoginSubcommand {
@@ -416,6 +372,14 @@ pub async fn upsert_user_nix_config(
 }
 
 pub(crate) async fn user_auth_token_read_path() -> Result<PathBuf, FhError> {
+    let global_path =
+        Path::new(crate::DETERMINATE_STATE_DIR).join(crate::DETERMINATE_NIXD_TOKEN_NAME);
+
+    if dnixd_uds().await.is_ok() {
+        // They're on dnixd so read the global token
+        return Ok(global_path);
+    }
+
     let write_path = user_auth_token_write_path();
 
     // If the user's personal token file exists, we use that first.
@@ -427,8 +391,6 @@ pub(crate) async fn user_auth_token_read_path() -> Result<PathBuf, FhError> {
 
     // Either XDG failed to give us a path, or the user's token doesn't exist, so fall back
     // to the global token if that exists.
-    let global_path =
-        Path::new(crate::DETERMINATE_STATE_DIR).join(crate::DETERMINATE_NIXD_TOKEN_NAME);
     if tokio::fs::metadata(&global_path).await.is_ok() {
         return Ok(global_path);
     }
