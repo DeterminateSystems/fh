@@ -17,10 +17,6 @@
 
   outputs = { self, ... }@inputs:
     let
-      lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
-
-      version = "${builtins.substring 0 8 lastModifiedDate}-${self.shortRev or "dirty"}";
-
       forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
         pkgs = import inputs.nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
@@ -53,7 +49,7 @@
             };
           in
           naerskLib.buildPackage {
-            name = "fh-${version}";
+            name = "fh";
             src = self;
 
             doCheck = true;
