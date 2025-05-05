@@ -198,29 +198,6 @@ impl CommandExecute for InitSubcommand {
                 },
             );
 
-            let use_flake_compat = Prompt::bool(
-                "Would you like to support legacy Nix commands like `nix-build` and `nix-shell`?",
-            );
-
-            if use_flake_compat {
-                flake.inputs.insert(
-                    String::from("flake-compat"),
-                    Input::new(
-                        flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "edolstra", "flake-compat", "*")
-                            .as_str(),
-                        None,
-                    ),
-                );
-                write(
-                    PathBuf::from("default.nix"),
-                    String::from(include_str!("../../../../assets/default.nix")),
-                )?;
-                write(
-                    PathBuf::from("shell.nix"),
-                    String::from(include_str!("../../../../assets/shell.nix")),
-                )?;
-            }
-
             let data = TemplateData {
                 description: flake.description,
                 inputs: flake.inputs,
@@ -240,20 +217,11 @@ impl CommandExecute for InitSubcommand {
 
             if project.has_directory(".git")
                 && command_exists("git")
-                && Prompt::bool(&format!(
-                    "Would you like to add your new Nix {} to Git?",
-                    if use_flake_compat { "files" } else { "file" }
-                ))
+                && Prompt::bool("Would you like to add your new Nix file to Git?")
             {
                 Command::new("git")
                     .args(["add", "--intent-to-add", "flake.nix"])
                     .output()?;
-
-                if use_flake_compat {
-                    Command::new("git")
-                        .args(["add", "--intent-to-add", "default.nix", "shell.nix"])
-                        .output()?;
-                }
             }
 
             if !project.has_file(".envrc")
