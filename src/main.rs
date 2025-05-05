@@ -1,4 +1,5 @@
 pub(crate) mod cli;
+pub(crate) mod dnixd;
 pub(crate) mod shared;
 
 use std::io::IsTerminal;
