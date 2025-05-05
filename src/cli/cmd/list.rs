@@ -97,6 +97,8 @@ enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
     Flakes {
         #[arg(long)]
+        /// List flakes owned by this FlakeHub account.
+        /// Includes private flakes your account has access to.
         owner: Option<String>,
     },
     /// Lists all public flakes with the provided label.
