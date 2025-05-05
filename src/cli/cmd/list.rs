@@ -35,6 +35,12 @@ pub(crate) struct ListSubcommand {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
+pub(crate) struct Project {
+    pub(crate) organization_name: String,
+    pub(crate) name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Flake {
     pub(crate) org: String,
     pub(crate) project: String,
@@ -89,7 +95,10 @@ pub(crate) struct Release {
 #[derive(Subcommand)]
 enum Subcommands {
     /// Lists all currently public flakes on FlakeHub.
-    Flakes,
+    Flakes {
+        #[arg(long)]
+        owner: Option<String>,
+    },
     /// Lists all public flakes with the provided label.
     Label { label: String },
     /// Lists all currently public organizations on FlakeHub.
@@ -113,11 +122,11 @@ impl CommandExecute for ListSubcommand {
         use Subcommands::*;
 
         match self.cmd {
-            Flakes => {
+            Flakes { owner } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match FlakeHubClient::flakes(self.api_addr.as_ref()).await {
+                match FlakeHubClient::flakes(self.api_addr.as_ref(), owner).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");

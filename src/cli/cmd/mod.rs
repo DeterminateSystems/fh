@@ -105,9 +105,24 @@ impl FlakeHubClient {
         get_with_params(url, params, false).await
     }
 
-    async fn flakes(api_addr: &str) -> Result<Vec<Flake>, FhError> {
-        let url = flakehub_url!(api_addr, "flakes");
-        get(url, true).await
+    async fn flakes(api_addr: &str, owner: Option<String>) -> Result<Vec<Flake>, FhError> {
+        match owner {
+            Some(owner) => {
+                let projects: Vec<list::Project> =
+                    get(flakehub_url!(api_addr, "orgs", &owner, "projects"), true)
+                        .await
+                        .unwrap();
+
+                Ok(projects
+                    .into_iter()
+                    .map(|proj| Flake {
+                        org: proj.organization_name,
+                        project: proj.name,
+                    })
+                    .collect())
+            }
+            None => get(flakehub_url!(api_addr, "flakes"), true).await,
+        }
     }
 
     async fn flakes_by_label(api_addr: &str, label: &str) -> Result<Vec<Flake>, FhError> {
