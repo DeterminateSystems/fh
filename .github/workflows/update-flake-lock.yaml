@@ -22,5 +22,5 @@ jobs:
             automated
           inputs: |
             fenix
-            naersk
+            crane
             nixpkgs
