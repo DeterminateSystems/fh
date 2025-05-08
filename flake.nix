@@ -68,7 +68,6 @@
 
               env = {
                 SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
-                LIBCLANG_PATH = "${final.libclang.lib}/lib";
                 NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
               };
             };
