@@ -18,9 +18,7 @@ jobs:
         with:
           fail-mode: true
 
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - uses: DeterminateSystems/determinate-nix-action@main
 
       - uses: DeterminateSystems/flakehub-cache-action@main
 
