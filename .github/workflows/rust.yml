@@ -11,9 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@v4
-        with:
-          determinate: true
+      - uses: DeterminateSystems/determinate-nix-action@main
 
       - uses: DeterminateSystems/flakehub-cache-action@main
 
