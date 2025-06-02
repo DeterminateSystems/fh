@@ -2,10 +2,10 @@
   description = "The official CLI for FlakeHub: search for flakes, and add new inputs to your Nix flake.";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2411.*";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/0.1.*";
+      url = "https://flakehub.com/f/nix-community/fenix/0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -53,11 +53,7 @@
 
               buildInputs = with final; [
                 gcc.cc.lib
-              ]
-              ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
-                Security
-                SystemConfiguration
-              ]);
+              ];
 
               postInstall = ''
                 installShellCompletion --cmd fh \
@@ -104,10 +100,7 @@
               clang
               gcc.cc.lib
             ]
-            ++ lib.optionals (stdenv.isDarwin) ([ libiconv ] ++ (with darwin.apple_sdk.frameworks; [
-              Security
-              SystemConfiguration
-            ]));
+            ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
 
             env = {
               LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
