@@ -49,7 +49,7 @@ jobs:
       - name: Persist the cache binary
         run: cp ./cache-binary-X64-Linux/fh ./artifacts/X64-Linux
 
-      - uses: DeterminateSystems/push-artifact-ids@FH-899-use-if-none-match
+      - uses: DeterminateSystems/push-artifact-ids@main
         with:
           s3_upload_role: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           bucket: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
