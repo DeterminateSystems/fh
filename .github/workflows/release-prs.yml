@@ -40,22 +40,19 @@ jobs:
           name: fh-X64-macOS
           path: cache-binary-X64-macOS
       - name: Persist the cache binary
-        run: cp ./cache-binary-X64-macOS/fh ./artifacts/fh-X64-macOS
+        run: cp ./cache-binary-X64-macOS/fh ./artifacts/X64-macOS
 
       - uses: actions/download-artifact@v4
         with:
           name: fh-X64-Linux
           path: cache-binary-X64-Linux
       - name: Persist the cache binary
-        run: cp ./cache-binary-X64-Linux/fh ./artifacts/fh-X64-Linux
+        run: cp ./cache-binary-X64-Linux/fh ./artifacts/X64-Linux
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - uses: DeterminateSystems/push-artifact-ids@main
         with:
-          role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
-          aws-region: us-east-2
-      - name: Publish Release (PR)
-        env:
-          AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
-        run: |
-          .github/workflows/upload_s3.sh pr "${{ github.event.pull_request.number }}" "${{ github.event.pull_request.head.sha }}"
+          s3_upload_role: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
+          bucket: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
+          directory: ./artifacts
+          ids_project_name: fh
+          ids_binary_prefix: fh
