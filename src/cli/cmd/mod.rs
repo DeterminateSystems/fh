@@ -294,7 +294,7 @@ async fn get_with_params<T: for<'de> Deserialize<'de>>(
 
 pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
     let json = serde_json::to_string(&value)?;
-    println!("{}", json);
+    println!("{json}");
     Ok(())
 }
 
@@ -503,8 +503,7 @@ fn parse_release_ref(flake_ref: &str) -> Result<String, FhError> {
 fn validate_segment(s: &str) -> Result<(), FhError> {
     if s.chars().any(char::is_whitespace) {
         return Err(FhError::FlakeParse(format!(
-            "path segment {} contains whitespace",
-            s
+            "path segment {s} contains whitespace"
         )));
     }
 

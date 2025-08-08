@@ -48,8 +48,7 @@ impl Handler for Rust {
                 flake.dev_shell_packages.push(String::from("rust-analyzer"));
 
                 let rust_toolchain_func_with_override = format!(
-                    "{}.override {{ extensions = [ \"rust-src\"]; }}",
-                    rust_toolchain_func
+                    "{rust_toolchain_func}.override {{ extensions = [ \"rust-src\"]; }}"
                 );
 
                 flake.overlay_attrs.insert(
