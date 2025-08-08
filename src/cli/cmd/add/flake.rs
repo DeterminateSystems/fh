@@ -1023,7 +1023,7 @@ mod test {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        eprintln!("{}", res);
+        eprintln!("{res}");
         let nixpkgs_input = res.lines().enumerate().find_map(|(idx, line)| {
             if line.contains(input_value.as_str()) {
                 Some((idx, line))

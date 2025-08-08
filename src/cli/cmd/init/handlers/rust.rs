@@ -47,10 +47,8 @@ impl Handler for Rust {
             if Prompt::bool("Would you like to add Rust Analyzer to the environment?") {
                 flake.dev_shell_packages.push(String::from("rust-analyzer"));
 
-                let rust_toolchain_func_with_override = format!(
-                    "{}.override {{ extensions = [ \"rust-src\"]; }}",
-                    rust_toolchain_func
-                );
+                let rust_toolchain_func_with_override =
+                    format!("{rust_toolchain_func}.override {{ extensions = [ \"rust-src\"]; }}");
 
                 flake.overlay_attrs.insert(
                     String::from("rustToolchain"),

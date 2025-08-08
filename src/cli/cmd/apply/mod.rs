@@ -191,7 +191,7 @@ fn parse_output_ref(
 ) -> Result<super::FlakeOutputRef, FhError> {
     let with_default_output_path = match output_ref.split('#').collect::<Vec<_>>()[..] {
         [_release, _output_path] => output_ref.to_string(),
-        [_release] => format!("{}#{}", output_ref, default_path),
+        [_release] => format!("{output_ref}#{default_path}"),
         _ => return Err(FhError::MalformedOutputRef(output_ref.to_string())),
     };
 
