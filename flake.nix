@@ -47,7 +47,7 @@
 
               nativeBuildInputs = with final; [
                 pkg-config
-                rustPlatform.bindgenHook
+                final.buildPackages.rustPlatform.bindgenHook
                 installShellFiles
               ];
 
@@ -59,12 +59,14 @@
                 SystemConfiguration
               ]);
 
-              postInstall = ''
+              postInstall = final.lib.optionalString (final.stdenv.hostPlatform == final.stdenv.buildPlatform) ''
                 installShellCompletion --cmd fh \
                   --bash <("$out/bin/fh" completion bash) \
                   --zsh <("$out/bin/fh" completion zsh) \
                   --fish <("$out/bin/fh" completion fish)
               '';
+
+              LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
 
               env = {
                 SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
@@ -83,6 +85,8 @@
               targets.${staticTarget}.stable.rust-std
             ]);
         };
+
+      legacyPackages = forAllSystems ({ system, pkgs }: pkgs);
 
       packages = forAllSystems ({ system, pkgs }: rec {
         inherit (pkgs) fh;
@@ -110,7 +114,7 @@
             ]));
 
             env = {
-              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+              LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
               NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
             };
           };
