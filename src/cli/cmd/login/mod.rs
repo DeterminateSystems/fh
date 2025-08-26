@@ -90,7 +90,7 @@ impl LoginSubcommand {
                     .to_string(),
             )
         } else {
-            println!("Log in to FlakeHub: {}", login_url);
+            println!("Log in to FlakeHub: {login_url}");
             println!("And then follow the prompts below:");
             println!();
             crate::cli::cmd::init::prompt::Prompt::maybe_token("Paste your token here:")
@@ -293,18 +293,11 @@ pub async fn upsert_user_nix_config(
     let mut were_meaningfully_different = false;
     let mut prompt = String::from("The following settings will be modified:\n");
     for (merged_setting_name, merged_setting_value) in merged_nix_config.settings() {
-        let mut p = format!(
-            "* `{name}` = `{new_val}`",
-            name = merged_setting_name,
-            new_val = merged_setting_value,
-        );
+        let mut p = format!("* `{merged_setting_name}` = `{merged_setting_value}`",);
         if let Some(existing_setting_value) = nix_config.settings().get(merged_setting_name) {
             if merged_setting_value != existing_setting_value {
                 were_meaningfully_different = true;
-                p += &format!(
-                    " (previously: `{old_val}`)",
-                    old_val = existing_setting_value
-                );
+                p += &format!(" (previously: `{existing_setting_value}`)");
             }
         } else {
             were_meaningfully_different = true;
