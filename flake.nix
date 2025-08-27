@@ -82,8 +82,6 @@
             ]);
         };
 
-      legacyPackages = forAllSystems ({ system, pkgs }: pkgs);
-
       packages = forAllSystems ({ system, pkgs }: rec {
         inherit (pkgs) fh;
         default = pkgs.fh;
