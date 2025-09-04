@@ -493,9 +493,12 @@ impl AttrType {
         match final_named_arg {
             Some(arg) => {
                 let final_arg_identifier = &arg.identifier;
+
+                // final_arg_identifier made pattern invalid?
                 let re = regex::Regex::new(&format!(
                     "[^[:space:],]*{final_arg_identifier}[^[:space:],]*"
-                ))?; // final_arg_identifier made pattern invalid?
+                ))
+                .map_err(|e| color_eyre::eyre::eyre!("{e}"))?;
 
                 if let Some(found) = re.find(&span_text) {
                     span_text.insert_str(found.end(), &format!(", {flake_input_name}"));
@@ -510,7 +513,8 @@ impl AttrType {
                 if head.ellipsis {
                     // The ellipsis can _ONLY_ appear at the end of the set,
                     // never the beginning, so it's safe to insert `<name>, `
-                    let re = regex::Regex::new(r"[^[:space:],]*\.\.\.[^[:space:],]*")?;
+                    let re = regex::Regex::new(r"[^[:space:],]*\.\.\.[^[:space:],]*")
+                        .map_err(|e| color_eyre::eyre::eyre!("{e}"))?;
 
                     if let Some(found) = re.find(&span_text) {
                         span_text.insert_str(found.start(), &format!("{flake_input_name}, "));
