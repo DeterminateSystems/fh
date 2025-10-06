@@ -37,11 +37,11 @@
     "nixpkgs": {
       "locked": {
         "lastModified": 1757347588,
-        "narHash": "sha256-vkDl8C30LL2jt1EO3vEiJN4xT1rDcuEBJktxJQKszuc=",
-        "rev": "7634bfefa36d64fae85085bbc40d62549f3a7943",
+        "narHash": "sha256-KcXD4Yc1pLyBaElEQVq/nscnHNrHAIonD75aQSLHL/I=",
+        "rev": "2693c600d2be56397aedc6a6e9f7751622f26747",
         "revCount": 858212,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/secure/0.858212.91/0199830e-3f4f-75a6-8831-488968e74446/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/secure/0.858212.105/0199a602-da11-75cb-8fb8-21cec238336a/source.tar.gz"
       },
       "original": {
         "type": "tarball",
