@@ -96,23 +96,24 @@ pub(crate) struct Release {
     pub(crate) version: String,
     #[tabled(rename = "Revision", display_with = "dimmed")]
     pub(crate) revision: String,
-    #[tabled(rename = "Published at", display_with = "fmt_opt_dt_dim")]
+    #[tabled(rename = "Published at", display_with = "tabled_opt_date_time_dimmed")]
     pub(crate) published_at: Option<DateTime<Utc>>,
-    #[tabled(rename = "Updated at", display_with = "fmt_opt_dt_dim")]
+    #[tabled(rename = "Updated at", display_with = "tabled_opt_date_time_dimmed")]
     pub(crate) updated_at: Option<DateTime<Utc>>,
-    #[tabled(rename = "Commit count", display_with = "fmt_opt_dim")]
+    #[tabled(rename = "Commit count", display_with = "tabled_opt_dim")]
     pub(crate) commit_count: Option<i64>,
 }
 
-// Function for handling Options in tabled
-fn fmt_opt_dt_dim(v: &Option<DateTime<Utc>>) -> String {
+// Function for handling Option<DateTime<Utc>> in Tabled (dimmed)
+fn tabled_opt_date_time_dimmed(v: &Option<DateTime<Utc>>) -> String {
     dimmed(match v {
         Some(dt) => dt.format("%Y-%m-%d %H:%M").to_string(),
         None => String::new(),
     })
 }
 
-fn fmt_opt_dim<T: std::fmt::Display>(v: &Option<T>) -> String {
+// Function for handling generic Option<T> in Tabled (dimmed)
+fn tabled_opt_dim<T: std::fmt::Display>(v: &Option<T>) -> String {
     match v {
         Some(t) => dimmed(t.to_string()),
         None => String::new(),
