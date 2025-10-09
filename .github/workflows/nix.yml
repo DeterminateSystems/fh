@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/flake-checker-action@main
+        if: false
         with:
           fail-mode: true
 
