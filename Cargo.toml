@@ -8,7 +8,10 @@ repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
 axum = { version = "0.7.5", features = ["macros"] }
-chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
+chrono = { version = "0.4.31", default-features = false, features = [
+  "clock",
+  "serde",
+] }
 clap = { version = "4.3.2", default-features = false, features = [
   "color",
   "derive",
