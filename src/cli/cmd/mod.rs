@@ -119,8 +119,7 @@ impl FlakeHubClient {
                     limit,
                     None,
                 )
-                .await
-                .unwrap();
+                .await?;
 
                 Ok(projects
                     .into_iter()
