@@ -252,7 +252,7 @@ pub(super) fn command_exists(cmd: &str) -> bool {
 }
 
 async fn select_nixpkgs(api_addr: &str) -> Result<Url, FhError> {
-    let releases = FlakeHubClient::releases(api_addr, "NixOS", "nixpkgs").await?;
+    let releases = FlakeHubClient::releases(api_addr, "NixOS", "nixpkgs", None).await?;
     let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
     let release = Prompt::select("Choose one of the following Nixpkgs releases:", &releases);
     let version = format!("{release}.tar.gz");

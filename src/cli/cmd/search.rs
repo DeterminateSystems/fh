@@ -25,6 +25,10 @@ pub(crate) struct SearchSubcommand {
 
     #[clap(from_global)]
     api_addr: url::Url,
+
+    /// Maximum number of results.
+    #[arg(short, long)]
+    limit: Option<usize>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -63,7 +67,7 @@ impl CommandExecute for SearchSubcommand {
         let pb = ProgressBar::new_spinner();
         pb.set_style(ProgressStyle::default_spinner());
 
-        match FlakeHubClient::search(self.api_addr.as_ref(), self.query).await {
+        match FlakeHubClient::search(self.api_addr.as_ref(), self.query, self.limit).await {
             Ok(results) => {
                 if results.is_empty() {
                     eprintln!("No results");
