@@ -99,19 +99,27 @@ impl FlakeHubClient {
     pub(crate) async fn search(
         api_addr: &str,
         query: String,
+        limit: Option<usize>,
     ) -> Result<Vec<SearchResult>, FhError> {
         let url = flakehub_url!(api_addr, "search");
         let params = vec![("q", query)];
-        get_with_params(url, params, false).await
+        get(url, false, limit, Some(params)).await
     }
 
-    async fn flakes(api_addr: &str, owner: Option<String>) -> Result<Vec<Flake>, FhError> {
+    async fn flakes(
+        api_addr: &str,
+        owner: Option<String>,
+        limit: Option<usize>,
+    ) -> Result<Vec<Flake>, FhError> {
         match owner {
             Some(owner) => {
-                let projects: Vec<list::Project> =
-                    get(flakehub_url!(api_addr, "orgs", &owner, "projects"), true)
-                        .await
-                        .unwrap();
+                let projects: Vec<list::Project> = get(
+                    flakehub_url!(api_addr, "orgs", &owner, "projects"),
+                    true,
+                    limit,
+                    None,
+                )
+                .await?;
 
                 Ok(projects
                     .into_iter()
@@ -121,24 +129,33 @@ impl FlakeHubClient {
                     })
                     .collect())
             }
-            None => get(flakehub_url!(api_addr, "flakes"), true).await,
+            None => get(flakehub_url!(api_addr, "flakes"), true, limit, None).await,
         }
     }
 
-    async fn flakes_by_label(api_addr: &str, label: &str) -> Result<Vec<Flake>, FhError> {
+    async fn flakes_by_label(
+        api_addr: &str,
+        label: &str,
+        limit: Option<usize>,
+    ) -> Result<Vec<Flake>, FhError> {
         let url = flakehub_url!(api_addr, "label", label);
-        get(url, true).await
+        get(url, true, limit, None).await
     }
 
-    async fn releases(api_addr: &str, org: &str, project: &str) -> Result<Vec<Release>, FhError> {
+    async fn releases(
+        api_addr: &str,
+        org: &str,
+        project: &str,
+        limit: Option<usize>,
+    ) -> Result<Vec<Release>, FhError> {
         let url = flakehub_url!(api_addr, "f", org, project, "releases");
-        get(url, true).await
+        get(url, true, limit, None).await
     }
 
-    async fn orgs(api_addr: &str) -> Result<Vec<Org>, FhError> {
+    async fn orgs(api_addr: &str, limit: Option<usize>) -> Result<Vec<Org>, FhError> {
         let url = flakehub_url!(api_addr, "orgs");
         let params = vec![("include_public", String::from("true"))];
-        get_with_params(url, params, true).await
+        get(url, true, limit, Some(params)).await
     }
 
     async fn versions(
@@ -146,10 +163,11 @@ impl FlakeHubClient {
         org: &str,
         project: &str,
         constraint: &str,
+        limit: Option<usize>,
     ) -> Result<Vec<Version>, FhError> {
         let version = urlencoding::encode(constraint);
         let url = flakehub_url!(api_addr, "version", "resolve", org, project, &version);
-        get(url, true).await
+        get(url, true, limit, None).await
     }
 
     async fn metadata(
@@ -270,26 +288,29 @@ impl FlakeHubClient {
     }
 }
 
-async fn get<T: for<'de> Deserialize<'de>>(url: Url, authenticated: bool) -> Result<T, FhError> {
-    let client = make_base_client(authenticated).await?;
-
-    Ok(client.get(url).send().await?.json::<T>().await?)
-}
-
-async fn get_with_params<T: for<'de> Deserialize<'de>>(
+async fn get<T: for<'de> Deserialize<'de>>(
     url: Url,
-    params: Vec<(&str, String)>,
     authenticated: bool,
-) -> Result<T, FhError> {
+    limit: Option<usize>,
+    params: Option<Vec<(&str, String)>>,
+) -> Result<Vec<T>, FhError> {
     let client = make_base_client(authenticated).await?;
 
-    Ok(client
-        .get(url)
-        .query(&params)
-        .send()
-        .await?
-        .json::<T>()
-        .await?)
+    let request = if let Some(params) = params {
+        client.get(url).query(&params)
+    } else {
+        client.get(url)
+    };
+
+    let results = {
+        let mut vec = request.send().await?.json::<Vec<T>>().await?;
+
+        if let Some(limit) = limit {
+            vec.truncate(limit);
+        }
+        vec
+    };
+    Ok(results)
 }
 
 pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {

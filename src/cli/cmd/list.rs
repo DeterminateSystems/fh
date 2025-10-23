@@ -120,15 +120,33 @@ enum Subcommands {
         /// List flakes owned by this FlakeHub account.
         /// Includes private flakes your account has access to.
         owner: Option<String>,
+
+        /// Maximum number of results.
+        #[arg(short, long)]
+        limit: Option<usize>,
     },
     /// Lists all public flakes with the provided label.
-    Label { label: String },
+    Label {
+        label: String,
+
+        /// Maximum number of results.
+        #[arg(short, long)]
+        limit: Option<usize>,
+    },
     /// Lists all currently public organizations on FlakeHub.
-    Orgs,
+    Orgs {
+        /// Maximum number of results.
+        #[arg(short, long)]
+        limit: Option<usize>,
+    },
     /// List all releases for a specific flake on FlakeHub.
     Releases {
         /// The flake for which you want to list releases.
         flake: String,
+
+        /// Maximum number of results.
+        #[arg(short, long)]
+        limit: Option<usize>,
     },
     /// List all versions that match the provided version constraint.
     Versions {
@@ -136,6 +154,10 @@ enum Subcommands {
         flake: String,
         /// The version constraint as a string.
         constraint: String,
+
+        /// Maximum number of results.
+        #[arg(short, long)]
+        limit: Option<usize>,
     },
 }
 
@@ -144,11 +166,11 @@ impl CommandExecute for ListSubcommand {
         use Subcommands::*;
 
         match self.cmd {
-            Flakes { owner } => {
+            Flakes { owner, limit } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match FlakeHubClient::flakes(self.api_addr.as_ref(), owner).await {
+                match FlakeHubClient::flakes(self.api_addr.as_ref(), owner, limit).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -174,14 +196,14 @@ impl CommandExecute for ListSubcommand {
                     Err(e) => return Err(e.into()),
                 }
             }
-            Label { label } => {
+            Label { label, limit } => {
                 if string_has_whitespace(&label) {
                     return Err(FhError::LabelParse(String::from("whitespace not allowed")).into());
                 }
 
                 let label = label.to_lowercase();
 
-                match FlakeHubClient::flakes_by_label(self.api_addr.as_ref(), &label).await {
+                match FlakeHubClient::flakes_by_label(self.api_addr.as_ref(), &label, limit).await {
                     Ok(flakes) => {
                         if flakes.is_empty() {
                             eprintln!("No results");
@@ -207,11 +229,11 @@ impl CommandExecute for ListSubcommand {
                     Err(e) => return Err(e.into()),
                 }
             }
-            Orgs => {
+            Orgs { limit } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
-                match FlakeHubClient::orgs(self.api_addr.as_ref()).await {
+                match FlakeHubClient::orgs(self.api_addr.as_ref(), limit).await {
                     Ok(orgs) => {
                         if orgs.is_empty() {
                             eprintln!("No results");
@@ -235,15 +257,19 @@ impl CommandExecute for ListSubcommand {
                     Err(e) => return Err(e.into()),
                 }
             }
-            Releases { flake } => {
+            Releases { flake, limit } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
                 let flake = Flake::try_from(flake)?;
 
-                let releases =
-                    FlakeHubClient::releases(self.api_addr.as_ref(), &flake.org, &flake.project)
-                        .await?;
+                let releases = FlakeHubClient::releases(
+                    self.api_addr.as_ref(),
+                    &flake.org,
+                    &flake.project,
+                    limit,
+                )
+                .await?;
 
                 if releases.is_empty() {
                     eprintln!("No results");
@@ -260,7 +286,11 @@ impl CommandExecute for ListSubcommand {
                     }
                 }
             }
-            Versions { flake, constraint } => {
+            Versions {
+                flake,
+                constraint,
+                limit,
+            } => {
                 let pb = ProgressBar::new_spinner();
                 pb.set_style(ProgressStyle::default_spinner());
 
@@ -271,6 +301,7 @@ impl CommandExecute for ListSubcommand {
                     &flake.org,
                     &flake.project,
                     &constraint,
+                    limit,
                 )
                 .await
                 {
