@@ -12,13 +12,13 @@
     crane.url = "https://flakehub.com/f/ipetkov/crane/0";
   };
 
-  outputs = inputs:
+  outputs = { self, ... }@inputs:
     let
       forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
         inherit system;
         pkgs = import inputs.nixpkgs {
           inherit system;
-          overlays = [ inputs.self.overlays.default ];
+          overlays = [ self.overlays.default ];
         };
       });
 
@@ -41,7 +41,7 @@
             in
             craneLib.buildPackage {
               name = "fh";
-              src = inputs.self;
+              src = self;
 
               doCheck = true;
 
@@ -71,12 +71,13 @@
             };
 
           rustToolchain = with inputs.fenix.packages.${system};
-            combine ([
-              stable.clippy
-              stable.rustc
-              stable.cargo
-              stable.rustfmt
-              stable.rust-src
+            combine (with stable; [
+              clippy
+              rustc
+              cargo
+              rustfmt
+              rust-src
+              rust-analyzer
             ] ++ inputs.nixpkgs.lib.optionals (staticTarget != null) [
               targets.${staticTarget}.stable.rust-std
             ]);
@@ -87,15 +88,15 @@
         default = pkgs.fh;
       });
 
+      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-rfc-style);
+
       devShells = forAllSystems ({ system, pkgs }:
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
               rustToolchain
-              bacon
-              cargo-watch
-              rust-analyzer
-              nixpkgs-fmt
+
+              self.formatter.${system}
 
               # For the Rust environment
               pkg-config
