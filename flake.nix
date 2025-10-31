@@ -5,7 +5,7 @@
     nixpkgs.url = "https://flakehub.com/f/DeterminateSystems/secure/0";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/0";
+      url = "https://flakehub.com/f/nix-community/fenix/=0.1.2375"; # Stick with v1.89 since v1.90 can't seem to compile nixel
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

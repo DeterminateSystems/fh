@@ -158,8 +158,13 @@ async fn infer_flake_input_name_url(
                 ))?,
             };
 
-            let (flakehub_input, url) =
+            let (flakehub_input, mut url) =
                 get_flakehub_project_and_url(&api_addr, org, project, version).await?;
+
+            if let Some(path_without_suffix) = url.path().strip_suffix(".tar.gz") {
+                let owned_path = path_without_suffix.to_string();
+                url.set_path(&owned_path);
+            }
 
             if let Some(input_name) = input_name {
                 Ok((input_name, url))

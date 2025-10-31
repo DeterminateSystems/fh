@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
@@ -87,9 +88,28 @@ pub(crate) struct Org {
     pub(crate) name: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Tabled, Deserialize, Serialize)]
 pub(crate) struct Release {
+    #[tabled(rename = "Simplified version", display_with = "bold")]
+    pub(crate) simplified_version: String,
+    #[tabled(rename = "Version", display_with = "dimmed")]
     pub(crate) version: String,
+    #[tabled(rename = "Revision", display_with = "dimmed")]
+    pub(crate) revision: String,
+    #[tabled(rename = "Published at", display_with = "tabled_opt_dim")]
+    pub(crate) published_at: Option<DateTime<Utc>>,
+    #[tabled(rename = "Updated at", display_with = "tabled_opt_dim")]
+    pub(crate) updated_at: Option<DateTime<Utc>>,
+    #[tabled(rename = "Commit count", display_with = "tabled_opt_dim")]
+    pub(crate) commit_count: Option<i64>,
+}
+
+// Function for handling generic Option<T> in Tabled (dimmed)
+fn tabled_opt_dim<T: std::fmt::Display>(v: &Option<T>) -> String {
+    match v {
+        Some(t) => dimmed(t.to_string()),
+        None => String::new(),
+    }
 }
 
 #[derive(Subcommand)]
@@ -243,36 +263,27 @@ impl CommandExecute for ListSubcommand {
 
                 let flake = Flake::try_from(flake)?;
 
-                match FlakeHubClient::releases(
+                let releases = FlakeHubClient::releases(
                     self.api_addr.as_ref(),
                     &flake.org,
                     &flake.project,
                     limit,
                 )
-                .await
-                {
-                    Ok(releases) => {
-                        let rows = releases
-                            .into_iter()
-                            .map(Into::into)
-                            .collect::<Vec<ReleaseRow>>();
+                .await?;
 
-                        if rows.is_empty() {
-                            eprintln!("No results");
-                        } else if self.json {
-                            print_json(&rows)?;
-                        } else if std::io::stdout().is_terminal() {
-                            let mut table = Table::new(rows);
-                            table.with(DEFAULT_STYLE.clone());
-                            println!("{table}");
-                        } else {
-                            let mut writer = csv::Writer::from_writer(std::io::stdout());
-                            for row in rows {
-                                writer.serialize(row)?;
-                            }
-                        }
+                if releases.is_empty() {
+                    eprintln!("No results");
+                } else if self.json {
+                    print_json(&releases)?;
+                } else if std::io::stdout().is_terminal() {
+                    let mut table = Table::new(releases);
+                    table.with(DEFAULT_STYLE.clone());
+                    println!("{table}");
+                } else {
+                    let mut writer = csv::Writer::from_writer(std::io::stdout());
+                    for release in releases {
+                        writer.serialize(release)?;
                     }
-                    Err(e) => return Err(e.into()),
                 }
             }
             Versions {
@@ -332,10 +343,8 @@ fn string_has_whitespace(s: &str) -> bool {
 #[derive(Tabled, serde::Serialize)]
 struct OrgRow {
     #[tabled(rename = "Organization", display_with = "bold")]
-    #[serde(rename = "Organization")]
     organization: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
-    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
 }
 
@@ -353,13 +362,10 @@ impl From<Org> for OrgRow {
 #[derive(Tabled, serde::Serialize)]
 struct VersionRow {
     #[tabled(rename = "Simplified version", display_with = "bold")]
-    #[serde(rename = "Simplified version")]
     simplified_version: semver::Version,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
-    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
     #[tabled(rename = "Full version", display_with = "dimmed")]
-    #[serde(rename = "Full version")]
     full_version: semver::Version,
 }
 
@@ -384,10 +390,8 @@ impl From<(Flake, Version)> for VersionRow {
 #[derive(Tabled, serde::Serialize)]
 struct FlakeRow {
     #[tabled(rename = "Flake", display_with = "bold")]
-    #[serde(rename = "Flake")]
     flake: String,
     #[tabled(rename = "FlakeHub URL", display_with = "dimmed")]
-    #[serde(rename = "FlakeHub URL")]
     flakehub_url: Url,
 }
 
@@ -396,20 +400,6 @@ impl From<Flake> for FlakeRow {
         Self {
             flake: value.name(),
             flakehub_url: value.url(),
-        }
-    }
-}
-
-#[derive(Tabled, serde::Serialize)]
-pub(crate) struct ReleaseRow {
-    #[serde(rename = "Version")]
-    pub(crate) version: String,
-}
-
-impl From<Release> for ReleaseRow {
-    fn from(value: Release) -> Self {
-        Self {
-            version: value.version,
         }
     }
 }

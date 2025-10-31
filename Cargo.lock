@@ -362,6 +362,7 @@ dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "num-traits",
+ "serde",
  "windows-link",
 ]
 
@@ -613,7 +614,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fh"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "axum",
  "axum-test",
@@ -625,7 +626,6 @@ dependencies = [
  "gethostname",
  "handlebars",
  "http 1.3.1",
- "http-body-util",
  "hyper 1.6.0",
  "hyper-util",
  "indicatif",

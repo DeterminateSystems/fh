@@ -1,21 +1,24 @@
 [package]
 name = "fh"
-version = "0.1.26"
+version = "0.1.27"
 authors = ["Determinate Systems <hello@determinate.systems>"]
 edition = "2021"
 license = "Apache 2.0"
 repository = "https://github.com/DeterminateSystems/fh"
 
 [dependencies]
-axum = { version = "0.7.5", features = ["macros"] }
-chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
+axum = { version = "0.7.5", default-features = false, features = ["macros"] }
+chrono = { version = "0.4.31", default-features = false, features = [
+  "clock",
+  "serde",
+] }
 clap = { version = "4.3.2", default-features = false, features = [
   "color",
   "derive",
   "env",
+  "error-context",
   "help",
   "std",
-  "error-context",
 ] }
 clap_complete = { version = "4.4.0", default-features = false }
 color-eyre = { version = "0.6.2", default-features = false, features = [
@@ -25,7 +28,6 @@ csv = { version = "1.3.0", default-features = false }
 gethostname = { version = "0.4.3", default-features = false }
 handlebars = { version = "4.4.0", default-features = false }
 http = { version = "1.0", default-features = false }
-http-body-util = { version = "0.1", default-features = false } # TODO(colemickens): revisit/remove
 hyper = { version = "1.0.0", features = ["full"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
 indicatif = { version = "0.17.6", default-features = false }
@@ -45,7 +47,10 @@ reqwest = { version = "0.11", default-features = false, features = [
 semver = { version = "1.0.18", default-features = false, features = ["serde"] }
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.105", default-features = false }
-tabled = { version = "0.14.0", features = ["color"] }
+tabled = { version = "0.14.0", default-features = false, features = [
+  "color",
+  "derive",
+] }
 tempfile = { version = "3.10.1", default-features = false }
 thiserror = { version = "1.0.44", default-features = false }
 tokio = { version = "1.44.2", default-features = false, features = ["full"] }
@@ -65,5 +70,5 @@ whoami = { version = "1.5.1", default-features = false }
 xdg = { version = "2.5.2", default-features = false }
 
 [dev-dependencies]
-axum = { version = "0.7.5", features = ["macros"] }
+axum = { version = "0.7.5", default-features = false, features = ["macros"] }
 axum-test = { version = "15.3.0", default-features = false }

@@ -9,8 +9,8 @@ jobs:
   rust-fmt-and-clippy:
     runs-on: UbuntuLatest32Cores128G
     permissions:
-      id-token: "write"
-      contents: "read"
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
