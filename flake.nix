@@ -5,7 +5,7 @@
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/=0.1.2375"; # Stick with v1.89 since v1.90 can't seem to compile nixel
+      url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -22,7 +22,7 @@
         };
       });
 
-      forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
     in
     {
       overlays.default = final: prev:
