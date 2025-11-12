@@ -51,7 +51,9 @@
       flake = false;
     };
   };
-  inputs.testing = { url = "github:nixos/nixpkgs/nixos-23.05"; };
+  inputs.testing = {
+    url = "github:nixos/nixpkgs/nixos-23.05";
+  };
   inputs.testing2.url = "github:nixos/nixpkgs/nixos-23.05";
   inputs.darwin.inputs.nixpkgs.follows = "testing2";
 
