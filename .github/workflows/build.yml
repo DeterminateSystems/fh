@@ -19,12 +19,12 @@ jobs:
           - nix-system: "aarch64-darwin"
             runner: "macos-latest-xlarge"
             artifact: "fh-ARM64-macOS"
-          - nix-system: "aarch64-linux"
+          - nix-system: "aarch64-Linux"
             runner: "namespace-profile-default-arm64"
             artifact: "fh-X64-Linux"
-          - nix-system: "x86_64-linux"
-            runner: "ubuntu-22.04"
-            artifact: "fh-ARM64-linux"
+          - nix-system: "x86_64-Linux"
+            runner: "ubuntu-24.04"
+            artifact: "fh-ARM64-Linux"
     steps:
       - name: git checkout
         uses: actions/checkout@v4
