@@ -1,0 +1,25 @@
+name: Download and persist artifact
+
+inputs:
+  arch:
+    type: choice
+    options:
+      - X64
+      - ARM64
+    required: true
+  os:
+    type: choice
+    required: true
+    options:
+      - linux
+      - macOS
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v6
+      with:
+        name: flake-checker-${{ inputs.arch }}-${{ inputs.os }}
+        path: cache-binary-${{ inputs.arch }}-${{ inputs.os }}
+    - shell: bash
+      run: cp ./cache-binary-${{ inputs.arch }}-${{ inputs.os }}/flake-checker ./artifacts/${{ inputs.arch }}-${{ inputs.os }}
