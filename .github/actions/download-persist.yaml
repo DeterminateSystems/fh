@@ -19,7 +19,7 @@ runs:
   steps:
     - uses: actions/download-artifact@v6
       with:
-        name: flake-checker-${{ inputs.arch }}-${{ inputs.os }}
+        name: fh-${{ inputs.arch }}-${{ inputs.os }}
         path: cache-binary-${{ inputs.arch }}-${{ inputs.os }}
     - shell: bash
-      run: cp ./cache-binary-${{ inputs.arch }}-${{ inputs.os }}/flake-checker ./artifacts/${{ inputs.arch }}-${{ inputs.os }}
+      run: cp ./cache-binary-${{ inputs.arch }}-${{ inputs.os }}/fh ./artifacts/${{ inputs.arch }}-${{ inputs.os }}
