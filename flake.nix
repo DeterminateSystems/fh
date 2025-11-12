@@ -19,7 +19,7 @@
         s: f:
         inputs.nixpkgs.lib.genAttrs s (
           system:
-          f rec {
+          f {
             inherit system;
             pkgs = import inputs.nixpkgs {
               inherit system;
@@ -46,7 +46,7 @@
             }
             .${system} or null;
         in
-        rec {
+        {
           fh =
             let
               craneLib = inputs.crane.mkLib prev;
