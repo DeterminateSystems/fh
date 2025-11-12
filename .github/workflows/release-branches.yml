@@ -26,19 +26,19 @@ jobs:
         run: rm -rf ./artifacts && mkdir ./artifacts
 
       # aarch64-darwin
-      - uses: ./.github/actions/download-artifact
+      - uses: ./.github/actions/download-persist
         with:
           arch: ARM64
           os: macOS
 
       # x86_64-linux
-      - uses: ./.github/actions/download-artifact
+      - uses: ./.github/actions/download-persist
         with:
           arch: X64
           os: Linux
 
       # aarch64-linux
-      - uses: ./.github/actions/download-artifact
+      - uses: ./.github/actions/download-persist
         with:
           arch: ARM64
           os: Linux
