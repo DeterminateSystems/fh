@@ -2,7 +2,7 @@
   description = "The official CLI for FlakeHub: search for flakes, and add new inputs to your Nix flake.";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
+    nixpkgs.url = "https://flakehub.com/f/DeterminateSystems/secure/0";
 
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/=0.1.2375"; # Stick with v1.89 since v1.90 can't seem to compile nixel
@@ -12,36 +12,48 @@
     crane.url = "https://flakehub.com/f/ipetkov/crane/0";
   };
 
-  outputs = inputs:
+  outputs =
+    { self, ... }@inputs:
     let
-      forSystems = s: f: inputs.nixpkgs.lib.genAttrs s (system: f rec {
-        inherit system;
-        pkgs = import inputs.nixpkgs {
-          inherit system;
-          overlays = [ inputs.self.overlays.default ];
-        };
-      });
+      forSystems =
+        s: f:
+        inputs.nixpkgs.lib.genAttrs s (
+          system:
+          f {
+            inherit system;
+            pkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = [ self.overlays.default ];
+            };
+          }
+        );
 
-      forAllSystems = forSystems [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forAllSystems = forSystems [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
     in
     {
-      overlays.default = final: prev:
+      overlays.default =
+        final: prev:
         let
           system = prev.stdenv.hostPlatform.system;
           staticTarget =
             {
               "aarch64-linux" = "aarch64-unknown-linux-musl";
               "x86_64-linux" = "x86_64-unknown-linux-musl";
-            }.${system} or null;
+            }
+            .${system} or null;
         in
-        rec {
+        {
           fh =
             let
               craneLib = inputs.crane.mkLib prev;
             in
             craneLib.buildPackage {
               name = "fh";
-              src = inputs.self;
+              src = self;
 
               doCheck = true;
 
@@ -70,46 +82,66 @@
               };
             };
 
-          rustToolchain = with inputs.fenix.packages.${system};
-            combine ([
-              stable.clippy
-              stable.rustc
-              stable.cargo
-              stable.rustfmt
-              stable.rust-src
-            ] ++ inputs.nixpkgs.lib.optionals (staticTarget != null) [
-              targets.${staticTarget}.stable.rust-std
-            ]);
+          rustToolchain =
+            with inputs.fenix.packages.${system};
+            combine (
+              with stable;
+              [
+                clippy
+                rustc
+                cargo
+                rustfmt
+                rust-src
+                rust-analyzer
+              ]
+              ++ inputs.nixpkgs.lib.optionals (staticTarget != null) [
+                targets.${staticTarget}.stable.rust-std
+              ]
+            );
         };
 
-      packages = forAllSystems ({ system, pkgs }: rec {
-        inherit (pkgs) fh;
-        default = pkgs.fh;
-      });
+      packages = forAllSystems (
+        { system, pkgs }:
+        rec {
+          inherit (pkgs) fh;
+          default = pkgs.fh;
+        }
+      );
 
-      devShells = forAllSystems ({ system, pkgs }:
+      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-rfc-style);
+
+      devShells = forAllSystems (
+        { system, pkgs }:
         {
           default = pkgs.mkShell {
-            packages = with pkgs; [
-              rustToolchain
-              bacon
-              cargo-watch
-              rust-analyzer
-              nixpkgs-fmt
+            packages =
+              with pkgs;
+              [
+                rustToolchain
 
-              # For the Rust environment
-              pkg-config
-              clang
-              gcc.cc.lib
-            ]
-            ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
+                (writeShellApplication {
+                  name = "check-nix-fmt";
+                  runtimeInputs = [ nixfmt-rfc-style ];
+                  text = ''
+                    git ls-files '*.nix' | xargs nixfmt --check
+                  '';
+                })
+
+                self.formatter.${system}
+
+                # For the Rust environment
+                pkg-config
+                clang
+                gcc.cc.lib
+              ]
+              ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
 
             env = {
               LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
               NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
             };
           };
-        });
+        }
+      );
     };
 }
-

@@ -954,7 +954,7 @@ mod test {
         let updated_outputs = updated_outputs.unwrap().trim();
         assert_eq!(
             updated_outputs,
-            "outputs = { self, nixpkgs-new, ... } @ tes: { };"
+            "outputs = { self, nixpkgs-new, ... }@tes: { };"
         );
     }
 
@@ -998,7 +998,7 @@ mod test {
         let updated_outputs = updated_outputs.unwrap().trim();
         assert_eq!(
             updated_outputs,
-            "outputs = { self, nixpkgs, ... } @ tes: { };"
+            "outputs = { self, nixpkgs, ... }@tes: { };"
         );
     }
 
