@@ -119,6 +119,14 @@
               [
                 rustToolchain
 
+                (writeShellApplication {
+                  name = "check-nix-fmt";
+                  runtimeInputs = [ nixfmt-rfc-style ];
+                  text = ''
+                    git ls-files '*.nix' | xargs nixfmt --check
+                  '';
+                })
+
                 self.formatter.${system}
 
                 # For the Rust environment

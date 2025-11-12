@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/flake-checker-action@main
+        # reinstate when secure packages doesn't cause failure
         if: false
         with:
           fail-mode: true
@@ -23,8 +24,8 @@ jobs:
 
       - uses: DeterminateSystems/flakehub-cache-action@main
 
-      - name: "Nix formatting"
-        run: git ls-files '*.nix' | nix develop --command xargs nixfmt --check
+      - name: Nix formatting
+        run: nix develop --command check-nix-fmt
 
-      - name: "Nix Flake Check"
+      - name: Nix flake check
         run: nix flake check --print-build-logs --all-systems

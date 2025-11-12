@@ -5,5 +5,5 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, ... } @ tes: { };
+  outputs = { self, ... }@tes: { };
 }
