@@ -9,10 +9,10 @@ inputs:
     required: true
   os:
     type: choice
-    required: true
     options:
       - Linux
       - macOS
+    required: true
 
 runs:
   using: composite
