@@ -33,15 +33,29 @@ impl Handler for Tools {
         }
 
         // SaaS deployment tools
-        if project.has_file("vercel.json") && Prompt::bool("This project appears to deploy to Vercel. Would you like to add the Vercel CLI to your environment?") {
-            flake.dev_shell_packages.push(String::from("nodePackages.vercel"));
+        if project.has_file("vercel.json")
+            && Prompt::bool(
+                "This project appears to deploy to Vercel. Would you like to add the Vercel CLI to your environment?",
+            )
+        {
+            flake
+                .dev_shell_packages
+                .push(String::from("nodePackages.vercel"));
         }
 
-        if project.has_file("netlify.toml") && Prompt::bool("This project appears to deploy to Netlify. Would you like to add the Netlify CLI to your environment?") {
+        if project.has_file("netlify.toml")
+            && Prompt::bool(
+                "This project appears to deploy to Netlify. Would you like to add the Netlify CLI to your environment?",
+            )
+        {
             flake.dev_shell_packages.push(String::from("netlify-cli"));
         }
 
-        if project.has_file("fly.toml") && Prompt::bool("This project appears to deploy to Fly. Would you like to add the Fly CLI to your environment?") {
+        if project.has_file("fly.toml")
+            && Prompt::bool(
+                "This project appears to deploy to Fly. Would you like to add the Fly CLI to your environment?",
+            )
+        {
             flake.dev_shell_packages.push(String::from("flyctl"));
         }
 
@@ -68,7 +82,11 @@ impl Handler for Tools {
         }
 
         // SQL tools
-        if project.has_file("sqlx-data.json") && Prompt::bool("This project appears to use sqlx for Rust. Would you like to add the sqlx CLI to your environment?") {
+        if project.has_file("sqlx-data.json")
+            && Prompt::bool(
+                "This project appears to use sqlx for Rust. Would you like to add the sqlx CLI to your environment?",
+            )
+        {
             flake.dev_shell_packages.push(String::from("sqlx-cli"));
         }
 

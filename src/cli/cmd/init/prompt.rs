@@ -1,8 +1,8 @@
 use std::{fmt::Display, process::exit};
 
 use inquire::{
-    ui::{Color, RenderConfig, StyleSheet, Styled},
     Confirm, MultiSelect, Password, Select, Text,
+    ui::{Color, RenderConfig, StyleSheet, Styled},
 };
 use once_cell::sync::Lazy;
 
@@ -122,7 +122,9 @@ impl Prompt {
     }
 
     pub(crate) fn for_language(lang: &str) -> bool {
-        Self::bool(&format!("This seems to be a {lang} project. Would you like to initialize your flake with some standard dependencies for {lang}?"))
+        Self::bool(&format!(
+            "This seems to be a {lang} project. Would you like to initialize your flake with some standard dependencies for {lang}?"
+        ))
     }
 
     pub(crate) fn for_tool(tool: &str) -> bool {

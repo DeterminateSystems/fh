@@ -11,7 +11,7 @@ use std::{
     fs::write,
     io::IsTerminal,
     path::PathBuf,
-    process::{exit, Command, ExitCode},
+    process::{Command, ExitCode, exit},
 };
 use url::Url;
 
@@ -64,7 +64,11 @@ impl CommandExecute for InitSubcommand {
         } else {
             let mut flake = Flake::default();
 
-            if self.output.exists() && !Prompt::bool("A flake.nix already exists in the current directory. Would you like to overwrite it?") {
+            if self.output.exists()
+                && !Prompt::bool(
+                    "A flake.nix already exists in the current directory. Would you like to overwrite it?",
+                )
+            {
                 println!("Exiting. Let's a build a new flake soon, though :)");
                 return Ok(ExitCode::SUCCESS);
             }
@@ -146,7 +150,9 @@ impl CommandExecute for InitSubcommand {
                 flake.dev_shell_packages.push(String::from("nixpkgs-fmt"));
             }
 
-            flake.doc_comments = Prompt::bool("Would you like to add doc comments to your flake that explain the meaning of different aspects of the flake?");
+            flake.doc_comments = Prompt::bool(
+                "Would you like to add doc comments to your flake that explain the meaning of different aspects of the flake?",
+            );
 
             if Prompt::bool("Would you like to add any environment variables?") {
                 loop {
@@ -167,16 +173,17 @@ impl CommandExecute for InitSubcommand {
                 }
             }
 
-            if Prompt::bool("Would you like to add a shell hook that runs every time you enter your Nix development environment?") {
+            if Prompt::bool(
+                "Would you like to add a shell hook that runs every time you enter your Nix development environment?",
+            ) {
                 loop {
-                    let hook = Prompt::maybe_string(
-                        "Enter the hook here:",
-                    );
+                    let hook = Prompt::maybe_string("Enter the hook here:");
 
                     if let Some(hook) = hook {
                         flake.shell_hook = Some(hook);
                         break;
-                    } else if !Prompt::bool("You didn't enter a hook. Would you like to try again?") {
+                    } else if !Prompt::bool("You didn't enter a hook. Would you like to try again?")
+                    {
                         break;
                     }
                 }
@@ -184,7 +191,9 @@ impl CommandExecute for InitSubcommand {
 
             // If the dev shell will be empty, prompt users to ensure that they still want a flake
             if flake.dev_shell_packages.is_empty() {
-                if !Prompt::bool("The Nix development environment you've chosen doesn't have any packages in it. Would you still like to create a flake?") {
+                if !Prompt::bool(
+                    "The Nix development environment you've chosen doesn't have any packages in it. Would you still like to create a flake?",
+                ) {
                     println!("See you next time!");
                 }
                 return Ok(ExitCode::SUCCESS);
@@ -225,11 +234,15 @@ impl CommandExecute for InitSubcommand {
             }
 
             if !project.has_file(".envrc")
-                && Prompt::bool("Would you like to add a .envrc file so that you can use direnv in this project?")
+                && Prompt::bool(
+                    "Would you like to add a .envrc file so that you can use direnv in this project?",
+                )
             {
                 write(PathBuf::from(".envrc"), String::from("use flake"))?;
 
-                if Prompt::bool("You'll need to run `direnv allow` to activate direnv in this project. Would you like to do that now?") {
+                if Prompt::bool(
+                    "You'll need to run `direnv allow` to activate direnv in this project. Would you like to do that now?",
+                ) {
                     if command_exists("direnv") {
                         Command::new("direnv").arg("allow").output()?;
                     } else {
