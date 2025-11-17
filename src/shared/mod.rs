@@ -1,20 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Context as _;
-use serde::{Deserialize, Serialize};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use url::Url;
-
-#[derive(Deserialize, Serialize)]
-pub struct DaemonInfoReponse {
-    pub supported_features: Vec<String>,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct NetrcTokenAddRequest {
-    pub token: String,
-}
 
 pub async fn update_netrc_file(
     netrc_file_path: &Path,
