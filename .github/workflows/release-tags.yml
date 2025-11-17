@@ -24,21 +24,23 @@ jobs:
       - name: Create the artifacts directory
         run: rm -rf ./artifacts && mkdir ./artifacts
 
-      - uses: actions/download-artifact@v4
+      # aarch64-darwin
+      - uses: ./.github/actions/download-persist
         with:
-          name: fh-X64-macOS
-          path: cache-binary-X64-macOS
+          arch: ARM64
+          os: macOS
 
-      - name: Persist the cache binary
-        run: cp ./cache-binary-X64-macOS/fh ./artifacts/X64-macOS
-
-      - uses: actions/download-artifact@v4
+      # x86_64-linux
+      - uses: ./.github/actions/download-persist
         with:
-          name: fh-X64-Linux
-          path: cache-binary-X64-Linux
+          arch: X64
+          os: Linux
 
-      - name: Persist the cache binary
-        run: cp ./cache-binary-X64-Linux/fh ./artifacts/X64-Linux
+      # aarch64-linux
+      - uses: ./.github/actions/download-persist
+        with:
+          arch: ARM64
+          os: Linux
 
       - uses: DeterminateSystems/push-artifact-ids@main
         with:
@@ -50,8 +52,9 @@ jobs:
 
       - name: Rename binaries for GH release
         run: |
-          mv ./artifacts/{,fh-}X64-macOS
           mv ./artifacts/{,fh-}X64-Linux
+          mv ./artifacts/{,fh-}ARM64-macOS
+          mv ./artifacts/{,fh-}ARM64-Linux
 
       - name: Publish Release to GitHub (Tag)
         uses: softprops/action-gh-release@v1
