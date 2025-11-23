@@ -4,7 +4,7 @@ use std::io::IsTerminal;
 use color_eyre::eyre::WrapErr;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{
-    filter::Directive, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+    EnvFilter, filter::Directive, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]

@@ -16,13 +16,13 @@ use std::{fmt::Display, process::Stdio};
 use color_eyre::eyre::{self, WrapErr};
 use once_cell::sync::Lazy;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
     Client, StatusCode,
+    header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue},
 };
 use serde::{Deserialize, Serialize};
 use tabled::settings::{
-    style::{HorizontalLine, On, VerticalLineIter},
     Style,
+    style::{HorizontalLine, On, VerticalLineIter},
 };
 use tokio::process::Command;
 use url::Url;
@@ -34,7 +34,7 @@ use self::{
     search::SearchResult,
     status::TokenStatus,
 };
-use crate::{flakehub_url, APP_USER_AGENT};
+use crate::{APP_USER_AGENT, flakehub_url};
 
 use super::error::FhError;
 
@@ -198,10 +198,10 @@ impl FlakeHubClient {
         include_token: bool,
     ) -> Result<ResolvedPath, FhError> {
         let FlakeOutputRef {
-            ref org,
-            project: ref flake,
-            ref version_constraint,
-            ref attr_path,
+            org,
+            project: flake,
+            version_constraint,
+            attr_path,
         } = output_ref;
 
         let mut url = flakehub_url!(
@@ -407,15 +407,14 @@ async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
-    if authenticated {
-        if let Ok(token) = tokio::fs::read_to_string(user_auth_token_read_path().await?).await {
-            if !token.is_empty() {
-                headers.insert(
-                    AUTHORIZATION,
-                    HeaderValue::from_str(&format!("Bearer {}", token.trim()))?,
-                );
-            }
-        }
+    if authenticated
+        && let Ok(token) = tokio::fs::read_to_string(user_auth_token_read_path().await?).await
+        && !token.is_empty()
+    {
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", token.trim()))?,
+        );
     }
 
     Ok(reqwest::Client::builder()
@@ -571,7 +570,9 @@ async fn copy_supports_out_link() -> color_eyre::Result<bool> {
     let error_line = match error_line {
         Some(line) => line,
         None => {
-            tracing::warn!("Could not determine if `nix copy` supports --out-link; falling back to manual links");
+            tracing::warn!(
+                "Could not determine if `nix copy` supports --out-link; falling back to manual links"
+            );
             return Ok(false);
         }
     };

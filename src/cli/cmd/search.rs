@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::flakehub_url;
 
-use super::{list::FLAKEHUB_WEB_ROOT, print_json, CommandExecute, FlakeHubClient};
+use super::{CommandExecute, FlakeHubClient, list::FLAKEHUB_WEB_ROOT, print_json};
 
 /// Searches FlakeHub for flakes that match your query.
 #[derive(Debug, Parser)]

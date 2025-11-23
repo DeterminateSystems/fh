@@ -100,11 +100,11 @@ pub(crate) async fn load_flake(
 
     let mut parsed = nixel::parse(contents.clone());
 
-    if let nixel::Expression::Map(map) = *parsed.expression.clone() {
-        if map.bindings.is_empty() {
-            contents = FALLBACK_FLAKE_CONTENTS.to_string();
-            parsed = nixel::parse(FALLBACK_FLAKE_CONTENTS.to_string());
-        }
+    if let nixel::Expression::Map(map) = *parsed.expression.clone()
+        && map.bindings.is_empty()
+    {
+        contents = FALLBACK_FLAKE_CONTENTS.to_string();
+        parsed = nixel::parse(FALLBACK_FLAKE_CONTENTS.to_string());
     }
 
     Ok((contents, parsed))
@@ -130,9 +130,9 @@ async fn infer_flake_input_name_url(
             match (input_name, path_parts.next()) {
                 (Some(input_name), _) => Ok((input_name, parsed_url)),
                 (None, Some(input_name)) => Ok((input_name.to_string(), parsed_url)),
-                (None, _) =>  Err(color_eyre::eyre::eyre!(
+                (None, _) => Err(color_eyre::eyre::eyre!(
                     "cannot infer an input name for {parsed_url}; please specify one with the `--input-name` flag"
-                ))
+                )),
             }
         }
         // A URL like `nixos/nixpkgs` or `nixos/nixpkgs/0.2411`

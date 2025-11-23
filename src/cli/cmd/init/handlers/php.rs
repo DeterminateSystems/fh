@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{version_as_attr_default, Flake, Handler, Input};
+use super::{Flake, Handler, Input, version_as_attr_default};
 
 const PHP_VERSIONS: &[&str] = &["8.3", "8.2", "8.1", "8.0", "7.4", "7.3"];
 

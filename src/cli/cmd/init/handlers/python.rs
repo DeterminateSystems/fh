@@ -1,6 +1,6 @@
 use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
-use super::{version_as_attr_default, Flake, Handler};
+use super::{Flake, Handler, version_as_attr_default};
 
 const PYTHON_VERSIONS: &[&str] = &["3.11", "3.10", "3.9"];
 const PYTHON_TOOLS: &[&str] = &["pip", "virtualenv", "pipenv"];
