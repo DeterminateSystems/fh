@@ -32,14 +32,14 @@ impl CommandExecute for TokenSubcommand {
 
 #[derive(Debug, Subcommand)]
 enum TokenSubcommands {
-    /// Generate a device token
+    /// Generate a coarse-grained device token for a specific organization
     Device {
         /// The FlakeHub organization for which you want to generate the token
         #[arg(short, long)]
         org: String,
 
         /// A description for the token
-        #[arg(long)]
+        #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
         description: String,
     },
 }

@@ -301,9 +301,12 @@ impl FlakeHubClient {
 
         #[derive(Deserialize)]
         struct TokenResponse {
+            token: String,
+
+            // We don't need this yet but we may eventually
+            #[allow(dead_code)]
             #[serde(skip_serializing)]
             actor_id: String,
-            token: String,
         }
 
         let url = flakehub_url!(api_addr, "orgs", org, "device_token");
