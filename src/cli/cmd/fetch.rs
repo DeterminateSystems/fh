@@ -1,8 +1,8 @@
 use std::process::ExitCode;
 
 use clap::Parser;
-use color_eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre;
 
 use crate::cli::cmd::copy_closure_with_gc_root;
 use crate::shared::create_temp_netrc;
