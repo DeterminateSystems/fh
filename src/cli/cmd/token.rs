@@ -2,18 +2,31 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use crate::cli::cmd::CommandExecute;
+use crate::cli::cmd::{CommandExecute, FlakeHubClient};
 
 /// Generate a FlakeHub authentication token
 #[derive(Debug, Parser)]
 pub(crate) struct TokenSubcommand {
     #[command(subcommand)]
     cmd: TokenSubcommands,
+
+    #[clap(from_global)]
+    api_addr: url::Url,
 }
 
 impl CommandExecute for TokenSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        Ok(ExitCode::SUCCESS)
+        use TokenSubcommands::*;
+
+        match self.cmd {
+            Device { org, description } => {
+                let token =
+                    FlakeHubClient::create_token(self.api_addr.as_ref(), &org, &description)
+                        .await?;
+                println!("{token}");
+                Ok(ExitCode::SUCCESS)
+            }
+        }
     }
 }
 
@@ -21,18 +34,12 @@ impl CommandExecute for TokenSubcommand {
 enum TokenSubcommands {
     /// Generate a device token
     Device {
+        /// The FlakeHub organization for which you want to generate the token
+        #[arg(short, long)]
+        org: String,
+
         /// A description for the token
         #[arg(long)]
         description: String,
     },
-}
-
-impl CommandExecute for TokenSubcommands {
-    async fn execute(self) -> color_eyre::Result<ExitCode> {
-        match self {
-            TokenSubcommands::Device { description: _ } => {}
-        }
-
-        Ok(ExitCode::SUCCESS)
-    }
 }

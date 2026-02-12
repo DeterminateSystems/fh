@@ -288,6 +288,32 @@ impl FlakeHubClient {
 
         Ok(token_status)
     }
+
+    async fn create_token(
+        api_addr: &str,
+        org: &str,
+        description: &str,
+    ) -> color_eyre::Result<String> {
+        #[derive(Serialize)]
+        struct TokenRequest {
+            description: String,
+        }
+
+        #[derive(Deserialize)]
+        struct TokenResponse {
+            #[serde(skip_serializing)]
+            actor_id: String,
+            token: String,
+        }
+
+        let url = flakehub_url!(api_addr, "orgs", org, "device_token");
+        let request = TokenRequest {
+            description: description.to_string(),
+        };
+        let TokenResponse { token, .. } = post(url, request).await?;
+
+        Ok(token)
+    }
 }
 
 async fn get<T: for<'de> Deserialize<'de>>(
@@ -313,6 +339,20 @@ async fn get<T: for<'de> Deserialize<'de>>(
         vec
     };
     Ok(results)
+}
+
+async fn post<In: Serialize, Out: for<'de> Deserialize<'de>>(
+    url: Url,
+    body: In,
+) -> Result<Out, FhError> {
+    let client = make_base_client(true).await?;
+    Ok(client
+        .post(url)
+        .json(&body)
+        .send()
+        .await?
+        .json::<Out>()
+        .await?)
 }
 
 pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
