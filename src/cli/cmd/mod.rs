@@ -10,6 +10,7 @@ pub(crate) mod login;
 pub(crate) mod resolve;
 pub(crate) mod search;
 pub(crate) mod status;
+pub(crate) mod token;
 
 use std::{fmt::Display, process::Stdio};
 
@@ -77,6 +78,7 @@ pub(crate) enum FhSubcommands {
     Resolve(resolve::ResolveSubcommand),
     Search(search::SearchSubcommand),
     Status(status::StatusSubcommand),
+    Token(token::TokenSubcommand),
 }
 
 #[derive(Debug, Deserialize)]

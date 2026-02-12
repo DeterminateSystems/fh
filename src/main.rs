@@ -47,5 +47,6 @@ async fn main() -> color_eyre::Result<std::process::ExitCode> {
         FhSubcommands::Resolve(resolve) => resolve.execute().await,
         FhSubcommands::Search(search) => search.execute().await,
         FhSubcommands::Status(status) => status.execute().await,
+        FhSubcommands::Token(token) => token.execute().await,
     }
 }
