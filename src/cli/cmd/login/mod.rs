@@ -376,10 +376,10 @@ pub(crate) async fn user_auth_token_read_path() -> Result<PathBuf, FhError> {
     let write_path = user_auth_token_write_path();
 
     // If the user's personal token file exists, we use that first.
-    if let Ok(ref path) = write_path {
-        if tokio::fs::metadata(&path).await.is_ok() {
-            return Ok(path.to_path_buf());
-        }
+    if let Ok(ref path) = write_path
+        && tokio::fs::metadata(&path).await.is_ok()
+    {
+        return Ok(path.to_path_buf());
     }
 
     // Either XDG failed to give us a path, or the user's token doesn't exist, so fall back
