@@ -20,9 +20,12 @@ impl CommandExecute for TokenSubcommand {
 
         match self.cmd {
             Device { org, description } => {
-                let token =
-                    FlakeHubClient::create_token(self.api_addr.as_ref(), &org, &description)
-                        .await?;
+                let token = FlakeHubClient::generate_device_token(
+                    self.api_addr.as_ref(),
+                    &org,
+                    &description,
+                )
+                .await?;
                 println!("{token}");
                 Ok(ExitCode::SUCCESS)
             }

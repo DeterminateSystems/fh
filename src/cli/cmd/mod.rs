@@ -289,7 +289,7 @@ impl FlakeHubClient {
         Ok(token_status)
     }
 
-    async fn create_token(
+    async fn generate_device_token(
         api_addr: &str,
         org: &str,
         description: &str,
