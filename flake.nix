@@ -136,6 +136,7 @@
 
             env = {
               LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+              LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.buildPackages.libclang.lib}/lib";
               SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             };
           };
