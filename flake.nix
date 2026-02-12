@@ -136,8 +136,10 @@
 
             env = {
               LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-              LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.buildPackages.libclang.lib}/lib";
               SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+
+              # Required for `cargo test` and `cargo clippy` on Linux
+              LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.buildPackages.libclang.lib}/lib:${pkgs.gcc.cc.lib}/lib";
             };
           };
         }
