@@ -667,7 +667,7 @@ mod tests {
     fn flakehub_url_macro() {
         let root = "https://flakehub.com";
 
-        for (provided, expected) in vec![
+        for (provided, expected) in [
             (
                 flakehub_url!(root, "flake", "DeterminateSystems", "fh"),
                 "https://flakehub.com/flake/DeterminateSystems/fh",
