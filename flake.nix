@@ -108,7 +108,7 @@
         }
       );
 
-      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt);
+      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-rfc-style);
 
       devShells = forAllSystems (
         { system, pkgs }:
