@@ -436,17 +436,27 @@ impl TryFrom<String> for FlakeOutputRef {
     }
 }
 
+// When testing, we need to not check for auth info in $XDG_CONFIG_HOME/flakehub/auth, as
+// that causes the Nix sandbox build to fail
 #[cfg(test)]
-async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
+async fn make_base_client(_authenticated: bool) -> Result<Client, FhError> {
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
 
-    // When testing, we need to not check for auth info in $XDG_CONFIG_HOME/flakehub/auth, as
-    // that causes the Nix sandbox build to fail
-    #[cfg(not(test))]
-    if authenticated {
-        use self::login::user_auth_token_read_path;
+    Ok(reqwest::Client::builder()
+        .user_agent(APP_USER_AGENT)
+        .default_headers(headers)
+        .build()?)
+}
 
+#[cfg(not(test))]
+async fn make_base_client(authenticated: bool) -> Result<Client, FhError> {
+    use self::login::user_auth_token_read_path;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+
+    if authenticated {
         if let Ok(token) = tokio::fs::read_to_string(user_auth_token_read_path().await?).await {
             if !token.is_empty() {
                 headers.insert(
