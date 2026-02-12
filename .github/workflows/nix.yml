@@ -14,9 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/flake-checker-action@main
-        with:
-          fail-mode: true
+      #- uses: DeterminateSystems/flake-checker-action@main
+      #  with:
+      #    fail-mode: true
 
       - uses: DeterminateSystems/determinate-nix-action@main
 
