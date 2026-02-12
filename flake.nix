@@ -75,7 +75,7 @@
               '';
 
               env = {
-                LIBCLANG_PATH = "${final.libclang.lib}/lib";
+                LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
                 SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
               };
             };
@@ -135,7 +135,7 @@
               ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
 
             env = {
-              LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
+              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
               SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             };
           };
