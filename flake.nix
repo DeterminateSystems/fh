@@ -74,11 +74,9 @@
                   --fish <("$out/bin/fh" completion fish)
               '';
 
-              LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
-
               env = {
+                LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
                 SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
-                NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
               };
             };
 
@@ -138,7 +136,7 @@
 
             env = {
               LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
-              NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
+              SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             };
           };
         }
