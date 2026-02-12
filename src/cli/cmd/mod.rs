@@ -349,13 +349,17 @@ async fn post<In: Serialize, Out: for<'de> Deserialize<'de>>(
     body: In,
 ) -> Result<Out, FhError> {
     let client = make_base_client(true).await?;
-    Ok(client
-        .post(url)
-        .json(&body)
-        .send()
-        .await?
-        .json::<Out>()
-        .await?)
+
+    let res = client.post(url).json(&body).send().await?;
+
+    if let Err(e) = res.error_for_status_ref() {
+        let err_text = res.text().await?;
+        return Err(e).wrap_err(err_text)?;
+    };
+
+    let res = res.json::<Out>().await?;
+
+    Ok(res)
 }
 
 pub(crate) fn print_json<T: Serialize>(value: T) -> Result<(), FhError> {
