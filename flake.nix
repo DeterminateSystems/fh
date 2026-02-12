@@ -121,7 +121,7 @@
 
                 (writeShellApplication {
                   name = "check-nix-fmt";
-                  runtimeInputs = [ nixfmt-rfc-style ];
+                  runtimeInputs = [ nixfmt ];
                   text = ''
                     git ls-files '*.nix' | xargs nixfmt --check
                   '';
