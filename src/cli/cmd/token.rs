@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 
 use crate::cli::cmd::{CommandExecute, FlakeHubClient};
 
-/// Generate a FlakeHub authentication token
+/// Manage FlakeHub authentication tokens
 #[derive(Debug, Parser)]
 pub(crate) struct TokenSubcommand {
     #[command(subcommand)]
