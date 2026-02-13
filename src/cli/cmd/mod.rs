@@ -27,6 +27,7 @@ use tabled::settings::{
 };
 use tokio::process::Command;
 use url::Url;
+use uuid::Uuid;
 
 use self::{
     init::command_exists,
@@ -313,9 +314,24 @@ impl FlakeHubClient {
         let request = TokenRequest {
             description: description.to_string(),
         };
-        let TokenResponse { token, .. } = post(url, request).await?;
+        let TokenResponse { token, .. } = post_json(url, request).await?;
 
         Ok(token)
+    }
+
+    async fn revoke_device_token(api_addr: &str, org: &str, id: &Uuid) -> color_eyre::Result<()> {
+        let url = flakehub_url!(
+            api_addr,
+            "orgs",
+            org,
+            "device_token",
+            &id.to_string(),
+            "revoke"
+        );
+
+        post(url).await?;
+
+        Ok(())
     }
 }
 
@@ -344,7 +360,20 @@ async fn get<T: for<'de> Deserialize<'de>>(
     Ok(results)
 }
 
-async fn post<In: Serialize, Out: for<'de> Deserialize<'de>>(
+async fn post(url: Url) -> Result<(), FhError> {
+    let client = make_base_client(true).await?;
+
+    let res = client.post(url).send().await?;
+
+    if let Err(e) = res.error_for_status_ref() {
+        let err_text = res.text().await?;
+        return Err(e).wrap_err(err_text)?;
+    };
+
+    Ok(())
+}
+
+async fn post_json<In: Serialize, Out: for<'de> Deserialize<'de>>(
     url: Url,
     body: In,
 ) -> Result<Out, FhError> {

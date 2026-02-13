@@ -1,6 +1,7 @@
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
+use uuid::Uuid;
 
 use crate::cli::cmd::{CommandExecute, FlakeHubClient};
 
@@ -16,10 +17,8 @@ pub(crate) struct TokenSubcommand {
 
 impl CommandExecute for TokenSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
-        use TokenSubcommands::*;
-
         match self.cmd {
-            Device { cmd } => match cmd {
+            TokenSubcommands::Device { cmd } => match cmd {
                 DeviceSubcommands::Create { org, description } => {
                     let token = FlakeHubClient::generate_device_token(
                         self.api_addr.as_ref(),
@@ -28,10 +27,17 @@ impl CommandExecute for TokenSubcommand {
                     )
                     .await?;
                     println!("{token}");
-                    Ok(ExitCode::SUCCESS)
+                }
+
+                DeviceSubcommands::Revoke { org, token_id } => {
+                    FlakeHubClient::revoke_device_token(self.api_addr.as_ref(), &org, &token_id)
+                        .await?;
+                    println!("Token for {org} with ID {token_id} successfully revoked");
                 }
             },
         }
+
+        Ok(ExitCode::SUCCESS)
     }
 }
 
@@ -46,9 +52,9 @@ enum TokenSubcommands {
 
 #[derive(Debug, Subcommand)]
 enum DeviceSubcommands {
-    /// Generate a device token for your org.
+    /// Generate a device token for your org
     #[command(
-        long_about = "Generate a device token for your FlakeHub organization. This operation is restricted to admins of the organization. Only coarse-grained tokens are currently supported."
+        long_about = "Generate a device token for your FlakeHub organization. This operation is restricted to admins of the org. Only coarse-grained tokens are currently supported."
     )]
     Create {
         /// The FlakeHub organization for which you want to generate the token
@@ -59,4 +65,22 @@ enum DeviceSubcommands {
         #[arg(short, long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
         description: String,
     },
+
+    /// Revoke a device token for your org
+    #[command(
+        long_about = "Revoke a device token associated with your FlakeHub organization. This operation is restricted to admins of the org."
+    )]
+    Revoke {
+        /// The FlakeHub organization for which the token was generated
+        #[arg(short, long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
+        org: String,
+
+        /// The token's unique ID
+        #[arg(short = 'i', long, value_parser = parse_uuid)]
+        token_id: Uuid,
+    },
+}
+
+fn parse_uuid(s: &str) -> Result<Uuid, String> {
+    Uuid::parse_str(s).map_err(|e| format!("failed to parse UUID: {}", e.to_string()))
 }
