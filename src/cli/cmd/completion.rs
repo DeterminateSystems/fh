@@ -2,7 +2,7 @@ use std::{io::stdout, process::ExitCode};
 
 use crate::cli::Cli;
 use clap::{CommandFactory, Parser};
-use clap_complete::{generate, Shell};
+use clap_complete::{Shell, generate};
 
 use super::CommandExecute;
 

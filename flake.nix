@@ -5,7 +5,7 @@
     nixpkgs.url = "https://flakehub.com/f/DeterminateSystems/secure/0";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/=0.1.2375"; # Stick with v1.89 since v1.90 can't seem to compile nixel
+      url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -135,8 +135,11 @@
               ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
 
             env = {
-              LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
+              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
               SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+
+              # Required for `cargo test` and `cargo clippy` on Linux
+              LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.buildPackages.libclang.lib}/lib:${pkgs.gcc.cc.lib}/lib";
             };
           };
         }

@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
-use super::{parse_flake_output_ref, print_json, CommandExecute, FlakeHubClient};
+use super::{CommandExecute, FlakeHubClient, parse_flake_output_ref, print_json};
 
 /// Resolves a FlakeHub flake reference into a store path.
 #[derive(Debug, Parser)]

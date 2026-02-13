@@ -11,7 +11,7 @@ use url::Url;
 use super::print_json;
 use crate::{
     cli::{
-        cmd::{FlakeHubClient, DEFAULT_STYLE},
+        cmd::{DEFAULT_STYLE, FlakeHubClient},
         error::FhError,
     },
     flakehub_url,
@@ -67,7 +67,7 @@ impl TryFrom<String> for Flake {
             _ => {
                 return Err(FhError::FlakeParse(format!(
                     "flake ref {flake_ref} invalid; must be of the form {{org}}/{{project}}"
-                )))
+                )));
             }
         };
         Ok(Self {

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 const NEWLINE: &str = "\n";
 
@@ -285,7 +285,7 @@ impl std::str::FromStr for InputsInsertionLocation {
             _ => {
                 return Err(color_eyre::eyre::eyre!(
                     "only `top` and `bottom` are valid insertion locations"
-                ))
+                ));
             }
         })
     }
@@ -474,7 +474,9 @@ impl AttrType {
             .iter()
             .any(|arg| &*arg.identifier == flake_input_name)
         {
-            tracing::debug!("input {flake_input_name} was already in the `outputs` function args, not adding it again");
+            tracing::debug!(
+                "input {flake_input_name} was already in the `outputs` function args, not adding it again"
+            );
             return Ok(new_flake_contents);
         }
 
@@ -505,8 +507,8 @@ impl AttrType {
                     new_flake_contents.insert_str(start, &span_text);
                 } else {
                     return Err(color_eyre::eyre::eyre!(
-                    "could not find `{final_arg_identifier}` in the outputs function, but it existed when parsing it"
-                ))?;
+                        "could not find `{final_arg_identifier}` in the outputs function, but it existed when parsing it"
+                    ))?;
                 }
             }
             None => {
@@ -521,12 +523,14 @@ impl AttrType {
                         new_flake_contents.insert_str(start, &span_text);
                     } else {
                         return Err(color_eyre::eyre::eyre!(
-                        "could not find the ellipsis (`...`) in the outputs function, but it existed when parsing it"
-                    ))?;
+                            "could not find the ellipsis (`...`) in the outputs function, but it existed when parsing it"
+                        ))?;
                     }
                 } else {
                     // unfortunately this is legal, but I don't wanna support it
-                    return Err(color_eyre::eyre::eyre!("the `outputs` function doesn't take any arguments, and fh add doesn't support that yet. Replace it with: outputs = {{ ... }}: and try again."))?;
+                    return Err(color_eyre::eyre::eyre!(
+                        "the `outputs` function doesn't take any arguments, and fh add doesn't support that yet. Replace it with: outputs = {{ ... }}: and try again."
+                    ))?;
                 }
             }
         }
@@ -1058,6 +1062,9 @@ mod test {
             })
             .unwrap();
 
-        assert!(wezterm_line_idx < nixpkgs_input_idx, "when inserting at the bottom, the new nixpkgs input should have come after the wezterm input");
+        assert!(
+            wezterm_line_idx < nixpkgs_input_idx,
+            "when inserting at the bottom, the new nixpkgs input should have come after the wezterm input"
+        );
     }
 }

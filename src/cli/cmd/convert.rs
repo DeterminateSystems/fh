@@ -5,9 +5,9 @@ use std::process::{ExitCode, Stdio};
 use clap::Parser;
 use color_eyre::eyre::Context;
 use once_cell::sync::Lazy;
-use tracing::{span, Level};
+use tracing::{Level, span};
 
-use super::{nix_command, CommandExecute};
+use super::{CommandExecute, nix_command};
 
 // match {nixos,nixpkgs,release}-YY.MM branches
 static RELEASE_BRANCH_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
@@ -214,34 +214,34 @@ impl ConvertSubcommand {
         }
 
         // - has no nixpkgs in inputs but does have it in flake.lock, add it to flakehub.com/f/nixos/nixpkgs/0.1.0.tar.gz
-        if let Some(outputs_attr) = outputs_attr {
-            if let nixel::Expression::Function(f) = &*outputs_attr.to {
-                match &f.head {
-                    // outputs = { nixpkgs, ... } @ inputs: { }
-                    nixel::FunctionHead::Destructured(head)
-                        if head
-                            .arguments
-                            .iter()
-                            .any(|arg| *arg.identifier == input_name) =>
-                    {
-                        let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
-                            &self.api_addr,
-                            "nixos",
-                            &input_name,
-                            None,
-                        )
-                        .await?;
+        if let Some(outputs_attr) = outputs_attr
+            && let nixel::Expression::Function(f) = &*outputs_attr.to
+        {
+            match &f.head {
+                // outputs = { nixpkgs, ... } @ inputs: { }
+                nixel::FunctionHead::Destructured(head)
+                    if head
+                        .arguments
+                        .iter()
+                        .any(|arg| *arg.identifier == input_name) =>
+                {
+                    let (_, flakehub_url) = crate::cli::cmd::add::get_flakehub_project_and_url(
+                        &self.api_addr,
+                        "nixos",
+                        &input_name,
+                        None,
+                    )
+                    .await?;
 
-                        new_flake_contents = crate::cli::cmd::add::flake::insert_flake_input(
-                            expr,
-                            input_name.clone(),
-                            flakehub_url.clone(),
-                            new_flake_contents,
-                            crate::cli::cmd::add::flake::InputsInsertionLocation::Top,
-                        )?;
-                    }
-                    _ => {}
+                    new_flake_contents = crate::cli::cmd::add::flake::insert_flake_input(
+                        expr,
+                        input_name.clone(),
+                        flakehub_url.clone(),
+                        new_flake_contents,
+                        crate::cli::cmd::add::flake::InputsInsertionLocation::Top,
+                    )?;
                 }
+                _ => {}
             }
         }
 
@@ -806,8 +806,10 @@ mod test {
             .await
             .unwrap();
 
-        assert!(new_flake_contents
-            .contains(r#"nixpkgs.url = "http://flakehub-localhost/f/NixOS/nixpkgs/*.tar.gz";"#));
+        assert!(
+            new_flake_contents
+                .contains(r#"nixpkgs.url = "http://flakehub-localhost/f/NixOS/nixpkgs/*.tar.gz";"#)
+        );
     }
 
     #[tokio::test]
