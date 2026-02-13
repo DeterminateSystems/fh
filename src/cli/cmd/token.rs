@@ -82,5 +82,5 @@ enum DeviceSubcommands {
 }
 
 fn parse_uuid(s: &str) -> Result<Uuid, String> {
-    Uuid::parse_str(s).map_err(|e| format!("failed to parse UUID: {}", e.to_string()))
+    Uuid::parse_str(s).map_err(|e| format!("failed to parse UUID: {e}"))
 }
