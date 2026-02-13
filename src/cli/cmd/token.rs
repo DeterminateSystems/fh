@@ -19,30 +19,44 @@ impl CommandExecute for TokenSubcommand {
         use TokenSubcommands::*;
 
         match self.cmd {
-            Device { org, description } => {
-                let token = FlakeHubClient::generate_device_token(
-                    self.api_addr.as_ref(),
-                    &org,
-                    &description,
-                )
-                .await?;
-                println!("{token}");
-                Ok(ExitCode::SUCCESS)
-            }
+            Device { cmd } => match cmd {
+                DeviceSubcommands::Create { org, description } => {
+                    let token = FlakeHubClient::generate_device_token(
+                        self.api_addr.as_ref(),
+                        &org,
+                        &description,
+                    )
+                    .await?;
+                    println!("{token}");
+                    Ok(ExitCode::SUCCESS)
+                }
+            },
         }
     }
 }
 
 #[derive(Debug, Subcommand)]
 enum TokenSubcommands {
-    /// Generate a coarse-grained device token for a specific organization
+    /// Manage FlakeHub device tokens
     Device {
+        #[command(subcommand)]
+        cmd: DeviceSubcommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum DeviceSubcommands {
+    /// Generate a device token for your org.
+    #[command(
+        long_about = "Generate a device token for your FlakeHub organization. This operation is restricted to admins of the organization. Only coarse-grained tokens are currently supported."
+    )]
+    Create {
         /// The FlakeHub organization for which you want to generate the token
-        #[arg(short, long)]
+        #[arg(short, long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
         org: String,
 
-        /// A description for the token
-        #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
+        /// A description for the token (must be a non-empty string)
+        #[arg(short, long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
         description: String,
     },
 }
