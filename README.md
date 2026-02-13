@@ -82,7 +82,7 @@ fh status
 
 If you are currently logged in, the command returns information like this:
 
-```
+```shell
 Logged in: true
 GitHub user name: my-github-username
 Token expires at: 2025-01-22 14:41:48 -08:00
@@ -443,6 +443,30 @@ fh list label python
 +-------------------------------------------------------------------------------+
 ```
 
+## Managing device tokens
+
+You can manage FlakeHub device tokens using the `fh token device` command.
+
+### Generating device tokens
+
+You can generate a device token for your organization using the `fh token device create` command:
+
+```shell
+fh token create --org <org> --description "<description>"
+```
+
+You must be an admin of the organization to generate tokens and the description must be a non-empty string.
+
+### Revoking device tokens
+
+You can revoke a device token for your organization using the `fh token device revoke` command:
+
+```shell
+fh token create --org <org> --token-id <uuid>
+```
+
+You must be an admin of the organization to revoke tokens.
+
 ## Shell completion
 
 You can generate shell completion scripts using the `fh completion` command:
@@ -477,7 +501,7 @@ You can apply the `--json` flag to each list command to produce JSON output.
 
 ## Support
 
-For support, email support@flakehub.com or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
+For support, email <support@flakehub.com> or [join our Discord](https://discord.gg/invite/a4EcQQ8STr).
 
 [bash]: https://gnu.org/software/bash
 [cache]: https://flakehub.com/cache
