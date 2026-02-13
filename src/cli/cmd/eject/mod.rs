@@ -4,7 +4,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use once_cell::sync::Lazy;
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 use super::{CommandExecute, FlakeHubClient, ProjectMetadata};
 
@@ -220,7 +220,8 @@ async fn eject_flakehub_input_to_github(
 
 fn separate_year_from_month_in_version(version: &str) -> Option<String> {
     let release_version_captures = RELEASE_VERSION_REGEX.captures(version);
-    let version = match release_version_captures {
+
+    match release_version_captures {
         Some(captures) => {
             let year = captures.name("year").unwrap().as_str();
             let month = captures.name("month").unwrap().as_str();
@@ -228,9 +229,7 @@ fn separate_year_from_month_in_version(version: &str) -> Option<String> {
             Some(format!("{year}.{month}"))
         }
         _ => None,
-    };
-
-    version
+    }
 }
 
 #[cfg(test)]

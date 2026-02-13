@@ -7,8 +7,8 @@ use std::io::IsTerminal;
 use clap::Parser;
 
 use crate::cli::{
-    cmd::{CommandExecute, FhSubcommands},
     Cli,
+    cmd::{CommandExecute, FhSubcommands},
 };
 
 const DETERMINATE_STATE_DIR: &str = "/nix/var/determinate";

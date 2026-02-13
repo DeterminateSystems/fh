@@ -10,7 +10,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Context;
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 use crate::{
     cli::{

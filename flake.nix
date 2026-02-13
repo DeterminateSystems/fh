@@ -5,7 +5,7 @@
     nixpkgs.url = "https://flakehub.com/f/DeterminateSystems/secure/0";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/=0.1.2375"; # Stick with v1.89 since v1.90 can't seem to compile nixel
+      url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -74,11 +74,9 @@
                   --fish <("$out/bin/fh" completion fish)
               '';
 
-              LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
-
               env = {
+                LIBCLANG_PATH = "${final.buildPackages.libclang.lib}/lib";
                 SSL_CERT_FILE = "${final.cacert}/etc/ssl/certs/ca-bundle.crt";
-                NIX_CFLAGS_COMPILE = final.lib.optionalString final.stdenv.isDarwin "-I${final.libcxx.dev}/include/c++/v1";
               };
             };
 
@@ -108,7 +106,7 @@
         }
       );
 
-      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-rfc-style);
+      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt);
 
       devShells = forAllSystems (
         { system, pkgs }:
@@ -121,7 +119,7 @@
 
                 (writeShellApplication {
                   name = "check-nix-fmt";
-                  runtimeInputs = [ nixfmt-rfc-style ];
+                  runtimeInputs = [ nixfmt ];
                   text = ''
                     git ls-files '*.nix' | xargs nixfmt --check
                   '';
@@ -137,8 +135,11 @@
               ++ lib.optionals (stdenv.isDarwin) [ libiconv ];
 
             env = {
-              LIBCLANG_PATH = "${pkgs.buildPackages.libclang.lib}/lib";
-              NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.isDarwin "-I${pkgs.libcxx.dev}/include/c++/v1";
+              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+              SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+
+              # Required for `cargo test` and `cargo clippy` on Linux
+              LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.buildPackages.libclang.lib}/lib:${pkgs.gcc.cc.lib}/lib";
             };
           };
         }
