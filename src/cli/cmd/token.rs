@@ -66,7 +66,7 @@ enum DeviceSubcommands {
         description: String,
     },
 
-    /// Revoke a device token for your org
+    /// Revoke a device token associated with your org
     #[command(
         long_about = "Revoke a device token associated with your FlakeHub organization. This operation is restricted to admins of the org."
     )]
