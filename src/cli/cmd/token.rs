@@ -19,6 +19,13 @@ impl CommandExecute for TokenSubcommand {
     async fn execute(self) -> color_eyre::Result<ExitCode> {
         match self.cmd {
             TokenSubcommands::Device { cmd } => match cmd {
+                DeviceSubcommands::List { org } => {
+                    let tokens =
+                        FlakeHubClient::list_device_tokens(self.api_addr.as_ref(), &org).await?;
+                    for token in tokens {
+                        println!("{token}");
+                    }
+                }
                 DeviceSubcommands::Create { org, description } => {
                     let token = FlakeHubClient::generate_device_token(
                         self.api_addr.as_ref(),
@@ -52,6 +59,16 @@ enum TokenSubcommands {
 
 #[derive(Debug, Subcommand)]
 enum DeviceSubcommands {
+    /// List available device tokens for your org
+    #[command(
+        long_about = "List all device tokens associated with your FlakeHub organization. This operation is restricted to admins of the org. Only cross-grained tokens are currently supported."
+    )]
+    List {
+        /// The FlakeHub organization for which you want to list tokens
+        #[arg(short, long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
+        org: String,
+    },
+
     /// Generate a device token for your org
     #[command(
         long_about = "Generate a device token for your FlakeHub organization. This operation is restricted to admins of the org. Only coarse-grained tokens are currently supported."

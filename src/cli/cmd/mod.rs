@@ -290,6 +290,21 @@ impl FlakeHubClient {
         Ok(token_status)
     }
 
+    async fn list_device_tokens(api_addr: &str, org: &str) -> color_eyre::Result<Vec<Uuid>> {
+        #[derive(Deserialize)]
+        struct TokenResponse {
+            uuid_v7: Uuid,
+        }
+
+        let url = flakehub_url!(api_addr, "orgs", org, "device_tokens");
+
+        Ok(get::<TokenResponse>(url, true, None, None)
+            .await?
+            .iter()
+            .map(|r| r.uuid_v7)
+            .collect())
+    }
+
     async fn generate_device_token(
         api_addr: &str,
         org: &str,
