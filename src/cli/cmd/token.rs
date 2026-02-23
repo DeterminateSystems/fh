@@ -61,7 +61,7 @@ enum TokenSubcommands {
 enum DeviceSubcommands {
     /// List available device tokens for your org
     #[command(
-        long_about = "List all device tokens associated with your FlakeHub organization. This operation is restricted to admins of the org. Only cross-grained tokens are currently supported."
+        long_about = "List all device tokens associated with your FlakeHub organization. This operation is restricted to admins of the org. Only coarse-grained tokens are currently supported."
     )]
     List {
         /// The FlakeHub organization for which you want to list tokens
