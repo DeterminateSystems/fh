@@ -2,7 +2,7 @@ use crate::cli::cmd::init::{project::Project, prompt::Prompt};
 
 use super::{Flake, Handler, version_as_attr};
 
-const RUBY_VERSIONS: &[&str] = &["3.2", "3.1"];
+const RUBY_VERSIONS: &[&str] = &["4.0", "3.2", "3.1"];
 
 pub(crate) struct Ruby;
 
