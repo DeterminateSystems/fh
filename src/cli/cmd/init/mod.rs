@@ -38,8 +38,8 @@ use self::{
 use super::CommandExecute;
 
 // Nixpkgs references
-const NIXPKGS_LATEST: &str = "latest stable (currently 24.11)";
-const NIXPKGS_24_11: &str = "24.11";
+const NIXPKGS_LATEST: &str = "latest stable (currently 25.11)";
+const NIXPKGS_25_11: &str = "25.11";
 const NIXPKGS_UNSTABLE: &str = "unstable";
 const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
@@ -88,7 +88,7 @@ impl CommandExecute for InitSubcommand {
                 "Which Nixpkgs version would you like to include?",
                 &[
                     NIXPKGS_LATEST,
-                    NIXPKGS_24_11,
+                    NIXPKGS_25_11,
                     NIXPKGS_UNSTABLE,
                     NIXPKGS_SPECIFIC,
                 ],
