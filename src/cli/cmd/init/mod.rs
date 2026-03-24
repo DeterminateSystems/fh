@@ -38,8 +38,7 @@ use self::{
 use super::CommandExecute;
 
 // Nixpkgs references
-const NIXPKGS_LATEST: &str = "latest stable (currently 24.11)";
-const NIXPKGS_24_11: &str = "24.11";
+const NIXPKGS_STABLE: &str = "stable";
 const NIXPKGS_UNSTABLE: &str = "unstable";
 const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
@@ -87,8 +86,7 @@ impl CommandExecute for InitSubcommand {
             let nixpkgs_version = match Prompt::select(
                 "Which Nixpkgs version would you like to include?",
                 &[
-                    NIXPKGS_LATEST,
-                    NIXPKGS_24_11,
+                    NIXPKGS_STABLE,
                     NIXPKGS_UNSTABLE,
                     NIXPKGS_SPECIFIC,
                 ],
@@ -96,12 +94,9 @@ impl CommandExecute for InitSubcommand {
             .as_str()
             {
                 // MAYBE: find an enum-based approach to this
-                NIXPKGS_LATEST => flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "*"),
-                NIXPKGS_24_11 => {
-                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.2411.*")
-                }
+                NIXPKGS_STABLE => flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0"),
                 NIXPKGS_UNSTABLE => {
-                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.1.*")
+                    flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.1")
                 }
                 NIXPKGS_SPECIFIC => select_nixpkgs(self.api_addr.as_ref()).await?,
                 // Just in case
