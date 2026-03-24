@@ -13,7 +13,6 @@ use std::{
     path::PathBuf,
     process::{Command, ExitCode, exit},
 };
-use url::Url;
 
 use crate::{
     cli::{
@@ -22,8 +21,6 @@ use crate::{
     },
     flakehub_url,
 };
-
-use super::FlakeHubClient;
 
 use self::{
     dev_shell::DevShell,
@@ -40,7 +37,6 @@ use super::CommandExecute;
 // Nixpkgs references
 const NIXPKGS_STABLE: &str = "stable";
 const NIXPKGS_UNSTABLE: &str = "unstable";
-const NIXPKGS_SPECIFIC: &str = "select a specific release (not recommended in most cases)";
 
 /// Create a new flake.nix using an opinionated interactive initializer.
 #[derive(Parser)]
@@ -88,7 +84,6 @@ impl CommandExecute for InitSubcommand {
                 &[
                     NIXPKGS_STABLE,
                     NIXPKGS_UNSTABLE,
-                    NIXPKGS_SPECIFIC,
                 ],
             )
             .as_str()
@@ -98,7 +93,6 @@ impl CommandExecute for InitSubcommand {
                 NIXPKGS_UNSTABLE => {
                     flakehub_url!(FLAKEHUB_WEB_ROOT, "f", "NixOS", "nixpkgs", "0.1")
                 }
-                NIXPKGS_SPECIFIC => select_nixpkgs(self.api_addr.as_ref()).await?,
                 // Just in case
                 _ => return Err(FhError::Unreachable(String::from("nixpkgs selection")).into()),
             };
@@ -259,15 +253,3 @@ pub(super) fn command_exists(cmd: &str) -> bool {
     Command::new(cmd).output().is_ok()
 }
 
-async fn select_nixpkgs(api_addr: &str) -> Result<Url, FhError> {
-    let releases = FlakeHubClient::releases(api_addr, "NixOS", "nixpkgs", None).await?;
-    let releases: Vec<&str> = releases.iter().map(|r| r.version.as_str()).collect();
-    let release = Prompt::select("Choose one of the following Nixpkgs releases:", &releases);
-    Ok(flakehub_url!(
-        FLAKEHUB_WEB_ROOT,
-        "f",
-        "NixOS",
-        "nixpkgs",
-        &release
-    ))
-}
