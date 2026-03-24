@@ -113,21 +113,6 @@ impl CommandExecute for InitSubcommand {
                 Input::new(nixpkgs_version.as_ref(), None),
             );
 
-            flake.inputs.insert(
-                String::from("flake-schemas"),
-                Input::new(
-                    flakehub_url!(
-                        FLAKEHUB_WEB_ROOT,
-                        "f",
-                        "DeterminateSystems",
-                        "flake-schemas",
-                        "*"
-                    )
-                    .as_str(),
-                    None,
-                ),
-            );
-
             // Languages
             Elixir::handle(&project, &mut flake);
             Elm::handle(&project, &mut flake);
