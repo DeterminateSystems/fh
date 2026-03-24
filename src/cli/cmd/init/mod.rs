@@ -81,10 +81,7 @@ impl CommandExecute for InitSubcommand {
             // so best to just include it in all flakes.
             let nixpkgs_version = match Prompt::select(
                 "Which Nixpkgs version would you like to include?",
-                &[
-                    NIXPKGS_STABLE,
-                    NIXPKGS_UNSTABLE,
-                ],
+                &[NIXPKGS_STABLE, NIXPKGS_UNSTABLE],
             )
             .as_str()
             {
@@ -252,4 +249,3 @@ impl CommandExecute for InitSubcommand {
 pub(super) fn command_exists(cmd: &str) -> bool {
     Command::new(cmd).output().is_ok()
 }
-
