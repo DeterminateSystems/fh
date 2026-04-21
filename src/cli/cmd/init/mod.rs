@@ -130,9 +130,9 @@ impl CommandExecute for InitSubcommand {
 
             // Nix formatter
             if Prompt::bool(
-                "Would you like to add our recommended Nix formatter (nixpkgs-fmt) to your environment?",
+                "Would you like to add the official Nix formatter (nixfmt) to your environment?",
             ) {
-                flake.dev_shell_packages.push(String::from("nixpkgs-fmt"));
+                flake.dev_shell_packages.push(String::from("nixfmt"));
             }
 
             flake.doc_comments = Prompt::bool(
