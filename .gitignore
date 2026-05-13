@@ -3,3 +3,5 @@ result*
 
 # Rust artifacts
 /target
+
+.direnv/
