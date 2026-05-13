@@ -40,9 +40,10 @@ nixel = { version = "5.2.0", default-features = false }
 once_cell = { version = "1.18.0", default-features = false }
 owo-colors = { version = "3.5.0", default-features = false }
 regex = { version = "1.9.4", default-features = false }
-reqwest = { version = "0.11", default-features = false, features = [
+reqwest = { version = "0.13", default-features = false, features = [
   "json",
-  "rustls-tls-native-roots",
+  "rustls",
+  "query",
 ] }
 semver = { version = "1.0.18", default-features = false, features = ["serde"] }
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
