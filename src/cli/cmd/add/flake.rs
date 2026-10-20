@@ -506,7 +506,7 @@ impl AttrType {
                     span_text.insert_str(found.end(), &format!(", {flake_input_name}"));
                     new_flake_contents.insert_str(start, &span_text);
                 } else {
-                    return Err(color_eyre::eyre::eyre!(
+                    Err(color_eyre::eyre::eyre!(
                         "could not find `{final_arg_identifier}` in the outputs function, but it existed when parsing it"
                     ))?;
                 }
@@ -522,13 +522,13 @@ impl AttrType {
                         span_text.insert_str(found.start(), &format!("{flake_input_name}, "));
                         new_flake_contents.insert_str(start, &span_text);
                     } else {
-                        return Err(color_eyre::eyre::eyre!(
+                        Err(color_eyre::eyre::eyre!(
                             "could not find the ellipsis (`...`) in the outputs function, but it existed when parsing it"
                         ))?;
                     }
                 } else {
                     // unfortunately this is legal, but I don't wanna support it
-                    return Err(color_eyre::eyre::eyre!(
+                    Err(color_eyre::eyre::eyre!(
                         "the `outputs` function doesn't take any arguments, and fh add doesn't support that yet. Replace it with: outputs = {{ ... }}: and try again."
                     ))?;
                 }
