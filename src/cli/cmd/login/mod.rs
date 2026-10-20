@@ -321,7 +321,7 @@ pub async fn upsert_user_nix_config(
                     }
                 })
                 .wrap_err_with(|| {
-                    format!("Reading the Nix configuration file {:?}", &nix_config_path)
+                    format!("Reading the Nix configuration file {:?}", nix_config_path)
                 })?;
             nix_conf_write_success = match tokio::fs::OpenOptions::new()
                 .create(true)
