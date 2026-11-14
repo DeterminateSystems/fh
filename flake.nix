@@ -57,6 +57,8 @@
 
               doCheck = true;
 
+              nativeCheckInputs = [ final.gitMinimal ];
+
               nativeBuildInputs = with final; [
                 pkg-config
                 final.buildPackages.rustPlatform.bindgenHook

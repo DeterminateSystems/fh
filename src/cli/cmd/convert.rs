@@ -337,22 +337,32 @@ impl ConvertSubcommand {
         let is_a_git_repo = git_toplevel.success();
 
         if is_a_git_repo {
-            let files = tokio::process::Command::new("git")
-                .args(["ls-files ", "--modified ", "--full-name"])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .stdin(Stdio::null())
-                .output()
-                .await?;
-            let output = std::str::from_utf8(&files.stdout)?;
-
-            for line in output.lines() {
-                if line.contains("shell.nix") {
-                    shell_nix_clean = false;
-                }
-                if line.contains("default.nix") {
-                    default_nix_clean = false;
-                }
+            // Check both files before writing either one. A failed inspection must not
+            // look like a clean file, and staged or untracked content also belongs to the user.
+            for (path, clean) in [
+                (SHELL_NIX, &mut shell_nix_clean),
+                (DEFAULT_NIX, &mut default_nix_clean),
+            ] {
+                let status = tokio::process::Command::new("git")
+                    .args([
+                        "status",
+                        "--porcelain=v1",
+                        "--untracked-files=all",
+                        "--ignored",
+                        "--",
+                        path,
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .stdin(Stdio::null())
+                    .output()
+                    .await?;
+                color_eyre::eyre::ensure!(
+                    status.status.success(),
+                    "Failed to inspect Git state for {path}: {}",
+                    String::from_utf8_lossy(&status.stderr).trim()
+                );
+                *clean = status.stdout.is_empty();
             }
         }
 
@@ -833,5 +843,267 @@ mod test {
             tarball_url.host().unwrap(),
             url::Host::Domain("api.flakehub.com")
         );
+    }
+}
+
+#[cfg(all(test, unix))]
+mod local_edit_regression {
+    use std::path::Path;
+    use std::process::{Command, Output};
+
+    const CHILD: &str = "cli::cmd::convert::local_edit_regression::fixture_child";
+    const CHILD_DONE: &str = "fh conversion fixture completed";
+    const WRAPPERS: [&str; 2] = ["shell.nix", "default.nix"];
+
+    // --- Fixture helpers: isolate real Git and file writes from the caller's repository. ---
+    fn isolated(command: &mut Command) -> &mut Command {
+        for (key, _) in std::env::vars_os() {
+            if key.to_string_lossy().starts_with("GIT_") {
+                command.env_remove(key);
+            }
+        }
+        command
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+    }
+
+    fn git(root: &Path, args: &[&str]) -> Output {
+        let output = isolated(&mut Command::new("git"))
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@fixture.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=/dev/null",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .expect("run fixture Git");
+        assert!(
+            output.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        output
+    }
+
+    fn legacy_wrapper(name: &str) -> String {
+        format!(
+            "(import (fetchTarball \"{}/old.tar.gz\") {{ src = ./.; }}).{}\n",
+            super::FLAKE_COMPAT_MARKER,
+            if name == "shell.nix" {
+                "shellNix"
+            } else {
+                "defaultNix"
+            }
+        )
+    }
+
+    fn repository(track_wrappers: bool) -> tempfile::TempDir {
+        let root = tempfile::tempdir().unwrap();
+        git(root.path(), &["init", "--quiet"]);
+        for name in WRAPPERS {
+            std::fs::write(root.path().join(name), legacy_wrapper(name)).unwrap();
+        }
+        if track_wrappers {
+            git(root.path(), &["add", "--", "shell.nix", "default.nix"]);
+        }
+        git(
+            root.path(),
+            &["commit", "--quiet", "--allow-empty", "-m", "fixture"],
+        );
+        root
+    }
+
+    /// Run the actual private helper without changing the test process's global directory.
+    fn convert(root: &Path, expect_error: bool) {
+        let output = isolated(&mut Command::new(std::env::current_exe().unwrap()))
+            .args(["--exact", CHILD, "--ignored", "--nocapture"])
+            .env("FH_CONVERT_FIXTURE", "1")
+            .env(
+                "FH_CONVERT_EXPECT_ERROR",
+                if expect_error { "1" } else { "0" },
+            )
+            .current_dir(root)
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            output.status.success(),
+            "{stdout}\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            stdout.contains(CHILD_DONE),
+            "fixture child did not run: {stdout}"
+        );
+    }
+
+    fn assert_converted(root: &Path, name: &str) {
+        let contents = std::fs::read_to_string(root.join(name)).unwrap();
+        assert!(contents.contains("lock.nodes.flake-compat.locked"));
+        assert!(contents.ends_with(if name == "shell.nix" {
+            ".shellNix\n"
+        } else {
+            ".defaultNix\n"
+        }));
+        assert_ne!(contents, legacy_wrapper(name));
+    }
+    // --- End fixture helpers. ---
+
+    #[tokio::test]
+    #[ignore = "invoked only by isolated fixture subprocesses"]
+    async fn fixture_child() {
+        assert_eq!(std::env::var("FH_CONVERT_FIXTURE").as_deref(), Ok("1"));
+        let command = super::ConvertSubcommand {
+            flake_path: "flake.nix".into(),
+            dry_run: false,
+            api_addr: url::Url::parse("http://127.0.0.1:1").unwrap(),
+        };
+        let result = command.fixup_flake_compat_nix_files().await;
+        if std::env::var("FH_CONVERT_EXPECT_ERROR").as_deref() == Ok("1") {
+            assert!(
+                result.is_err(),
+                "Git inspection failure must not authorize writes"
+            );
+        } else {
+            result.unwrap();
+        }
+        println!("{CHILD_DONE}");
+    }
+
+    #[test]
+    fn unstaged_changes_are_preserved() {
+        for name in WRAPPERS {
+            let root = repository(true);
+            let edited = format!("{}# local customization\n", legacy_wrapper(name));
+            std::fs::write(root.path().join(name), &edited).unwrap();
+            convert(root.path(), false);
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                edited
+            );
+        }
+    }
+
+    #[test]
+    fn staged_and_mixed_changes_are_preserved() {
+        for name in WRAPPERS {
+            for mixed in [false, true] {
+                let root = repository(true);
+                let staged = format!("{}# staged customization\n", legacy_wrapper(name));
+                std::fs::write(root.path().join(name), &staged).unwrap();
+                git(root.path(), &["add", "--", name]);
+                let edited = if mixed {
+                    format!("{staged}# unstaged customization\n")
+                } else {
+                    staged.clone()
+                };
+                std::fs::write(root.path().join(name), &edited).unwrap();
+                convert(root.path(), false);
+                assert_eq!(
+                    std::fs::read_to_string(root.path().join(name)).unwrap(),
+                    edited
+                );
+                assert_eq!(
+                    git(root.path(), &["show", &format!(":{name}")]).stdout,
+                    staged.as_bytes()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn untracked_and_ignored_wrappers_are_preserved() {
+        for ignored in [false, true] {
+            let root = repository(false);
+            if ignored {
+                std::fs::write(root.path().join(".gitignore"), "shell.nix\ndefault.nix\n").unwrap();
+            }
+            convert(root.path(), false);
+            for name in WRAPPERS {
+                assert_eq!(
+                    std::fs::read_to_string(root.path().join(name)).unwrap(),
+                    legacy_wrapper(name)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn clean_wrappers_still_convert() {
+        let root = repository(true);
+        convert(root.path(), false);
+        for name in WRAPPERS {
+            assert_converted(root.path(), name);
+        }
+    }
+
+    #[test]
+    fn a_dirty_wrapper_does_not_block_its_clean_sibling() {
+        for name in WRAPPERS {
+            let root = repository(true);
+            let edited = format!("{}# local customization\n", legacy_wrapper(name));
+            std::fs::write(root.path().join(name), &edited).unwrap();
+            convert(root.path(), false);
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                edited
+            );
+            assert_converted(
+                root.path(),
+                if name == "shell.nix" {
+                    "default.nix"
+                } else {
+                    "shell.nix"
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn missing_and_non_marker_files_are_untouched() {
+        let root = repository(true);
+        std::fs::remove_file(root.path().join("shell.nix")).unwrap();
+        std::fs::write(root.path().join("default.nix"), "# unrelated contents\n").unwrap();
+        convert(root.path(), false);
+        assert!(!root.path().join("shell.nix").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("default.nix")).unwrap(),
+            "# unrelated contents\n"
+        );
+    }
+
+    #[test]
+    fn outside_git_is_recommendation_only() {
+        let root = tempfile::tempdir().unwrap();
+        for name in WRAPPERS {
+            std::fs::write(root.path().join(name), legacy_wrapper(name)).unwrap();
+        }
+        convert(root.path(), false);
+        for name in WRAPPERS {
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                legacy_wrapper(name)
+            );
+        }
+    }
+
+    #[test]
+    fn a_failed_git_inspection_preserves_both_files() {
+        let root = repository(true);
+        std::fs::write(root.path().join(".git/index"), b"corrupt index").unwrap();
+        convert(root.path(), true);
+        for name in WRAPPERS {
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                legacy_wrapper(name)
+            );
+        }
     }
 }
