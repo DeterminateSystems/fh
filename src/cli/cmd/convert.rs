@@ -328,6 +328,11 @@ impl ConvertSubcommand {
         let mut default_nix_clean = true;
 
         let git_toplevel = tokio::process::Command::new("git")
+            // Inspect the directory whose wrappers we will write, even inside a Git hook.
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .env_remove("GIT_COMMON_DIR")
+            .env_remove("GIT_INDEX_FILE")
             .args(["rev-parse", "--show-toplevel"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -344,6 +349,10 @@ impl ConvertSubcommand {
                 (DEFAULT_NIX, &mut default_nix_clean),
             ] {
                 let status = tokio::process::Command::new("git")
+                    .env_remove("GIT_DIR")
+                    .env_remove("GIT_WORK_TREE")
+                    .env_remove("GIT_COMMON_DIR")
+                    .env_remove("GIT_INDEX_FILE")
                     .args([
                         "status",
                         "--porcelain=v1",
@@ -922,7 +931,16 @@ mod local_edit_regression {
 
     /// Run the actual private helper without changing the test process's global directory.
     fn convert(root: &Path, expect_error: bool) {
-        let output = isolated(&mut Command::new(std::env::current_exe().unwrap()))
+        convert_with_git_environment(root, expect_error, &[]);
+    }
+
+    fn convert_with_git_environment(root: &Path, expect_error: bool, env: &[(&str, &Path)]) {
+        let mut child = Command::new(std::env::current_exe().unwrap());
+        isolated(&mut child);
+        for (key, value) in env {
+            child.env(key, value);
+        }
+        let output = child
             .args(["--exact", CHILD, "--ignored", "--nocapture"])
             .env("FH_CONVERT_FIXTURE", "1")
             .env(
@@ -1086,6 +1104,72 @@ mod local_edit_regression {
             std::fs::write(root.path().join(name), legacy_wrapper(name)).unwrap();
         }
         convert(root.path(), false);
+        for name in WRAPPERS {
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                legacy_wrapper(name)
+            );
+        }
+    }
+
+    #[test]
+    fn inherited_git_locations_do_not_hide_local_edits() {
+        for name in WRAPPERS {
+            let root = repository(true);
+            let other = repository(true);
+            let edited = format!("{}# local customization\n", legacy_wrapper(name));
+            std::fs::write(root.path().join(name), &edited).unwrap();
+            let git_dir = other.path().join(".git");
+            let index = git_dir.join("index");
+            convert_with_git_environment(
+                root.path(),
+                false,
+                &[
+                    ("GIT_DIR", &git_dir),
+                    ("GIT_WORK_TREE", other.path()),
+                    ("GIT_COMMON_DIR", &git_dir),
+                    ("GIT_INDEX_FILE", &index),
+                ],
+            );
+            assert_eq!(
+                std::fs::read_to_string(root.path().join(name)).unwrap(),
+                edited
+            );
+            assert_converted(
+                root.path(),
+                if name == "shell.nix" {
+                    "default.nix"
+                } else {
+                    "shell.nix"
+                },
+            );
+            for wrapper in WRAPPERS {
+                assert_eq!(
+                    std::fs::read_to_string(other.path().join(wrapper)).unwrap(),
+                    legacy_wrapper(wrapper)
+                );
+            }
+            assert!(
+                git(other.path(), &["status", "--porcelain"])
+                    .stdout
+                    .is_empty()
+            );
+        }
+    }
+
+    #[test]
+    fn inherited_git_locations_do_not_make_an_outside_directory_a_repository() {
+        let root = tempfile::tempdir().unwrap();
+        let other = repository(true);
+        for name in WRAPPERS {
+            std::fs::write(root.path().join(name), legacy_wrapper(name)).unwrap();
+        }
+        let git_dir = other.path().join(".git");
+        convert_with_git_environment(
+            root.path(),
+            false,
+            &[("GIT_DIR", &git_dir), ("GIT_WORK_TREE", other.path())],
+        );
         for name in WRAPPERS {
             assert_eq!(
                 std::fs::read_to_string(root.path().join(name)).unwrap(),
